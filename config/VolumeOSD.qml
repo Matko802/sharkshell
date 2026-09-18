@@ -1,0 +1,119 @@
+import QtQuick
+import QtQuick.Layouts
+import Quickshell
+import Quickshell.Wayland
+
+PanelWindow {
+  id: osd
+
+  property bool shown: false
+  property bool armed: false
+
+  anchors.bottom: true
+  margins.bottom: 0
+  exclusionMode: ExclusionMode.Ignore
+  color: "transparent"
+  WlrLayershell.namespace: "quickshell-modal"
+  WlrLayershell.layer: WlrLayer.Overlay
+  implicitWidth: 380
+  implicitHeight: 200
+  // Unmap when the card is parked off-screen so niri doesn't blur
+  // this invisible surface (or composite it at all).
+  // (osd.height: PanelWindow's own height; parent would be the output.)
+  visible: osd.shown || bg.y < osd.height
+
+  mask: Region { item: bg }
+
+  function show() {
+    osd.shown = true
+    hideTimer.restart()
+  }
+
+  Timer {
+    id: hideTimer
+    interval: 1800
+    onTriggered: osd.shown = false
+  }
+
+  Timer {
+    id: armTimer
+    interval: 1500
+    running: true
+    onTriggered: osd.armed = true
+  }
+
+  Connections {
+    target: Audio
+    function onVolChanged() {
+      if (!osd.armed) return
+      if (ControlState.open)
+        return
+      osd.show()
+      if (ControlState.sliderDrags === 0)
+        Audio.playVolumeSound()
+    }
+    function onMutedChanged() {
+      if (!osd.armed) return
+      if (ControlState.open)
+        return
+      osd.show()
+      if (ControlState.sliderDrags === 0)
+        Audio.playVolumeSound()
+    }
+  }
+
+  Rectangle {
+    id: bg
+    width: parent.width
+    height: 56
+    y: osd.shown ? parent.height - 56 - 64 : parent.height
+    Behavior on y { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+    color: Theme.bg
+    border.color: Theme.fg
+    border.width: 1
+
+    RowLayout {
+      anchors.fill: parent
+      anchors.margins: 12
+      spacing: 12
+
+      Item {
+        Layout.preferredWidth: 24
+        Layout.minimumWidth: 24
+        Layout.maximumWidth: 24
+        Layout.preferredHeight: 24
+        QIcon {
+          anchors.centerIn: parent
+          name: Audio.icon
+          size: 24
+          color: Theme.fg
+        }
+        MouseArea {
+          anchors.fill: parent
+          cursorShape: Qt.PointingHandCursor
+          onClicked: Audio.toggleMute()
+        }
+      }
+
+      CSlider {
+        id: osdSlider
+        Layout.fillWidth: true
+        value: Audio.vol < 0 ? 0 : Audio.vol / 100
+        onUserSet: v => {
+          Audio.setVol(v * 100)
+          hideTimer.restart()
+        }
+      }
+
+      Text {
+        text: Math.round(osdSlider.shown * 100) + "%"
+        color: Theme.fg
+        font.pixelSize: 12
+        Layout.preferredWidth: 40
+        Layout.minimumWidth: 40
+        Layout.maximumWidth: 40
+        horizontalAlignment: Text.AlignRight
+      }
+    }
+  }
+}
