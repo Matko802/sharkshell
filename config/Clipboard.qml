@@ -8,7 +8,6 @@ Scope {
   id: root
 
   property bool open: false
-  property bool blurReady: false
   property string query: ""
   property int selIdx: 0
   property int hoverIdx: -1
@@ -19,7 +18,7 @@ Scope {
   property var thumbs: ({})
   readonly property string thumbDir: Quickshell.env("HOME") + "/.cache/quickshell/clipboard"
   readonly property string fontFamily: Theme.fontFamily
-  readonly property color matchColor: "#cb4b16"
+  readonly property color matchColor: Theme.match
 
   property bool closePending: false
 
@@ -42,22 +41,6 @@ Scope {
     interval: 200
     onTriggered: {
       root.closePending = false
-    }
-  }
-
-  Timer {
-    id: blurTimer
-    interval: 200
-    onTriggered: { if (root.open) root.blurReady = true }
-  }
-
-  onOpenChanged: {
-    if (root.open) {
-      root.blurReady = false
-      blurTimer.restart()
-    } else {
-      root.blurReady = false
-      blurTimer.stop()
     }
   }
 
@@ -277,35 +260,16 @@ Scope {
   readonly property int imgCellH: 96
 
   PanelWindow {
-    anchors.top: true
-    anchors.left: true
-    margins.top: Math.max(0, Math.round(((screen?.height ?? 1080) - card.height) / 2))
-    margins.left: Math.max(0, Math.round(((screen?.width ?? 1920) - card.width) / 2))
-    implicitWidth: card.width
-    implicitHeight: card.height
-    exclusionMode: ExclusionMode.Ignore
-    color: "transparent"
-    WlrLayershell.namespace: "quickshell-blur"
-    WlrLayershell.layer: WlrLayer.Top
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-    visible: root.open && root.blurReady
-
-    Rectangle {
-      anchors.fill: parent
-      color: Theme.bg
-    }
-  }
-
-  PanelWindow {
     id: panel
     anchors.top: true
     anchors.left: true
     anchors.right: true
     anchors.bottom: true
-    margins.top: 30
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
-    WlrLayershell.namespace: "quickshell-backdrop"
+    WlrLayershell.namespace: "quickshell-modal"
+    BackgroundEffect.blurRegion: Region { item: card.cardProg >= 1 ? card : null }
+    mask: Region { item: card }
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     visible: root.open || root.closePending
@@ -316,12 +280,7 @@ Scope {
       running: root.open && !root.closePending
       repeat: true
       interval: 500
-      onTriggered: { if (root.open) search.forceActiveFocus() }
-    }
-
-    MouseArea {
-      anchors.fill: parent
-      onClicked: root.requestClose()
+      onTriggered: { if (root.open && !search.activeFocus) search.forceActiveFocus() }
     }
 
     Rectangle {
@@ -329,19 +288,13 @@ Scope {
       anchors.centerIn: parent
       width: root.boxWidth
       height: col.implicitHeight + 16
-      color: "transparent"
+      color: Theme.bg
       border.color: Theme.fg
       border.width: 1
-      scale: root.open ? 1 : 0.92
-      opacity: root.open ? 1 : 0
-      Behavior on scale { NumberAnimation { duration: 180; easing.type: Theme.easingOut } }
-      Behavior on opacity { NumberAnimation { duration: 150; easing.type: Theme.easingOut } }
-
-      Rectangle {
-        anchors.fill: parent
-        color: Theme.bg
-        opacity: root.blurReady ? 0 : 1
-      }
+      property real cardProg: root.open ? 1 : 0
+      scale: 0.92 + 0.08 * cardProg
+      opacity: cardProg
+      Behavior on cardProg { NumberAnimation { duration: 150; easing.type: Easing.OutExpo } }
 
       ColumnLayout {
         id: col
@@ -383,7 +336,7 @@ Scope {
                 anchors.fill: parent
                 verticalAlignment: Text.AlignVCenter
                 text: "Search"
-                color: "#666666"
+                color: Theme.muted2
                 font.family: root.fontFamily
                 font.pixelSize: 12
                 visible: search.text === ""
@@ -459,7 +412,7 @@ Scope {
               Text {
                 anchors.centerIn: parent
                 text: modelData.label
-                color: parent.active ? Theme.fg : Theme.muted
+                color: parent.active ? Theme.fg : Theme.muted2
                 font.family: root.fontFamily
                 font.pixelSize: 11
               }
@@ -482,13 +435,13 @@ Scope {
             return Math.min(n * 28, 15 * 28)
           }
           visible: (root.currentList || []).length > 0
-          Behavior on Layout.preferredHeight { enabled: root.query !== "" && root.open && !root.closePending; NumberAnimation { duration: 90; easing.type: Theme.easingOut } }
+          Behavior on Layout.preferredHeight { NumberAnimation { duration: 70; easing.type: Theme.easingOut } }
           clip: true
 
           Row {
             id: swipeRow
             x: -root.swipeIdx * swipeContainer.width
-            Behavior on x { enabled: root.open && !root.closePending; NumberAnimation { duration: 200; easing.type: Theme.easingOut } }
+            Behavior on x { enabled: root.open && !root.closePending; NumberAnimation { duration: 130; easing.type: Theme.easingOut } }
             height: swipeContainer.height
 
             Item {
@@ -503,7 +456,9 @@ Scope {
                 flickableDirection: Flickable.VerticalFlick
                 spacing: 0
                 model: root.textEntries
-                highlightMoveDuration: 0
+                currentIndex: root.selIdx
+                highlight: Rectangle { color: Theme.fg }
+                highlightMoveDuration: 120
 
                 delegate: Rectangle {
                   required property var modelData
@@ -512,7 +467,7 @@ Scope {
                   height: 28
                   readonly property bool isKeyboardSelected: root.selIdx === index
                   readonly property bool isHovered: root.hoverIdx === index
-                  color: isKeyboardSelected ? Theme.fg : isHovered ? "#33ffffff" : "transparent"
+                  color: isHovered ? Theme.hover : "transparent"
 
                   Text {
                     anchors.fill: parent
@@ -521,7 +476,7 @@ Scope {
                     verticalAlignment: Text.AlignVCenter
                     textFormat: Text.RichText
                     text: root.hl(modelData)
-                    color: isKeyboardSelected ? "#586e75" : Theme.fg
+                    color: isKeyboardSelected ? Theme.onSelect : Theme.fg
                     font.family: root.fontFamily
                     font.pointSize: 12
                     elide: Text.ElideRight
@@ -553,7 +508,9 @@ Scope {
                 cellWidth: Math.floor(imgGrid.width / 3)
                 cellHeight: root.imgCellH
                 model: root.imageEntries
-                highlightMoveDuration: 0
+                currentIndex: root.selIdx
+                highlight: Rectangle { color: "transparent"; border.color: Theme.fg; border.width: 2 }
+                highlightMoveDuration: 120
 
                 delegate: Rectangle {
                   required property var modelData
@@ -580,8 +537,8 @@ Scope {
                   Rectangle {
                     anchors.fill: parent
                     anchors.margins: 4
-                    color: isHover ? "#33ffffff" : "transparent"
-                    border.width: isSel ? 2 : 0
+                    color: isHover ? Theme.hover : "transparent"
+                    border.width: 0
                     border.color: Theme.fg
                   }
 

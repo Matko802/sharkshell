@@ -91,9 +91,10 @@ ShellRoot {
         implicitHeight: 30
         color: "transparent"
         exclusionMode: ExclusionMode.Auto
-        // Unmapped while hidden, so blur goes away with the bar.
         WlrLayershell.namespace: "quickshell"
-        visible: root.barShown || clockMenu.shown || settingsMenu.shown || controlCard.shown
+        BackgroundEffect.blurRegion: Region { item: root.barShown ? barBg : null }
+        readonly property bool barVisible: root.barShown || clockMenu.shown || settingsMenu.shown || controlCard.shown
+        visible: barVisible
         mask: Region { item: root.barShown ? barBg : null }
         WlrLayershell.layer: WlrLayer.Overlay
         Rectangle {
@@ -106,40 +107,6 @@ ShellRoot {
         }
         ControlCenter {
           targetScreen: modelData
-        }
-        PanelWindow {
-          screen: modelData
-          anchors.top: true
-          margins.top: 34
-          implicitWidth: 700
-          implicitHeight: 424
-          exclusionMode: ExclusionMode.Ignore
-          color: "transparent"
-          WlrLayershell.namespace: "quickshell-blur"
-          WlrLayershell.layer: WlrLayer.Top
-          WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-          visible: clockMenu.blurReady && (!ClockState.screen || ClockState.screen === modelData)
-          Rectangle {
-            anchors.fill: parent
-            color: Theme.bg
-          }
-        }
-        PanelWindow {
-          screen: modelData
-          anchors.top: true
-          margins.top: 34
-          implicitWidth: 700
-          implicitHeight: 424
-          exclusionMode: ExclusionMode.Ignore
-          color: "transparent"
-          WlrLayershell.namespace: "quickshell-blur"
-          WlrLayershell.layer: WlrLayer.Top
-          WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-          visible: settingsMenu.blurReady && (!SettingsState.screen || SettingsState.screen === modelData)
-          Rectangle {
-            anchors.fill: parent
-            color: Theme.bg
-          }
         }
         ControlCenterCard {
           id: controlCard
@@ -182,6 +149,35 @@ ShellRoot {
       }
     }
   }
+  PanelWindow {
+    anchors.top: true
+    anchors.bottom: true
+    anchors.left: true
+    anchors.right: true
+    exclusionMode: ExclusionMode.Ignore
+    color: "transparent"
+    WlrLayershell.namespace: "quickshell-backdrop"
+    WlrLayershell.layer: WlrLayer.Top
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    visible: (launcher.open || launcher.closePending)
+      || (emojiPicker.open || emojiPicker.closePending)
+      || (clipboard.open || clipboard.closePending)
+      || (powerMenu.open || powerMenu.closePending)
+      || ((wallpaperPicker.opened || wallpaperPicker.closePending) && wallpaperPicker.imagesLoaded)
+      || (avatarPicker.opened || avatarPicker.closePending)
+
+    MouseArea {
+      anchors.fill: parent
+      onClicked: {
+        launcher.requestClose()
+        emojiPicker.requestClose()
+        clipboard.requestClose()
+        powerMenu.requestClose()
+        wallpaperPicker.requestClose()
+        avatarPicker.requestClose()
+      }
+    }
+  }
   Launcher {
     id: launcher
     onOpenChanged: if (open) { emojiPicker.requestClose(); clipboard.requestClose() }
@@ -200,6 +196,8 @@ ShellRoot {
   AvatarPicker {
     id: avatarPicker
   }
-  PowerMenu {}
+  PowerMenu {
+    id: powerMenu
+  }
   Lock {}
 }

@@ -37,7 +37,7 @@ const CODEPOINTS = {
   "player-play": 0xE037,
   "player-pause": 0xE034,
   "audio-volume-muted": 0xE04F,
-  "audio-volume-low": 0xE04D,
+  "audio-volume-low": 0xE04E,
   "audio-volume-medium": 0xE04D,
   "audio-volume-high": 0xE050,
   "mic": 0xE029,
@@ -77,6 +77,9 @@ const CODEPOINTS = {
   "bat-caution": 0xE19C,
   "logout": 0xE9BA,
   "opacity": 0xE91C,  "reboot": 0xF053,
+  "equalizer": 0xE01D,
+  "waves": 0xE176,
+  "tune": 0xE429,
   "shutdown": 0xE8AC,
   "suspend": 0xEF44,
   "hibernate": 0xF03D,
@@ -90,13 +93,4 @@ function resolve(name) {
 
 function has(name) {
   return !!CODEPOINTS[String(name)];
-}
-
-const OUTLINED = {
-  "coffee-off": true,
-  "settings": true,
-};
-
-function isOutlined(name) {
-  return !!OUTLINED[String(name)];
 }

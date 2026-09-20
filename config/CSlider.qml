@@ -21,7 +21,7 @@ Rectangle {
     anchors.verticalCenter: parent.verticalCenter
     width: parent.width
     height: 6
-    color: "#1a1a1a"
+    color: Theme.bgAlt
 
     readonly property real center: Math.round(9 + (width - 18) * root.shown)
 

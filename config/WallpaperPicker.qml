@@ -3,12 +3,12 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import "Util.js" as Util
 
 Scope {
   id: root
 
   property bool opened: false
-  property bool blurReady: false
   property bool entered: false
   property int selIdx: 0
   property bool imagesLoaded: false
@@ -17,6 +17,8 @@ Scope {
   property string imageDirs: ""
   property string selectedImage: ""
   property var imageArray: []
+  property int activeTab: 0
+  readonly property bool isLockTab: activeTab === 1
 
   readonly property string fontFamily: Theme.fontFamily
   readonly property int thumbW: 160
@@ -58,22 +60,6 @@ Scope {
   }
 
   Timer {
-    id: blurTimer
-    interval: 270
-    onTriggered: { if (root.opened) root.blurReady = true }
-  }
-
-  onOpenedChanged: {
-    if (root.opened) {
-      root.blurReady = false
-      blurTimer.restart()
-    } else {
-      root.blurReady = false
-      blurTimer.stop()
-    }
-  }
-
-  Timer {
     id: closeCleanTimer
     interval: 250
     onTriggered: {
@@ -90,21 +76,60 @@ Scope {
   }
 
   function openPicker() {
+    root.openPickerWithTab(0)
+  }
+
+  function openPickerWithTab(tab) {
     closeTimer.stop()
     root.closePending = false
     root.editingDir = false
+    root.browsing = false
     root.filterText = ""
+    root.activeTab = tab === 1 ? 1 : 0
     dirsFile.reload()
     const custom = dirsFile.text().trim()
     const home = Quickshell.env("HOME")
     root.imageDirs = custom || waypaperIni.text().match(/^folder\s*=\s*(.+)$/m)?.[1]?.trim() || home + "/Pictures/Wallpapers"
-    root.selectedImage = WallpaperState.path
+    root.selectedImage = root.activeTab === 1 ? WallpaperState.effectiveLockPath : WallpaperState.path
     root.imageArray = []
     root.selIdx = 0
     root.imagesLoaded = false
     root.entered = false
     loadImagesProc.output = ""
     loadImagesProc.running = true
+  }
+
+  function switchTab(idx) {
+    idx = idx === 1 ? 1 : 0
+    if (root.activeTab === idx)
+      return
+    root.activeTab = idx
+    root.selectedImage = idx === 1 ? WallpaperState.effectiveLockPath : WallpaperState.path
+    const cur = root.selectedImage
+    let found = -1
+    for (let i = 0; i < root.results.length; i++)
+      if (root.results[i].filePath === cur) {
+        found = i
+        break
+      }
+    root.selIdx = found >= 0 ? found : 0
+    if (listView)
+      listView.forceActiveFocus()
+  }
+
+  function currentPosX() {
+    return root.isLockTab ? WallpaperState.lockPositionX : WallpaperState.positionX
+  }
+
+  function currentPosY() {
+    return root.isLockTab ? WallpaperState.lockPositionY : WallpaperState.positionY
+  }
+
+  function setCurrentPosition(x, y) {
+    if (root.isLockTab)
+      WallpaperState.setLockPosition(x, y)
+    else
+      WallpaperState.setPosition(x, y)
   }
 
   IpcHandler {
@@ -114,6 +139,18 @@ Scope {
     }
     function close() {
       root.forceClose()
+    }
+    function openDesktop() {
+      if (root.opened)
+        root.switchTab(0)
+      else
+        root.openPickerWithTab(0)
+    }
+    function openLock() {
+      if (root.opened)
+        root.switchTab(1)
+      else
+        root.openPickerWithTab(1)
     }
   }
 
@@ -129,14 +166,6 @@ Scope {
     path: Quickshell.env("HOME") + "/.config/waypaper/config.ini"
     watchChanges: false
     printErrors: false
-  }
-
-  function shellQuote(value) {
-    return "'" + String(value).replace(/'/g, "'\\''") + "'"
-  }
-
-  function fileUrl(path) {
-    return "file://" + path.split("/").map(encodeURIComponent).join("/")
   }
 
   function nameForPath(path) {
@@ -187,7 +216,10 @@ Scope {
     if (!entry)
       return
     root.selectedImage = entry.filePath
-    WallpaperState.set(entry.filePath)
+    if (root.isLockTab)
+      WallpaperState.setLock(entry.filePath)
+    else
+      WallpaperState.set(entry.filePath)
   }
 
   function openBrowser() {
@@ -285,7 +317,7 @@ Scope {
     id: browseProc
     property string output: ""
     command: ["bash", "-c",
-      "dir=" + shellQuote(root.browseDir) + ";"
+      "dir=" + Util.shellQuote(root.browseDir) + ";"
       + " [[ -d \"$dir\" ]] || exit 0;"
       + " find -L \"$dir\" -maxdepth 1 -mindepth 1 -type d -printf '%f\\n' 2>/dev/null | sort"]
     stdout: SplitParser {
@@ -316,7 +348,7 @@ Scope {
       "cache_dir=\"$HOME/.cache/quickshell/image-selector\"; mkdir -p \"$cache_dir\";"
       + " while IFS= read -r dir; do [[ -n $dir && -d $dir ]] && find -L \"$dir\" -maxdepth 1 -type f"
       + " \\( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.bmp' -o -iname '*.webp' \\) -print0;"
-      + " done <<< " + shellQuote(root.imageDirs)
+      + " done <<< " + Util.shellQuote(root.imageDirs)
       + " | sort -z | while IFS= read -r -d '' image; do"
       + " hash=$(md5sum \"$image\" | cut -d ' ' -f 1); thumb=\"$cache_dir/$hash.jpg\";"
       + " if [[ ! -f $thumb ]]; then"
@@ -350,27 +382,15 @@ Scope {
     root.imagesLoaded = true
     root.opened = true
     root.entered = true
+    const cur = root.selectedImage
+    let found = -1
+    for (let i = 0; i < newImages.length; i++)
+      if (newImages[i].filePath === cur) {
+        found = i
+        break
+      }
+    root.selIdx = found >= 0 ? found : 0
     listView.forceActiveFocus()
-  }
-
-  PanelWindow {
-    visible: (root.opened || root.closePending) && root.imagesLoaded && root.blurReady
-    anchors.top: true
-    anchors.left: true
-    margins.top: 80
-    margins.left: 20
-    exclusionMode: ExclusionMode.Ignore
-    color: "transparent"
-    implicitWidth: panel.width
-    implicitHeight: panel.height
-    WlrLayershell.namespace: "quickshell-blur"
-    WlrLayershell.layer: WlrLayer.Top
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-
-    Rectangle {
-      anchors.fill: parent
-      color: Theme.bg
-    }
   }
 
   PanelWindow {
@@ -382,14 +402,11 @@ Scope {
     margins.top: 30
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
-    WlrLayershell.namespace: "quickshell-backdrop"
+    WlrLayershell.namespace: "quickshell-modal"
+    BackgroundEffect.blurRegion: Region { item: panel.anchors.leftMargin >= 20 ? panel : null }
+    mask: Region { item: panel }
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-
-    MouseArea {
-      anchors.fill: parent
-      onClicked: root.requestClose()
-    }
 
     Rectangle {
       id: panel
@@ -399,21 +416,64 @@ Scope {
       anchors.leftMargin: root.opened ? 20 : -width
       width: root.browsing ? 400 : root.thumbW + 16
       height: (root.browsing ? browseCol.implicitHeight : listViewCol.implicitHeight) + 16
-      color: "transparent"
-      Rectangle {
-        anchors.fill: parent
-        color: Theme.bg
-        opacity: root.blurReady ? 0 : 1
-      }
-      border.color: Theme.fg
+      color: Theme.bg
+      opacity: (panel.anchors.leftMargin + panel.width) / (20 + panel.width)
+      border.color: Theme.outline
       border.width: 1
-      Behavior on anchors.leftMargin { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+      Behavior on anchors.leftMargin { NumberAnimation { duration: 170; easing.type: Easing.OutExpo } }
 
       Column {
         id: listViewCol
         visible: !root.browsing
         anchors.fill: parent
         anchors.margins: 8
+        spacing: 6
+
+        Row {
+          width: parent.width
+          height: 26
+          spacing: 4
+
+          Repeater {
+            model: 2
+            delegate: Rectangle {
+              required property int index
+              width: (parent.width - 4) / 2
+              height: 26
+              radius: 3
+              color: root.activeTab === index ? Theme.fg : "transparent"
+              border.color: Theme.fg
+              border.width: 1
+
+              Text {
+                anchors.centerIn: parent
+                text: parent.index === 0 ? "Desktop" : "Lockscreen"
+                color: root.activeTab === parent.index ? Theme.bg : Theme.fg
+                font.family: root.fontFamily
+                font.pixelSize: 11
+              }
+
+              MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.switchTab(index)
+              }
+            }
+          }
+        }
+
+        Text {
+          visible: root.isLockTab
+          width: parent.width
+          text: WallpaperState.lockPath === "" ? "following desktop" : "custom lockscreen"
+          color: Theme.fg
+          opacity: 0.6
+          font.family: root.fontFamily
+          font.pixelSize: 10
+          horizontalAlignment: Text.AlignHCenter
+          elide: Text.ElideRight
+        }
 
         ListView {
           id: listView
@@ -422,7 +482,7 @@ Scope {
           clip: true
           spacing: root.thumbSpacing
           model: root.results
-          highlightMoveDuration: 150
+          highlightMoveDuration: 120
           highlightMoveVelocity: -1
 
           focus: true
@@ -430,16 +490,25 @@ Scope {
           Keys.priority: Keys.BeforeItem
           Keys.onPressed: function(event) {
             if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Left) {
-              WallpaperState.setPosition(WallpaperState.positionX - 0.05, WallpaperState.positionY)
+              root.setCurrentPosition(root.currentPosX() - 0.05, root.currentPosY())
               event.accepted = true
             } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Right) {
-              WallpaperState.setPosition(WallpaperState.positionX + 0.05, WallpaperState.positionY)
+              root.setCurrentPosition(root.currentPosX() + 0.05, root.currentPosY())
               event.accepted = true
             } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Up) {
-              WallpaperState.setPosition(WallpaperState.positionX, WallpaperState.positionY - 0.05)
+              root.setCurrentPosition(root.currentPosX(), root.currentPosY() - 0.05)
               event.accepted = true
             } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Down) {
-              WallpaperState.setPosition(WallpaperState.positionX, WallpaperState.positionY + 0.05)
+              root.setCurrentPosition(root.currentPosX(), root.currentPosY() + 0.05)
+              event.accepted = true
+            } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Tab) {
+              root.switchTab(root.activeTab === 0 ? 1 : 0)
+              event.accepted = true
+            } else if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_1 || event.key === Qt.Key_2)) {
+              root.switchTab(event.key === Qt.Key_1 ? 0 : 1)
+              event.accepted = true
+            } else if (event.key === Qt.Key_Tab && root.filterText === "") {
+              root.switchTab(root.activeTab === 0 ? 1 : 0)
               event.accepted = true
             } else if (event.key === Qt.Key_Escape) {
               if (root.editingDir) {
@@ -487,7 +556,7 @@ Scope {
 
             Image {
               anchors.fill: parent
-              source: root.fileUrl(modelData.thumbnailPath)
+              source: Util.fileUrl(modelData.thumbnailPath)
               fillMode: Image.PreserveAspectCrop
               asynchronous: true
               cache: true
@@ -496,9 +565,9 @@ Scope {
 
             Rectangle {
               anchors.fill: parent
-              color: modelData.filePath === root.selectedImage ? "#59ffffff" : "transparent"
+              color: modelData.filePath === root.selectedImage ? Theme.hover : "transparent"
               border.width: (root.selIdx === index || thumbMa.containsMouse) ? 2 : 0
-              border.color: root.selIdx === index ? Theme.fg : Theme.muted
+              border.color: root.selIdx === index ? Theme.outline : Theme.muted
             }
 
             MouseArea {
@@ -550,12 +619,12 @@ Scope {
             CSlider {
               width: parent.width - 44
               anchors.verticalCenter: parent.verticalCenter
-              value: WallpaperState.positionX
-              onUserSet: v => WallpaperState.setPosition(v, WallpaperState.positionY)
+              value: root.isLockTab ? WallpaperState.lockPositionX : WallpaperState.positionX
+              onUserSet: v => root.setCurrentPosition(v, root.currentPosY())
             }
             Text {
               width: 26
-              text: Math.round(WallpaperState.positionX * 100)
+              text: Math.round((root.isLockTab ? WallpaperState.lockPositionX : WallpaperState.positionX) * 100)
               color: Theme.fg
               opacity: 0.6
               font.family: root.fontFamily
@@ -580,18 +649,61 @@ Scope {
             CSlider {
               width: parent.width - 44
               anchors.verticalCenter: parent.verticalCenter
-              value: WallpaperState.positionY
-              onUserSet: v => WallpaperState.setPosition(WallpaperState.positionX, v)
+              value: root.isLockTab ? WallpaperState.lockPositionY : WallpaperState.positionY
+              onUserSet: v => root.setCurrentPosition(root.currentPosX(), v)
             }
             Text {
               width: 26
-              text: Math.round(WallpaperState.positionY * 100)
+              text: Math.round((root.isLockTab ? WallpaperState.lockPositionY : WallpaperState.positionY) * 100)
               color: Theme.fg
               opacity: 0.6
               font.family: root.fontFamily
               font.pixelSize: 10
               anchors.verticalCenter: parent.verticalCenter
               horizontalAlignment: Text.AlignRight
+            }
+          }
+        }
+
+        Item {
+          visible: root.isLockTab && WallpaperState.lockPath !== ""
+          width: parent.width
+          height: 26
+
+          Rectangle {
+            anchors.centerIn: parent
+            width: 130
+            height: 24
+            radius: 3
+            color: useDesktopMa.containsMouse ? Theme.fg : "transparent"
+            border.color: Theme.fg
+            border.width: 1
+
+            Text {
+              anchors.centerIn: parent
+              text: "Use desktop"
+              color: useDesktopMa.containsMouse ? Theme.bg : Theme.fg
+              font.family: root.fontFamily
+              font.pixelSize: 11
+            }
+
+            MouseArea {
+              id: useDesktopMa
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: {
+                WallpaperState.clearLock()
+                root.selectedImage = WallpaperState.effectiveLockPath
+                const cur = root.selectedImage
+                let found = -1
+                for (let i = 0; i < root.results.length; i++)
+                  if (root.results[i].filePath === cur) {
+                    found = i
+                    break
+                  }
+                root.selIdx = found >= 0 ? found : 0
+              }
             }
           }
         }
@@ -606,7 +718,7 @@ Scope {
             width: Math.min(parent.width, dirRow.implicitWidth + 16)
             height: 20
             color: "transparent"
-            border.color: "#333333"
+            border.color: Theme.borderStrong
             border.width: 1
 
             Text {
@@ -756,7 +868,7 @@ Scope {
           clip: true
           spacing: root.thumbSpacing
           model: root.browseResults
-          highlightMoveDuration: 150
+          highlightMoveDuration: 120
           highlightMoveVelocity: -1
 
           focus: true
@@ -802,7 +914,7 @@ Scope {
             required property int index
             width: browseView.width
             height: root.browseRowH
-            color: root.browseSel === index ? Theme.fg : (browseRowMa.containsMouse ? "#33ffffff" : "transparent")
+            color: root.browseSel === index ? Theme.fg : (browseRowMa.containsMouse ? Theme.hover : "transparent")
 
             RowLayout {
               anchors.fill: parent

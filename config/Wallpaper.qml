@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
+import "Util.js" as Util
 
 PanelWindow {
   id: window
@@ -24,10 +25,6 @@ PanelWindow {
     property var pending: null
     property int retryCount: 0
     readonly property int maxRetries: 4
-
-    function fileUrl(path) {
-      return "file://" + path.split("/").map(encodeURIComponent).join("/")
-    }
 
     function checkReady(img) {
       if (bg.pending !== img || img.status !== Image.Ready)
@@ -61,15 +58,6 @@ PanelWindow {
       }
     }
 
-    function clamp01(v) {
-      return Math.min(1, Math.max(0, v))
-    }
-
-    // Cover (crop-to-fill) with selectable position.
-    // When the wallpaper is bigger than the screen, the overflow is
-    // slid so the chosen part stays visible:
-    //   positionX 0 = show left, 0.5 = center, 1 = show right
-    //   positionY 0 = show top,  0.5 = center, 1 = show bottom
     function layoutImage(img) {
       if (bg.width <= 0 || bg.height <= 0)
         return
@@ -89,8 +77,8 @@ PanelWindow {
       var scale = Math.max(bg.width / iw, bg.height / ih)
       var dw = iw * scale
       var dh = ih * scale
-      var px = bg.clamp01(WallpaperState.positionX)
-      var py = bg.clamp01(WallpaperState.positionY)
+      var px = Util.clamp01(WallpaperState.positionX)
+      var py = Util.clamp01(WallpaperState.positionY)
       img.width = dw
       img.height = dh
       img.x = (bg.width - dw) * px
@@ -130,9 +118,9 @@ PanelWindow {
         return
       const back = bg.frontIsA ? imgB : imgA
       const front = bg.frontIsA ? imgA : imgB
-      if (front.source === bg.fileUrl(path))
+      if (front.source === Util.fileUrl(path))
         return
-      back.source = bg.fileUrl(path)
+      back.source = Util.fileUrl(path)
       bg.pending = back
       bg.checkReady(back)
     }

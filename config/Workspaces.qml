@@ -78,12 +78,12 @@ Row {
       property bool hovered: workspaceMa.containsMouse
       width: 20
       height: 20
-      color: modelData.urgent ? "#ff0000" : (modelData.active ? Theme.outline : (hovered ? "#333333" : "transparent"))
+      color: modelData.urgent ? Theme.error : (modelData.active ? Theme.outline : (hovered ? Theme.borderStrong : "transparent"))
 
       Text {
         anchors.centerIn: parent
         text: modelData.index
-        color: modelData.urgent || modelData.active ? Theme.bg : (hovered ? Theme.fg : Theme.muted)
+        color: modelData.urgent || modelData.active ? Theme.bg : (hovered ? Theme.fg : Theme.muted2)
         font.pixelSize: 11
       }
 

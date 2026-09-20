@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Pipewire
+import "Util.js" as Util
 
 PanelWindow {
   id: root
@@ -11,22 +12,21 @@ PanelWindow {
   property var targetScreen: null
 
   anchors.top: true
-  anchors.bottom: true
   margins.top: 30
   anchors.left: true
   anchors.right: true
   exclusionMode: ExclusionMode.Ignore
   color: "transparent"
-  WlrLayershell.namespace: "quickshell-backdrop"
+  WlrLayershell.namespace: "quickshell-modal"
+  BackgroundEffect.blurRegion: Region { item: (!slideIn.running && !slideOut.running) ? card : null }
+  mask: Region { item: card }
   WlrLayershell.layer: WlrLayer.Overlay
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
   property bool shown: false
-  property bool blurReady: false
 
   signal choose(string action)
   property int activeTab: 0
-  property int prevTab: 0
   property int selIdx: 0
   property int hoverIdx: -1
   property int hoverTab: -1
@@ -35,7 +35,8 @@ PanelWindow {
   readonly property var tabs: [
     { name: "Theme", glyph: "wallpaper" },
     { name: "Sound", glyph: "audio-volume-high" },
-    { name: "User", glyph: "user-circle" }
+    { name: "User", glyph: "user-circle" },
+    { name: "Visual", glyph: "equalizer" }
   ]
 
   readonly property var themeItems: [
@@ -65,7 +66,8 @@ PanelWindow {
     return arr
   }
 
-  readonly property var currentItems: root.activeTab === 0 ? root.themeItems : root.audioModel
+  readonly property var visualItems: [{ kind: "mode" }, { kind: "bars" }]
+  readonly property var currentItems: root.activeTab === 0 ? root.themeItems : (root.activeTab === 3 ? root.visualItems : root.audioModel)
 
   function activate(i) {
     const item = root.currentItems[i]
@@ -74,6 +76,10 @@ PanelWindow {
     if (root.activeTab === 0) {
       SettingsState.close()
       root.choose(item.action)
+    } else if (root.activeTab === 3) {
+      root.selIdx = i
+      if (i === 0) VisualizerState.cycleMode()
+      else VisualizerState.cycleBars()
     } else {
       root.selIdx = i
       if (item.type === "source")
@@ -87,28 +93,7 @@ PanelWindow {
     root.selIdx = 0
     root.hoverIdx = -1
     root.skipHeader(1)
-    // Slide + fade the incoming page in (clock-menu style).
-    var dir = root.activeTab >= root.prevTab ? 48 : -48
-    var pages = [tab0col, tab1col, tab2col]
-    var behs = [[tab0slideBeh, tab0fadeBeh], [tab1slideBeh, tab1fadeBeh], [tab2slideBeh, tab2fadeBeh]]
-    for (var i = 0; i < 3; i++) {
-      behs[i][0].enabled = false
-      behs[i][1].enabled = false
-    }
-    var page = pages[root.activeTab]
-    if (page) {
-      page.slideX = dir
-      page.pageOpacity = 0
-    }
-    for (var j = 0; j < 3; j++) {
-      behs[j][0].enabled = true
-      behs[j][1].enabled = true
-    }
-    if (page) {
-      page.slideX = 0
-      page.pageOpacity = 1
-    }
-    root.prevTab = root.activeTab
+    pageFlick.contentY = 0
   }
   onCurrentItemsChanged: {
     if (root.selIdx >= root.currentItems.length)
@@ -138,20 +123,16 @@ PanelWindow {
         root.selIdx = 0
         root.hoverIdx = -1
         root.hoverTab = -1
-      } else if (!SettingsState.open && root.shown && !slideOut.running) {
-        root.blurReady = false
-        slideOut.restart()
       }
+      else if (!SettingsState.open && root.shown && !slideOut.running)
+        slideOut.restart()
     }
   }
   onShownChanged: {
-    if (shown) { root.blurReady = false; card.y = -card.height - 8; slideIn.restart() }
+    if (shown) { card.y = -card.height - 8; slideIn.restart() }
   }
-  NumberAnimation { id: slideIn; target: card; property: "y"; to: 4; duration: 250; easing.type: Easing.OutCubic; onFinished: root.blurReady = true }
-  NumberAnimation {
-    id: slideOut; target: card; property: "y"; to: -card.height - 12
-    duration: 250; easing.type: Easing.InCubic; onFinished: root.shown = false
-  }
+  NumberAnimation { id: slideIn; target: card; property: "y"; to: 0; duration: 250; easing.type: Easing.OutCubic }
+  NumberAnimation { id: slideOut; target: card; property: "y"; to: -card.height - 12; duration: 250; easing.type: Easing.InCubic; onFinished: root.shown = false }
   Timer {
     running: root.shown
     repeat: true
@@ -162,44 +143,40 @@ PanelWindow {
     }
   }
 
-  MouseArea { anchors.fill: parent; onClicked: SettingsState.close() }
-
   Rectangle {
     id: card
     width: 700
     height: 424
+    clip: true
     anchors.horizontalCenter: parent.horizontalCenter
-    color: "transparent"
-    Rectangle {
-      anchors.fill: parent
-      color: Theme.bg
-      opacity: root.blurReady ? 0 : 1
-    }
+    color: Theme.bg
     border.color: Theme.outline
     border.width: 1
 
       ColumnLayout {
-        anchors.fill: parent
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: 424
         spacing: 0
 
         RowLayout {
           Layout.fillWidth: true
           Layout.topMargin: 16
-          Layout.leftMargin: 14
-          Layout.rightMargin: 14
           spacing: 0
+          Item { Layout.fillWidth: true }
           Repeater {
             model: root.tabs
             delegate: Item {
               required property var modelData
               required property int index
-              Layout.fillWidth: true
+              Layout.preferredWidth: 80
               Layout.preferredHeight: 28
               property bool active: root.activeTab === index
               Text {
                 anchors.centerIn: parent
                 text: modelData.name
-                color: parent.active ? Theme.fg : Theme.muted
+                color: parent.active ? Theme.fg : Theme.muted2
                 font.family: root.fontFamily
                 font.pixelSize: 12
               }
@@ -210,13 +187,7 @@ PanelWindow {
               }
             }
           }
-        }
-
-        Rectangle {
-          Layout.fillWidth: true
-          Layout.topMargin: 10
-          height: 1
-          color: Theme.border
+          Item { Layout.fillWidth: true }
         }
 
         Item {
@@ -225,44 +196,31 @@ PanelWindow {
           clip: true
 
           Flickable {
+            id: pageFlick
             anchors.fill: parent
             anchors.margins: 16
-            contentHeight: contentCol.height
+            contentWidth: swipeRow.width
+            contentHeight: swipeRow.height
+            contentX: root.activeTab * pageFlick.width
+            Behavior on contentX { NumberAnimation { duration: 130; easing.type: Theme.easingOut } }
+            clip: true
             boundsBehavior: Flickable.StopAtBounds
+            flickableDirection: Flickable.VerticalFlick
 
-            ColumnLayout {
-              id: contentCol
-              anchors.left: parent.left
-              anchors.right: parent.right
-              spacing: 12
+            Row {
+              id: swipeRow
+              spacing: 0
 
               ColumnLayout {
                 id: tab0col
-                visible: root.activeTab === 0
-                Layout.fillWidth: true
-                spacing: 10
-                property real slideX: 0
-                property real pageOpacity: 1
-                transform: Translate { x: tab0col.slideX }
-                opacity: tab0col.pageOpacity
-                Behavior on slideX { id: tab0slideBeh; NumberAnimation { duration: 200; easing.type: Theme.easingOut } }
-                Behavior on pageOpacity { id: tab0fadeBeh; NumberAnimation { duration: 200; easing.type: Theme.easingOut } }
-
-                Text {
-                  text: "APPEARANCE"
-                  color: Theme.muted2
-                  font.family: root.fontFamily
-                  font.pixelSize: 9
-                  font.letterSpacing: 2
-                }
+                width: pageFlick.width
+                spacing: 8
 
                 Rectangle {
                   Layout.fillWidth: true
-                  Layout.preferredHeight: 56
-                  color: root.selIdx === 0 ? Theme.fg
-                       : (root.hoverIdx === 0 ? Theme.bgAlt : "transparent")
-                  border.color: root.selIdx === 0 ? Theme.fg
-                       : (root.hoverIdx === 0 ? Theme.borderStrong : Theme.border)
+                  Layout.preferredHeight: 32
+                  color: root.hoverIdx === 0 ? Theme.bgAlt : "transparent"
+                  border.color: root.hoverIdx === 0 ? Theme.borderStrong : Theme.border
                   border.width: 1
                   MouseArea {
                     anchors.fill: parent
@@ -274,47 +232,31 @@ PanelWindow {
                   }
                   RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 14
-                    anchors.rightMargin: 14
-                    spacing: 12
-                    Item {
-                      Layout.preferredWidth: 24
-                      Layout.preferredHeight: 24
-                      QIcon {
-                        anchors.centerIn: parent
-                        name: "wallpaper"
-                        size: 22
-                        color: root.selIdx === 0 ? Theme.bg : Theme.fg
-                      }
-                    }
-                    ColumnLayout {
-                      Layout.fillWidth: true
-                      Layout.fillHeight: true
-                      Layout.topMargin: 10
-                      Layout.bottomMargin: 10
-                      spacing: 3
-                      Text {
-                        text: "Wallpaper"
-                        color: root.selIdx === 0 ? Theme.bg : Theme.fg
-                        font.family: root.fontFamily
-                        font.pixelSize: 13
-                        font.weight: Font.DemiBold
-                      }
-                      Text {
-                        text: "Set desktop wallpaper"
-                        color: root.selIdx === 0 ? Theme.bgAlt : Theme.muted2
-                        font.family: root.fontFamily
-                        font.pixelSize: 10
-                      }
-                    }
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    spacing: 10
                     Item {
                       Layout.preferredWidth: 20
                       Layout.preferredHeight: 20
                       QIcon {
                         anchors.centerIn: parent
-                        name: "go-next"
-                        size: 16
-                        color: root.selIdx === 0 ? Theme.bg : Theme.muted
+                        name: "wallpaper"
+                        size: 18
+                        color: Theme.fg
+                      }
+                    }
+                    ColumnLayout {
+                      Layout.fillWidth: true
+                      Layout.fillHeight: true
+                      Layout.topMargin: 8
+                      Layout.bottomMargin: 8
+                      spacing: 2
+                      Text {
+                        text: "Wallpaper"
+                        color: Theme.fg
+                        font.family: root.fontFamily
+                        font.pixelSize: 12
+                        font.weight: Font.DemiBold
                       }
                     }
                   }
@@ -322,7 +264,7 @@ PanelWindow {
 
                 Rectangle {
                   Layout.fillWidth: true
-                  Layout.preferredHeight: 56
+                  Layout.preferredHeight: 32
                   color: root.hoverIdx === -8 ? Theme.bgAlt : "transparent"
                   border.color: root.hoverIdx === -8 ? Theme.borderStrong : Theme.border
                   border.width: 1
@@ -336,50 +278,46 @@ PanelWindow {
                   }
                   RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 14
-                    anchors.rightMargin: 14
-                    spacing: 12
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 56
+                    spacing: 10
                     Item {
-                      Layout.preferredWidth: 24
-                      Layout.preferredHeight: 24
+                      Layout.preferredWidth: 20
+                      Layout.preferredHeight: 20
                       QIcon {
                         anchors.centerIn: parent
                         name: "preferences-desktop-theme"
-                        size: 22
+                        size: 18
                         color: Theme.fg
                       }
                     }
                     ColumnLayout {
                       Layout.fillWidth: true
                       Layout.fillHeight: true
-                      Layout.topMargin: 10
-                      Layout.bottomMargin: 10
-                      spacing: 3
+                      Layout.topMargin: 8
+                      Layout.bottomMargin: 8
+                      spacing: 2
                       Text {
                         text: "Dynamic theme"
                         color: Theme.fg
                         font.family: root.fontFamily
-                        font.pixelSize: 13
+                        font.pixelSize: 12
                         font.weight: Font.DemiBold
                       }
-                      Text {
-                        text: DynamicTheme.enabled ? "Colored by wallpaper" : "Color shell and kitty from wallpaper"
-                        color: Theme.muted2
-                        font.family: root.fontFamily
-                        font.pixelSize: 10
-                      }
                     }
-                    CToggle {
-                      Layout.alignment: Qt.AlignVCenter
-                      checked: DynamicTheme.enabled
-                      onToggled: v => DynamicTheme.setEnabled(v)
-                    }
+                  }
+                  CToggle {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                    checked: DynamicTheme.enabled
+                    onToggled: v => DynamicTheme.setEnabled(v)
                   }
                 }
 
                 Rectangle {
                   Layout.fillWidth: true
-                  Layout.preferredHeight: 56
+                  Layout.preferredHeight: 32
                   color: root.hoverIdx === -9 ? Theme.bgAlt : "transparent"
                   border.color: root.hoverIdx === -9 ? Theme.borderStrong : Theme.border
                   border.width: 1
@@ -393,44 +331,40 @@ PanelWindow {
                   }
                   RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 14
-                    anchors.rightMargin: 14
-                    spacing: 12
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 56
+                    spacing: 10
                     Item {
-                      Layout.preferredWidth: 24
-                      Layout.preferredHeight: 24
+                      Layout.preferredWidth: 20
+                      Layout.preferredHeight: 20
                       QIcon {
                         anchors.centerIn: parent
                         name: "opacity"
-                        size: 22
+                        size: 18
                         color: Theme.fg
                       }
                     }
                     ColumnLayout {
                       Layout.fillWidth: true
                       Layout.fillHeight: true
-                      Layout.topMargin: 10
-                      Layout.bottomMargin: 10
-                      spacing: 3
+                      Layout.topMargin: 8
+                      Layout.bottomMargin: 8
+                      spacing: 2
                       Text {
                         text: "Transparency"
                         color: Theme.fg
                         font.family: root.fontFamily
-                        font.pixelSize: 13
+                        font.pixelSize: 12
                         font.weight: Font.DemiBold
                       }
-                      Text {
-                        text: TransparencyState.transparent ? "Translucent blurred shell and terminal" : "Opaque shell and terminal (toggle for blur)"
-                        color: Theme.muted2
-                        font.family: root.fontFamily
-                        font.pixelSize: 10
-                      }
                     }
-                    CToggle {
-                      Layout.alignment: Qt.AlignVCenter
-                      checked: TransparencyState.transparent
-                      onToggled: v => TransparencyState.setTransparent(v)
-                    }
+                  }
+                  CToggle {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                    checked: TransparencyState.transparent
+                    onToggled: v => TransparencyState.setTransparent(v)
                   }
                 }
 
@@ -438,15 +372,8 @@ PanelWindow {
 
               ColumnLayout {
                 id: tab1col
-                visible: root.activeTab === 1
-                Layout.fillWidth: true
-                spacing: 8
-                property real slideX: 0
-                property real pageOpacity: 1
-                transform: Translate { x: tab1col.slideX }
-                opacity: tab1col.pageOpacity
-                Behavior on slideX { id: tab1slideBeh; NumberAnimation { duration: 200; easing.type: Theme.easingOut } }
-                Behavior on pageOpacity { id: tab1fadeBeh; NumberAnimation { duration: 200; easing.type: Theme.easingOut } }
+                width: pageFlick.width
+                spacing: 6
                 Repeater {
                   model: root.audioModel
                   delegate: audioCardComp
@@ -455,15 +382,8 @@ PanelWindow {
 
               ColumnLayout {
                 id: tab2col
-                visible: root.activeTab === 2
-                Layout.fillWidth: true
-                spacing: 10
-                property real slideX: 0
-                property real pageOpacity: 1
-                transform: Translate { x: tab2col.slideX }
-                opacity: tab2col.pageOpacity
-                Behavior on slideX { id: tab2slideBeh; NumberAnimation { duration: 200; easing.type: Theme.easingOut } }
-                Behavior on pageOpacity { id: tab2fadeBeh; NumberAnimation { duration: 200; easing.type: Theme.easingOut } }
+                width: pageFlick.width
+                spacing: 8
 
                 Text {
                   text: "PROFILE"
@@ -475,26 +395,26 @@ PanelWindow {
 
                 Rectangle {
                   Layout.fillWidth: true
-                  Layout.preferredHeight: 64
+                  Layout.preferredHeight: 48
                   color: Theme.bgAlt
                   border.color: Theme.border
                   border.width: 1
                   RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 14
-                    anchors.rightMargin: 14
-                    spacing: 12
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    spacing: 10
                     Rectangle {
-                      Layout.preferredWidth: 44
-                      Layout.preferredHeight: 44
-                      radius: 22
+                      Layout.preferredWidth: 36
+                      Layout.preferredHeight: 36
+                      radius: 18
                       clip: true
-                      color: Theme.bg
+    color: Theme.bg
                       border.color: Theme.fg
                       border.width: 1
                       Image {
                         anchors.fill: parent
-                        source: AvatarState.path !== "" ? "file://" + AvatarState.path.split("/").map(encodeURIComponent).join("/") : ""
+                        source: AvatarState.path !== "" ? Util.fileUrl(AvatarState.path) : ""
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true
                         cache: true
@@ -506,33 +426,27 @@ PanelWindow {
                         text: "?"
                         color: Theme.muted3
                         font.family: root.fontFamily
-                        font.pixelSize: 18
+                        font.pixelSize: 16
                       }
                     }
                     ColumnLayout {
                       Layout.fillWidth: true
                       Layout.fillHeight: true
-                      Layout.topMargin: 12
-                      Layout.bottomMargin: 12
+                      Layout.topMargin: 8
+                      Layout.bottomMargin: 8
                       spacing: 2
                       Text {
                         Layout.fillWidth: true
                         text: AvatarState.path !== "" ? AvatarState.path.split("/").pop() : "No profile picture"
                         color: Theme.fg
                         font.family: root.fontFamily
-                        font.pixelSize: 12
+                        font.pixelSize: 11
                         elide: Text.ElideMiddle
-                      }
-                      Text {
-                        text: "Shown on lockscreen"
-                        color: Theme.muted2
-                        font.family: root.fontFamily
-                        font.pixelSize: 10
                       }
                     }
                     Rectangle {
-                      Layout.preferredWidth: 64
-                      Layout.preferredHeight: 28
+                      Layout.preferredWidth: 60
+                      Layout.preferredHeight: 26
                       color: root.hoverIdx === -6 ? Theme.fg : "transparent"
                       border.color: Theme.fg
                       border.width: 1
@@ -541,7 +455,7 @@ PanelWindow {
                         text: "Choose"
                         color: root.hoverIdx === -6 ? Theme.bg : Theme.fg
                         font.family: root.fontFamily
-                        font.pixelSize: 11
+                        font.pixelSize: 10
                       }
                       MouseArea {
                         anchors.fill: parent
@@ -553,8 +467,8 @@ PanelWindow {
                       }
                     }
                     Rectangle {
-                      Layout.preferredWidth: 56
-                      Layout.preferredHeight: 28
+                      Layout.preferredWidth: 52
+                      Layout.preferredHeight: 26
                       visible: AvatarState.path !== ""
                       color: root.hoverIdx === -7 ? Theme.fg : "transparent"
                       border.color: Theme.fg
@@ -564,7 +478,7 @@ PanelWindow {
                         text: "Clear"
                         color: root.hoverIdx === -7 ? Theme.bg : Theme.fg
                         font.family: root.fontFamily
-                        font.pixelSize: 11
+                        font.pixelSize: 10
                       }
                       MouseArea {
                         anchors.fill: parent
@@ -580,34 +494,192 @@ PanelWindow {
 
                 Rectangle {
                   Layout.fillWidth: true
-                  Layout.preferredHeight: 50
+                  Layout.preferredHeight: 44
                   color: Theme.bgAlt
                   border.color: Theme.border
                   border.width: 1
                   RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 14
-                    anchors.rightMargin: 14
-                    spacing: 12
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    spacing: 10
                     QIcon { name: "camera-photo"; size: 18; color: Theme.muted }
                     ColumnLayout {
                       Layout.fillWidth: true
                       Layout.fillHeight: true
-                      Layout.topMargin: 8
-                      Layout.bottomMargin: 8
+                      Layout.topMargin: 6
+                      Layout.bottomMargin: 6
                       spacing: 2
                       Text {
                         text: "Avatar file"
                         color: Theme.fg
                         font.family: root.fontFamily
-                        font.pixelSize: 12
+                        font.pixelSize: 11
                       }
                       Text {
                         text: AvatarState.path !== "" ? AvatarState.path : "No file selected"
                         color: Theme.muted2
                         font.family: root.fontFamily
-                        font.pixelSize: 10
+                        font.pixelSize: 9
                         elide: Text.ElideMiddle
+                      }
+                    }
+                  }
+                }
+              }
+              ColumnLayout {
+                id: tab3col
+                width: pageFlick.width
+                spacing: 8
+
+                Rectangle {
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: 32
+                  color: root.selIdx === 0 ? Theme.fg
+                       : (root.hoverIdx === -10 ? Theme.bgAlt : "transparent")
+                  border.color: root.selIdx === 0 ? Theme.fg
+                       : (root.hoverIdx === -10 ? Theme.borderStrong : Theme.border)
+                  border.width: 1
+                  MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onEntered: root.hoverIdx = -10
+                    onExited: { if (root.hoverIdx === -10) root.hoverIdx = -1 }
+                    onClicked: { root.selIdx = 0; VisualizerState.cycleMode() }
+                  }
+                  RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    spacing: 10
+                    Item {
+                      Layout.preferredWidth: 20
+                      Layout.preferredHeight: 20
+                      QIcon {
+                        anchors.centerIn: parent
+                        name: "equalizer"
+                        size: 18
+                        color: root.selIdx === 0 ? Theme.bg : Theme.fg
+                      }
+                    }
+                    Text {
+                      Layout.fillWidth: true
+                      text: "Mode"
+                      color: root.selIdx === 0 ? Theme.bg : Theme.fg
+                      font.family: root.fontFamily
+                      font.pixelSize: 12
+                      font.weight: Font.DemiBold
+                    }
+                    Text {
+                      text: VisualizerState.modeLabel()
+                      color: root.selIdx === 0 ? Theme.bg : Theme.muted
+                      font.family: root.fontFamily
+                      font.pixelSize: 11
+                    }
+                  }
+                }
+
+                Rectangle {
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: 32
+                  color: root.selIdx === 1 ? Theme.fg
+                       : (root.hoverIdx === -11 ? Theme.bgAlt : "transparent")
+                  border.color: root.selIdx === 1 ? Theme.fg
+                       : (root.hoverIdx === -11 ? Theme.borderStrong : Theme.border)
+                  border.width: 1
+                  MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onEntered: root.hoverIdx = -11
+                    onExited: { if (root.hoverIdx === -11) root.hoverIdx = -1 }
+                    onClicked: { root.selIdx = 1; VisualizerState.cycleBars() }
+                  }
+                  RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    spacing: 10
+                    Item {
+                      Layout.preferredWidth: 20
+                      Layout.preferredHeight: 20
+                      QIcon {
+                        anchors.centerIn: parent
+                        name: "tune"
+                        size: 18
+                        color: root.selIdx === 1 ? Theme.bg : Theme.fg
+                      }
+                    }
+                    Text {
+                      Layout.fillWidth: true
+                      text: "Bars"
+                      color: root.selIdx === 1 ? Theme.bg : Theme.fg
+                      font.family: root.fontFamily
+                      font.pixelSize: 12
+                      font.weight: Font.DemiBold
+                    }
+                    Text {
+                      text: String(VisualizerState.bars)
+                      color: root.selIdx === 1 ? Theme.bg : Theme.muted
+                      font.family: root.fontFamily
+                      font.pixelSize: 11
+                    }
+                  }
+                }
+
+                Rectangle {
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: 32
+                  color: "transparent"
+                  border.color: Theme.border
+                  border.width: 1
+                  RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    spacing: 10
+                    Item {
+                      Layout.preferredWidth: 20
+                      Layout.preferredHeight: 20
+                      QIcon {
+                        anchors.centerIn: parent
+                        name: "opacity"
+                        size: 18
+                        color: Theme.fg
+                      }
+                    }
+                    Text {
+                      text: "Blur"
+                      color: Theme.fg
+                      font.family: root.fontFamily
+                      font.pixelSize: 12
+                      font.weight: Font.DemiBold
+                    }
+                    CSlider {
+                      Layout.fillWidth: true
+                      value: BlurState.radius / BlurState.max
+                      onUserSet: v => BlurState.setRadius(v * BlurState.max)
+                    }
+                    Text {
+                      text: String(Math.round(BlurState.radius))
+                      color: Theme.muted
+                      font.family: root.fontFamily
+                      font.pixelSize: 11
+                      Layout.preferredWidth: 20
+                      horizontalAlignment: Text.AlignRight
+                    }
+                    Text {
+                      text: "reset"
+                      color: resetMa.containsMouse ? Theme.fg : Theme.muted
+                      font.family: root.fontFamily
+                      font.pixelSize: 10
+                      MouseArea {
+                        id: resetMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: BlurState.reset()
                       }
                     }
                   }
@@ -661,7 +733,7 @@ PanelWindow {
     id: audioCardComp
     Item {
       Layout.fillWidth: true
-      Layout.preferredHeight: modelData.header ? 20 : 54
+      Layout.preferredHeight: modelData.header ? 18 : 32
       Rectangle {
         anchors.fill: parent
         visible: !modelData.header
@@ -684,16 +756,16 @@ PanelWindow {
       RowLayout {
         anchors.fill: parent
         visible: !modelData.header
-        anchors.leftMargin: 14
-        anchors.rightMargin: 14
-        spacing: 12
+        anchors.leftMargin: 12
+        anchors.rightMargin: 12
+        spacing: 10
         Item {
-          Layout.preferredWidth: 24
-          Layout.preferredHeight: 24
+          Layout.preferredWidth: 20
+          Layout.preferredHeight: 20
           QIcon {
             anchors.centerIn: parent
             name: modelData.type === "source" ? "mic" : "audio-volume-high"
-            size: 20
+            size: 18
             color: root.selIdx === index ? Theme.bg : Theme.fg
           }
         }
@@ -709,14 +781,6 @@ PanelWindow {
             color: root.selIdx === index ? Theme.bg : Theme.fg
             font.family: root.fontFamily
             font.pixelSize: 12
-            elide: Text.ElideRight
-          }
-          Text {
-            Layout.fillWidth: true
-            text: modelData.name || ""
-            color: root.selIdx === index ? Theme.bgAlt : Theme.muted2
-            font.family: root.fontFamily
-            font.pixelSize: 9
             elide: Text.ElideRight
           }
         }

@@ -31,17 +31,16 @@ Rectangle {
   property bool dismissing: false
   property real dragOff: 0
 
-  Component.onCompleted: entered = true
+  Timer { id: enterTimer; interval: 16; running: true; repeat: false; onTriggered: root.entered = true }
 
-  x: (!entered || dismissing) ? 360 + dragOff : dragOff
-  opacity: dismissing ? 0 : 1 - Math.abs(dragOff) / width * 0.5
-  Behavior on x { NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut } }
-  Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut } }
+  readonly property bool slidingOut: !entered || dismissing
+  x: (slidingOut ? 360 : 0) + dragOff
+  Behavior on x { NumberAnimation { duration: root.slidingOut ? 150 : 200; easing.type: root.slidingOut ? Easing.InCubic : Easing.OutCubic } }
 
   onDismissingChanged: if (root.dismissing) dismissTimer.start()
-  Timer { id: dismissTimer; interval: 420; repeat: false; onTriggered: root.dismissed() }
+  Timer { id: dismissTimer; interval: 160; repeat: false; onTriggered: root.dismissed() }
 
-  function dismiss() { root.dismissing = true }
+  function dismiss() { root.dragOff = 0; root.dismissing = true }
   readonly property bool hovered: ma.containsMouse
 
   property real pressX: 0
@@ -154,7 +153,7 @@ Rectangle {
         Text {
           Layout.fillWidth: true
           text: root.body
-          color: "#cccccc"
+          color: Theme.muted
           font.family: root.fontFamily
           font.pixelSize: 11
           wrapMode: Text.WordWrap

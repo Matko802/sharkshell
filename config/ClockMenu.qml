@@ -7,7 +7,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Widgets
 import Quickshell.Services.Mpris
-import QMLTermWidget 2.0
+import "Util.js" as Util
 
 PanelWindow {
   id: root
@@ -15,18 +15,18 @@ PanelWindow {
   property var targetScreen: null
 
   anchors.top: true
-  anchors.bottom: true
   margins.top: 30
   anchors.left: true
   anchors.right: true
   exclusionMode: ExclusionMode.Ignore
   color: "transparent"
-  WlrLayershell.namespace: "quickshell-backdrop"
+  WlrLayershell.namespace: "quickshell-modal"
+  BackgroundEffect.blurRegion: Region { item: (!slideIn.running && !slideOut.running) ? card : null }
+  mask: Region { item: card }
   WlrLayershell.layer: WlrLayer.Overlay
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
   property bool shown: false
-  property bool blurReady: false
   property int activeTab: 0
   property date calDate: new Date()
   property int mediaIdx: 0
@@ -61,20 +61,46 @@ PanelWindow {
 
   function pushHist(arr, v) {
     let a = arr.slice()
-    a.push(Math.max(0, Math.min(100, v)))
+    a.push(Util.clampPct(v))
     if (a.length > 30) a.shift()
     return a
   }
 
-  Process { id: focusProc; running: false }
-  function focusApp(n) {
-    const raw = n ? (n.desktopEntry || n.appName || "") : ""
-    if (!raw) return
-    const cmd = 'app="' + String(raw).replace(/"/g, '\\"') + '"; id=$(mmsg get all-clients 2>/dev/null | python3 -c "import json,sys; app=sys.argv[1].lower(); data=json.load(sys.stdin); cs=data.get(\'clients\',[]); m=[c for c in cs if app==c.get(\'appid\',\'\').lower() or app in c.get(\'appid\',\'\').lower() or app in c.get(\'title\',\'\').lower()]; print(m[0][\'id\'] if m else \'\')" "$app" 2>/dev/null); [ -n "$id" ] && mmsg dispatch focusid client,$id 2>/dev/null || true'
-    focusProc.command = ["bash", "-c", cmd]
-    focusProc.running = true
+  property var _iconCache: ({})
+  function fileArt(n) {
+    const im = n && n.image ? String(n.image) : ""
+    return (im !== "" && (im.startsWith("/") || im.startsWith("file://") || im.startsWith("image://"))) ? im : ""
   }
-
+  function iconSrc(n) {
+    const key = "i|" + ((n && n.appIcon) || "") + "|" + ((n && n.desktopEntry) || "")
+    const hit = root._iconCache[key]
+    if (hit !== undefined) return hit
+    let s = Quickshell.iconPath("dialog-information", "dialog-information")
+    const ic = (n && n.appIcon) || ""
+    if (ic !== "") {
+      s = Quickshell.iconPath(ic, "dialog-information")
+    } else {
+      const de = (n && n.desktopEntry) || ""
+      if (de !== "") {
+        const e = DesktopEntries.heuristicLookup(de)
+        if (e && e.icon) s = Quickshell.iconPath(e.icon, "dialog-information")
+        else s = Quickshell.iconPath(de, "dialog-information")
+      }
+    }
+    if (Object.keys(root._iconCache).length < 200) root._iconCache[key] = s
+    return s
+  }
+  readonly property string cavaConf: "[general]\nbars = 48\nframerate = 30\n[input]\nmethod = pulse\nsource = auto\n[output]\nmethod = raw\nraw_target = /dev/stdout\ndata_format = ascii\nascii_max_range = 100\nbar_delimiter = 59\nframe_delimiter = 10\n"
+  FileView {
+    id: cavaConfFile
+    path: Quickshell.env("HOME") + "/.cache/sharkshell/cava.conf"
+  }
+  Process {
+    id: cavaConfInit
+    running: true
+    command: ["bash", "-c", "mkdir -p \"$HOME/.cache/sharkshell\""]
+    onExited: cavaConfFile.setText(root.cavaConf)
+  }
   FileView { id: statFile; path: "/proc/stat" }
   FileView { id: memFile; path: "/proc/meminfo" }
   Process {
@@ -84,7 +110,7 @@ PanelWindow {
       onStreamFinished: {
         const v = text.trim()
         if (v !== "" && !isNaN(parseInt(v))) {
-          const iv = Math.max(0, Math.min(100, parseInt(v)))
+          const iv = Util.clampPct(parseInt(v))
           const cur = root.sysVals.slice()
           while (cur.length < 4) cur.push("--")
           cur[2] = String(iv)
@@ -101,7 +127,7 @@ PanelWindow {
       onStreamFinished: {
         const v = text.trim()
         if (v !== "" && !isNaN(parseInt(v))) {
-          const iv = Math.max(0, Math.min(100, parseInt(v)))
+          const iv = Util.clampPct(parseInt(v))
           const cur = root.sysVals.slice()
           while (cur.length < 4) cur.push("--")
           cur[3] = String(iv)
@@ -128,7 +154,7 @@ PanelWindow {
         const dT = total - root._prevCpu.total
         const dI = idle - root._prevCpu.idle
         if (dT > 0) {
-          const iv = Math.max(0, Math.min(100, Math.round((1 - dI/dT)*100)))
+          const iv = Util.clampPct(Math.round((1 - dI/dT)*100))
           const cur = root.sysVals.slice()
           while (cur.length < 4) cur.push("--")
           cur[0] = String(iv)
@@ -156,7 +182,7 @@ PanelWindow {
         avail = (fM?parseInt(fM[1]):0)+(bM?parseInt(bM[1]):0)+(cM?parseInt(cM[1]):0)
       }
       if (total > 0) {
-        const iv = Math.max(0, Math.min(100, Math.round((total - avail)/total*100)))
+        const iv = Util.clampPct(Math.round((total - avail)/total*100))
         const cur = root.sysVals.slice()
         while (cur.length < 4) cur.push("--")
         cur[1] = String(iv)
@@ -171,43 +197,35 @@ PanelWindow {
     function onOpenChanged() {
       if (ClockState.open && (!ClockState.screen || ClockState.screen === root.targetScreen))
         root.shown = true
-      else if (!ClockState.open && root.shown && !slideOut.running) {
-        root.blurReady = false
+      else if (!ClockState.open && root.shown && !slideOut.running)
         slideOut.restart()
-      }
     }
   }
   onShownChanged: {
-    if (shown) { root.blurReady = false; card.y = -card.height - 8; slideIn.restart() }
+    if (shown) { card.y = -card.height - 8; slideIn.restart() }
   }
-  NumberAnimation { id: slideIn; target: card; property: "y"; to: 4; duration: 250; easing.type: Easing.OutCubic; onFinished: root.blurReady = true }
-  NumberAnimation {
-    id: slideOut; target: card; property: "y"; to: -card.height - 12
-    duration: 250; easing.type: Easing.InCubic; onFinished: root.shown = false
+  NumberAnimation { id: slideIn; target: card; property: "y"; to: 0; duration: 250; easing.type: Easing.OutCubic }
+  NumberAnimation { id: slideOut; target: card; property: "y"; to: -card.height - 12; duration: 250; easing.type: Easing.InCubic; onFinished: root.shown = false }
+  onActiveTabChanged: {
+    if (root.activeTab === 2 && root.shown) mediaSingle.fetchWebArt()
   }
   Timer {
     running: root.shown
     repeat: true
     interval: 500
     onTriggered: {
-      if (root.shown && !card.activeFocus && !sharkVisTerm.activeFocus)
+      if (root.shown && !card.activeFocus)
         card.forceActiveFocus()
     }
   }
-
-  MouseArea { anchors.fill: parent; onClicked: ClockState.close() }
 
   Rectangle {
     id: card
     width: 700
     height: 424
+    clip: true
     anchors.horizontalCenter: parent.horizontalCenter
-    color: "transparent"
-    Rectangle {
-      anchors.fill: parent
-      color: Theme.bg
-      opacity: root.blurReady ? 0 : 1
-    }
+    color: Theme.bg
     border.color: Theme.outline
     border.width: 1
     focus: true
@@ -219,8 +237,13 @@ PanelWindow {
 
     ColumnLayout {
       id: col
-      anchors.fill: parent
-      anchors.margins: 12
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.top: parent.top
+      anchors.leftMargin: 12
+      anchors.rightMargin: 12
+      anchors.topMargin: 12
+      height: 400
       spacing: 0
 
       RowLayout {
@@ -240,7 +263,7 @@ PanelWindow {
             Text {
               anchors.centerIn: parent
               text: modelData.label
-              color: parent.active ? Theme.fg : Theme.muted
+              color: parent.active ? Theme.fg : Theme.muted2
               font.family: Theme.fontFamily
               font.pixelSize: 12
             }
@@ -252,62 +275,26 @@ PanelWindow {
           }
         }
         Item { Layout.fillWidth: true }
-        Rectangle {
+        IconBtn {
           Layout.preferredWidth: 28
           Layout.preferredHeight: 28
-          color: dndMa.containsMouse ? Theme.fg : "transparent"
-          radius: Theme.rounding
-          QIcon {
-            anchors.centerIn: parent
-            name: NotificationServer.dnd ? "notifications-disabled" : "notifications"
-            size: 16
-            color: dndMa.containsMouse ? Theme.bg : Theme.fg
-          }
-          MouseArea {
-            id: dndMa
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: NotificationServer.setDnd(!NotificationServer.dnd)
-          }
+          icon: NotificationServer.dnd ? "notifications-disabled" : "notifications"
+          iconSize: 16
+          onClicked: NotificationServer.setDnd(!NotificationServer.dnd)
         }
-          Rectangle {
+          IconBtn {
             Layout.preferredWidth: 28
             Layout.preferredHeight: 28
-            color: coffeeMa.containsMouse ? Theme.fg : "transparent"
-            radius: Theme.rounding
-            QIcon {
-              anchors.centerIn: parent
-              name: IdleManager.stayAwake ? "coffee" : "coffee-off"
-              size: 16
-              color: coffeeMa.containsMouse ? Theme.bg : Theme.fg
-            }
-            MouseArea {
-              id: coffeeMa
-              anchors.fill: parent
-              hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
-              onClicked: IdleManager.stayAwake = !IdleManager.stayAwake
-            }
+            icon: IdleManager.stayAwake ? "coffee" : "coffee-off"
+            iconSize: 16
+            onClicked: IdleManager.stayAwake = !IdleManager.stayAwake
           }
-          Rectangle {
+          IconBtn {
             Layout.preferredWidth: 28
             Layout.preferredHeight: 28
-            color: settingsMa.containsMouse ? Theme.fg : "transparent"
-            radius: Theme.rounding
-            QIcon {
-              anchors.centerIn: parent
-              name: "settings"
-              size: 16
-              color: settingsMa.containsMouse ? Theme.bg : Theme.fg
-            }
-            MouseArea {
-              id: settingsMa
-              anchors.fill: parent
-              hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
-              onClicked: { ClockState.close(); SettingsState.toggle({ screen: root.targetScreen }) }
-            }
+            icon: "settings"
+            iconSize: 16
+            onClicked: { ClockState.close(); SettingsState.toggle({ screen: root.targetScreen }) }
           }
       }
 
@@ -321,7 +308,7 @@ PanelWindow {
           id: swipeRow
           x: root.activeTab * -(swipeContainer.width)
           Behavior on x {
-            NumberAnimation { duration: 200; easing.type: Theme.easingOut }
+            NumberAnimation { duration: 130; easing.type: Theme.easingOut }
           }
 
           Item {
@@ -340,26 +327,14 @@ PanelWindow {
                 RowLayout {
                   Layout.fillWidth: true
                   spacing: 0
-                  Rectangle {
+                  IconBtn {
                     Layout.preferredWidth: 28
                     Layout.preferredHeight: 28
-                    color: prevMa.containsMouse ? Theme.fg : "transparent"
-                    radius: Theme.rounding
-                    QIcon {
-                      anchors.centerIn: parent
-                      name: "chevron-left"
-                      size: 16
-                      color: prevMa.containsMouse ? Theme.bg : Theme.fg
-                    }
-                    MouseArea {
-                      id: prevMa
-                      anchors.fill: parent
-                      hoverEnabled: true
-                      cursorShape: Qt.PointingHandCursor
-                      onClicked: {
-                        const d = root.calDate
-                        root.calDate = new Date(d.getFullYear(), d.getMonth() - 1, 1)
-                      }
+                    icon: "chevron-left"
+                    iconSize: 16
+                    onClicked: {
+                      const d = root.calDate
+                      root.calDate = new Date(d.getFullYear(), d.getMonth() - 1, 1)
                     }
                   }
                   Item { Layout.fillWidth: true; Layout.preferredHeight: 28
@@ -376,26 +351,14 @@ PanelWindow {
                       onClicked: root.calDate = new Date()
                     }
                   }
-                  Rectangle {
+                  IconBtn {
                     Layout.preferredWidth: 28
                     Layout.preferredHeight: 28
-                    color: nextMa.containsMouse ? Theme.fg : "transparent"
-                    radius: Theme.rounding
-                    QIcon {
-                      anchors.centerIn: parent
-                      name: "chevron-right"
-                      size: 16
-                      color: nextMa.containsMouse ? Theme.bg : Theme.fg
-                    }
-                    MouseArea {
-                      id: nextMa
-                      anchors.fill: parent
-                      hoverEnabled: true
-                      cursorShape: Qt.PointingHandCursor
-                      onClicked: {
-                        const d = root.calDate
-                        root.calDate = new Date(d.getFullYear(), d.getMonth() + 1, 1)
-                      }
+                    icon: "chevron-right"
+                    iconSize: 16
+                    onClicked: {
+                      const d = root.calDate
+                      root.calDate = new Date(d.getFullYear(), d.getMonth() + 1, 1)
                     }
                   }
                 }
@@ -499,15 +462,19 @@ PanelWindow {
                   spacing: 4
                   interactive: true
                   boundsBehavior: Flickable.StopAtBounds
-                  model: NotificationServer.notifications.filter(n => n && NotificationServer.isMeaningful(n)).slice().reverse()
+                  model: NotificationServer.centerModel
 
                   add: Transition {
                     NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Theme.easingOut }
-                    NumberAnimation { property: "y"; from: 20; to: 0; duration: 200; easing.type: Theme.easingOut }
+                    NumberAnimation { property: "x"; from: 60; to: 0; duration: 200; easing.type: Theme.easingOut }
+                  }
+                  populate: Transition {
+                    NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Theme.easingOut }
+                    NumberAnimation { property: "x"; from: 60; to: 0; duration: 200; easing.type: Theme.easingOut }
                   }
                   remove: Transition {
                     NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 150; easing.type: Theme.easingIn }
-                    NumberAnimation { property: "x"; from: 0; to: 40; duration: 150; easing.type: Theme.easingIn }
+                    NumberAnimation { property: "x"; from: 0; to: 60; duration: 150; easing.type: Theme.easingIn }
                   }
                   displaced: Transition {
                     NumberAnimation { property: "y"; duration: 200; easing.type: Theme.easingOut }
@@ -520,57 +487,55 @@ PanelWindow {
                     border.width: 1
                     RowLayout {
                       id: nRow
-                      anchors.fill: parent
+                      anchors.left: parent.left
+                      anchors.right: parent.right
+                      anchors.top: parent.top
                       anchors.margins: 8
                       spacing: 8
                       Item {
                         Layout.preferredWidth: 20; Layout.preferredHeight: 20; Layout.alignment: Qt.AlignTop
                         visible: {
-                          const ic = modelData.appIcon || ""
-                          const de = modelData.desktopEntry || ""
-                          const im = modelData.image ? String(modelData.image) : ""
+                          const ic = model.appIcon || ""
+                          const de = model.desktopEntry || ""
+                          const im = model.image ? String(model.image) : ""
                           return im !== "" || ic !== "" || de !== ""
                         }
                         IconImage {
                           anchors.fill: parent; anchors.margins: 1
-                          visible: { const im = modelData.image ? String(modelData.image) : ""; return !(im !== "" && (im.startsWith("/") || im.startsWith("file://") || im.startsWith("image://"))) }
-                          source: {
-                            const ic = modelData.appIcon || ""
-                            if (ic !== "") return Quickshell.iconPath(ic, "dialog-information")
-                            const de = modelData.desktopEntry || ""
-                            if (de !== "") { const e = DesktopEntries.heuristicLookup(de); if (e && e.icon) return Quickshell.iconPath(e.icon, "dialog-information"); return Quickshell.iconPath(de, "dialog-information") }
-                            return Quickshell.iconPath("dialog-information", "dialog-information")
-                          }
+                          visible: { const im = model.image ? String(model.image) : ""; return !(im !== "" && (im.startsWith("/") || im.startsWith("file://") || im.startsWith("image://"))) }
+                          source: root.iconSrc(model)
                           implicitSize: 20
                         }
                         Image {
                           anchors.fill: parent; anchors.margins: 1
-                          visible: { const im = modelData.image ? String(modelData.image) : ""; return im !== "" && (im.startsWith("/") || im.startsWith("file://") || im.startsWith("image://")) }
-                          source: modelData.image ? String(modelData.image) : ""
+                          visible: { const im = model.image ? String(model.image) : ""; return im !== "" && (im.startsWith("/") || im.startsWith("file://") || im.startsWith("image://")) }
+                          source: model.image ? String(model.image) : ""
                           fillMode: Image.PreserveAspectCrop
                           sourceSize.width: 40; sourceSize.height: 40; asynchronous: true
                         }
                       }
-                      Column {
-                        Layout.fillWidth: true; spacing: 2
-                        Text { text: (modelData.appName || modelData.desktopEntry || "").toUpperCase(); color: Theme.muted2; font.family: Theme.fontFamily; font.pixelSize: 8; font.letterSpacing: 1; elide: Text.ElideRight; width: parent.width; visible: text !== "" }
-                         Text { text: modelData.summary || ""; color: Theme.fg; font.family: Theme.fontFamily; font.pixelSize: 11; width: parent.width; wrapMode: Text.WordWrap }
-                         Text { text: modelData.body || ""; color: Theme.muted; font.family: Theme.fontFamily; font.pixelSize: 9; width: parent.width; wrapMode: Text.WordWrap; visible: (modelData.body || "") !== "" }
+                      ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignTop
+                        spacing: 2
+                        Text { text: (model.appName || model.desktopEntry || "").toUpperCase(); color: Theme.muted2; font.family: Theme.fontFamily; font.pixelSize: 8; font.letterSpacing: 1; elide: Text.ElideRight; Layout.fillWidth: true; visible: text !== "" }
+                         Text { text: model.summary || ""; color: Theme.fg; font.family: Theme.fontFamily; font.pixelSize: 11; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                         Text { text: model.body || ""; color: Theme.muted; font.family: Theme.fontFamily; font.pixelSize: 9; Layout.fillWidth: true; wrapMode: Text.WordWrap; visible: (model.body || "") !== "" }
                       }
                       Rectangle {
                         Layout.preferredWidth: 14; Layout.preferredHeight: 14; Layout.alignment: Qt.AlignTop
                         color: dMa.containsMouse ? Theme.fg : "transparent"
                         Text { anchors.centerIn: parent; text: "x"; color: dMa.containsMouse ? Theme.bg : Theme.muted2; font.family: Theme.fontFamily; font.pixelSize: 9; font.bold: true }
-                        MouseArea { id: dMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: NotificationServer.dismiss(modelData) }
+                        MouseArea { id: dMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: NotificationServer.dismissById(model.notifId) }
                       }
                     }
                     MouseArea {
                       anchors.fill: parent; cursorShape: Qt.PointingHandCursor; z: -1
                       onClicked: {
-                        const live = NotificationServer.getLive(modelData.id)
+                        const live = NotificationServer.getLive(model.notifId)
                         const acts = live && live.actions ? live.actions : []
                         for (let i = 0; i < acts.length; i++) { const a = acts[i]; if (a && (a.identifier === "default" || (a.text || "").toLowerCase() === "view" || (a.text || "").toLowerCase() === "open")) { try { a.invoke() } catch(e) {} break } }
-                        root.focusApp(modelData); ClockState.close(); NotificationServer.dismiss(modelData)
+                        AppFocus.focus(model); ClockState.close(); NotificationServer.dismissById(model.notifId)
                       }
                     }
                   }
@@ -634,7 +599,7 @@ PanelWindow {
                       Layout.fillWidth: true; Layout.fillHeight: true
                       Canvas {
                         anchors.centerIn: parent; width: 72; height: 72
-                        property real pct: { const v = parseInt(root.sysVals[modelData.idx] || "0"); return Math.max(0, Math.min(100, isNaN(v) ? 0 : v)) / 100 }
+                        property real pct: { const v = parseInt(root.sysVals[modelData.idx] || "0"); return Util.clampPct(isNaN(v) ? 0 : v) / 100 }
                         onPctChanged: requestPaint()
                         onPaint: {
                           const ctx = getContext("2d"); ctx.clearRect(0, 0, width, height)
@@ -678,11 +643,13 @@ PanelWindow {
 
 
 
-              Item {
-                id: mediaSingle
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                visible: true
+                Item {
+                  id: mediaSingle
+                  Layout.fillWidth: true
+                  Layout.fillHeight: true
+                  visible: true
+                  property var levels: []
+                  readonly property int visBars: VisualizerState.bars
                  property var cur: (Mpris.players.values && Mpris.players.values.length > root.mediaIdx) ? Mpris.players.values[root.mediaIdx] : null
                  property string rawArt: cur && cur.trackArtUrl ? String(cur.trackArtUrl) : ""
                  property bool artFallback: false
@@ -719,8 +686,9 @@ PanelWindow {
                    if (qa === "" || ra === "") return true
                    return ra.indexOf(qa) !== -1 || qa.indexOf(ra) !== -1
                  }
-                 function fetchWebArt() {
-                   const title = cur ? (cur.trackTitle || "") : ""
+                  function fetchWebArt() {
+                    if (root.activeTab !== 2) return
+                    const title = cur ? (cur.trackTitle || "") : ""
                    const artist = cur ? (cur.trackArtist || "") : ""
                    const key = artist + " - " + title
                    if (key !== "" && key === webKey && webArt !== "") return
@@ -813,67 +781,85 @@ PanelWindow {
                           Layout.fillWidth: true
                           Layout.fillHeight: true
                           Layout.preferredHeight: 150
-                          color: Theme.bg
+                          color: "transparent"
                           clip: true
-                          property bool termRunning: false
-                          Timer {
-                            interval: 500
-                            running: true
-                            repeat: true
-                            onTriggered: termRect.termRunning = sharkVisSession.hasActiveProcess
-                          }
-                          QMLTermWidget {
-                            id: sharkVisTerm
-                            anchors.fill: parent
-                            font.family: Theme.fontFamily
-                            font.pointSize: 9
-                            colorScheme: "Linux"
-                            focus: false
-                            enabled: true
-                            session: QMLTermSession {
-                              id: sharkVisSession
-                              shellProgram: "/etc/profiles/per-user/matko/bin/sharkvis"
-                            }
-                            function startProg(prog, args) {
-                              if (sharkVisSession.hasActiveProcess) return
-                              sharkVisSession.shellProgram = prog
-                              sharkVisSession.shellProgramArgs = args
-                              sharkVisSession.startShellProgram()
-                            }
-                            Component.onCompleted: {
-                              if (root.shown) sharkVisTerm.startProg("/etc/profiles/per-user/matko/bin/sharkvis", [])
-                            }
-                            Connections {
-                              target: sharkVisSession
-                              function onFinished() {
-                                if (root.shown) sharkVisTerm.startProg("bash", [])
+                          Process {
+                            id: visProc
+                            running: root.shown && root.activeTab === 2
+                            command: ["sh", "-c", "V=\"$HOME/.cache/sharkshell/cava.conf\"; L=/mnt/ssd/My-Files/Projects/sharkvis/target/release/sharkvis; M=" + (VisualizerState.mode === "wave" ? "wave" : "bars") + "; B=" + VisualizerState.bars + "; if [ -x \"$L\" ]; then exec \"$L\" --raw --raw-mode \"$M\" --bars \"$B\" --fps 30; elif command -v sharkvis >/dev/null 2>&1; then exec sharkvis --raw --raw-mode \"$M\" --bars \"$B\" --fps 30; elif command -v cava >/dev/null 2>&1; then exec cava -p \"$V\"; else exit 0; fi"]
+                            stdout: SplitParser {
+                              onRead: data => {
+                                const parts = String(data).split(";")
+                                const arr = []
+                                for (let i = 0; i < parts.length; i++) {
+                                  const v = parseInt(parts[i], 10)
+                                  if (!isNaN(v)) arr.push(Util.clampPct(v))
+                                }
+                                if (arr.length > 0) mediaSingle.levels = arr
                               }
                             }
-                            Connections {
-                              target: root
-                              function onShownChanged() {
-                                if (root.shown) {
-                                  sharkVisTerm.startProg("/etc/profiles/per-user/matko/bin/sharkvis", [])
-                                } else if (sharkVisSession.hasActiveProcess) {
-                                  sharkVisSession.sendSignal(15)
+                          }
+                          Row {
+                            id: barRow
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            spacing: 2
+                            visible: VisualizerState.mode === "bars"
+                            Repeater {
+                              model: mediaSingle.visBars
+                              delegate: Item {
+                                required property int index
+                                width: Math.max(1, (barRow.width - (mediaSingle.visBars - 1) * barRow.spacing) / mediaSingle.visBars)
+                                height: barRow.height
+                                Rectangle {
+                                  anchors.bottom: parent.bottom
+                                  anchors.left: parent.left
+                                  anchors.right: parent.right
+                                  height: Math.max(2, parent.height * ((mediaSingle.levels[index] || 0) / 100))
+                                  color: Theme.fg
+                                  Behavior on height { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
                                 }
                               }
                             }
                           }
-                          MouseArea {
+                          Canvas {
+                            id: waveCanvas
                             anchors.fill: parent
-                            hoverEnabled: true
-                            acceptedButtons: Qt.NoButton
-                            cursorShape: Qt.IBeamCursor
-                            onEntered: sharkVisTerm.forceActiveFocus()
-                            onExited: sharkVisTerm.focus = false
+                            anchors.margins: 8
+                            visible: VisualizerState.mode === "wave"
+                            property var pts: mediaSingle.levels
+                            onPtsChanged: requestPaint()
+                            onVisibleChanged: if (visible) requestPaint()
+                            onPaint: {
+                              var ctx = getContext("2d")
+                              ctx.clearRect(0, 0, width, height)
+                              var n = pts ? pts.length : 0
+                              if (n < 2 || width <= 0 || height <= 0) return
+                              ctx.strokeStyle = Theme.fg
+                              ctx.lineWidth = 2
+                              ctx.lineJoin = "round"
+                              ctx.beginPath()
+                              for (var i = 0; i < n; i++) {
+                                var v = Util.clampPct(pts[i] || 0)
+                                var x = (i / (n - 1)) * width
+                                var y = height - (v / 100) * height
+                                if (i === 0) ctx.moveTo(x, y)
+                                else ctx.lineTo(x, y)
+                              }
+                              ctx.stroke()
+                            }
+                          }
+                          Connections {
+                            target: VisualizerState
+                            function onModeChanged() { visProc.running = false; visProc.running = true }
+                            function onBarsChanged() { visProc.running = false; visProc.running = true }
                           }
                         }
 
                         Rectangle {
                           Layout.alignment: Qt.AlignHCenter
                           Layout.topMargin: -4
-                          implicitWidth: 132
+                          implicitWidth: 148
                           implicitHeight: 36
                           color: Theme.bgAlt
                           border.color: Theme.border

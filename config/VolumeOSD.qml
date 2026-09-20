@@ -14,12 +14,10 @@ PanelWindow {
   exclusionMode: ExclusionMode.Ignore
   color: "transparent"
   WlrLayershell.namespace: "quickshell-modal"
+  BackgroundEffect.blurRegion: Region { item: bg }
   WlrLayershell.layer: WlrLayer.Overlay
   implicitWidth: 380
   implicitHeight: 200
-  // Unmap when the card is parked off-screen so niri doesn't blur
-  // this invisible surface (or composite it at all).
-  // (osd.height: PanelWindow's own height; parent would be the output.)
   visible: osd.shown || bg.y < osd.height
 
   mask: Region { item: bg }

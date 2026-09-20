@@ -21,17 +21,12 @@ Singleton {
   readonly property int animFast: 90
   readonly property int animDefault: 140
   readonly property int animSlow: 200
-  // dynamic theme crossfade (Noctalia-style smooth transition)
   readonly property int themeTransition: 600
-  // transparency mode: surfaces go translucent, text/borders stay opaque
   readonly property real surfaceAlpha: TransparencyState.transparent ? 0.85 : 1.0
   readonly property int easingOut: Easing.OutCubic
   readonly property int easingIn: Easing.InCubic
   readonly property int easingDefault: Easing.OutCubic
 
-  // Declarative defaults (used when DynamicTheme is off).
-  // When DynamicTheme is on, colors follow the wallpaper with a
-  // smooth animated transition.
   property color bgBase: DynamicTheme.enabled ? DynamicTheme.bg : "#000000"
   property color bg: Qt.rgba(bgBase.r, bgBase.g, bgBase.b, root.surfaceAlpha)
   Behavior on bg { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
@@ -52,4 +47,16 @@ Singleton {
   Behavior on muted2 { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
   property color muted3: DynamicTheme.enabled ? DynamicTheme.muted3 : "#333333"
   Behavior on muted3 { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
+  readonly property color hover: "#33ffffff"
+  readonly property color match: "#cb4b16"
+  readonly property color onSelect: "#586e75"
+  readonly property color error: "#ff5555"
+  property color lockBgBase: (TransparencyState.transparent && DynamicTheme.enabled) ? DynamicTheme.bg : "#000000"
+  property color lockBg: Qt.rgba(lockBgBase.r, lockBgBase.g, lockBgBase.b, root.surfaceAlpha)
+  Behavior on lockBg { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
+  FontLoader {
+    id: materialLoader
+    source: "fonts/material-icons.ttf"
+  }
+  readonly property string materialFontFamily: materialLoader.name || "Material Icons"
 }

@@ -1,7 +1,5 @@
 .pragma library
 
-// Small hex-color helpers for the dynamic (wallpaper) theme.
-// All functions take "#rrggbb" (or "#rgb") and return "#rrggbb".
 
 function clamp01(v) {
   v = parseFloat(v);
@@ -38,7 +36,6 @@ function validOr(hex, fallback) {
   return isValid(hex) ? String(hex) : fallback;
 }
 
-// mix(a, b, t): t=0 -> a, t=1 -> b
 function mix(a, b, t) {
   var ca = toRgb(a), cb = toRgb(b);
   if (!ca) return String(b);
@@ -51,15 +48,12 @@ function mix(a, b, t) {
   );
 }
 
-// shade(hex, amt): amt in [-1, 1]; negative -> toward black, positive -> toward white
 function shade(hex, amt) {
   amt = Math.min(1, Math.max(-1, parseFloat(amt) || 0));
   if (amt >= 0) return mix(hex, "#ffffff", amt);
   return mix(hex, "#000000", -amt);
 }
 
-// withAlpha(c, a): apply opacity 0..1 to a "#rrggbb" string or QML color.
-// Returns an "rgba(...)" string safe for color properties.
 function withAlpha(c, a) {
   var rgb = (typeof c === "string") ? toRgb(c) : null;
   if (!rgb && c && typeof c.r === "number")

@@ -3,12 +3,12 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import "Util.js" as Util
 
 Scope {
   id: root
 
   property bool opened: false
-  property bool blurReady: false
   property bool entered: false
   property int selIdx: 0
   property string currentDir: Quickshell.env("HOME") || "/home/matko"
@@ -43,22 +43,6 @@ Scope {
     onTriggered: {
       root.opened = false
       closeCleanTimer.restart()
-    }
-  }
-
-  Timer {
-    id: blurTimer
-    interval: 270
-    onTriggered: { if (root.opened) root.blurReady = true }
-  }
-
-  onOpenedChanged: {
-    if (root.opened) {
-      root.blurReady = false
-      blurTimer.restart()
-    } else {
-      root.blurReady = false
-      blurTimer.stop()
     }
   }
 
@@ -116,14 +100,6 @@ Scope {
     function clear() {
       root.clearAvatar()
     }
-  }
-
-  function shellQuote(value) {
-    return "'" + String(value).replace(/'/g, "'\\''") + "'"
-  }
-
-  function fileUrl(path) {
-    return "file://" + path.split("/").map(encodeURIComponent).join("/")
   }
 
   function isImage(name) {
@@ -197,7 +173,7 @@ Scope {
     id: listProc
     property string output: ""
     command: ["bash", "-c",
-      "dir=" + shellQuote(root.currentDir) + ";"
+      "dir=" + Util.shellQuote(root.currentDir) + ";"
       + " [[ -d \"$dir\" ]] || exit 0;"
       + " find -L \"$dir\" -maxdepth 1 -mindepth 1 -printf '%y\\t%f\\n' 2>/dev/null | sort"]
     stdout: SplitParser {
@@ -240,26 +216,6 @@ Scope {
   }
 
   PanelWindow {
-    visible: (root.opened || root.closePending) && root.blurReady
-    anchors.top: true
-    anchors.left: true
-    margins.top: 80
-    margins.left: 20
-    exclusionMode: ExclusionMode.Ignore
-    color: "transparent"
-    implicitWidth: panel.width
-    implicitHeight: panel.height
-    WlrLayershell.namespace: "quickshell-blur"
-    WlrLayershell.layer: WlrLayer.Top
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-
-    Rectangle {
-      anchors.fill: parent
-      color: Theme.bg
-    }
-  }
-
-  PanelWindow {
     visible: root.opened || root.closePending
     anchors.top: true
     anchors.bottom: true
@@ -268,14 +224,11 @@ Scope {
     margins.top: 30
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
-    WlrLayershell.namespace: "quickshell-backdrop"
+    WlrLayershell.namespace: "quickshell-modal"
+    BackgroundEffect.blurRegion: Region { item: panel.anchors.leftMargin >= 20 ? panel : null }
+    mask: Region { item: panel }
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-
-    MouseArea {
-      anchors.fill: parent
-      onClicked: root.requestClose()
-    }
 
     Rectangle {
       id: panel
@@ -285,15 +238,11 @@ Scope {
       anchors.leftMargin: root.opened ? 20 : -width
       width: 400
       height: listViewCol.implicitHeight + 16
-      color: "transparent"
-      Rectangle {
-        anchors.fill: parent
-        color: Theme.bg
-        opacity: root.blurReady ? 0 : 1
-      }
+      color: Theme.bg
+      opacity: (panel.anchors.leftMargin + panel.width) / (20 + panel.width)
       border.color: Theme.fg
       border.width: 1
-      Behavior on anchors.leftMargin { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+      Behavior on anchors.leftMargin { NumberAnimation { duration: 170; easing.type: Easing.OutExpo } }
 
       Column {
         id: listViewCol
@@ -312,25 +261,23 @@ Scope {
         RowLayout {
           width: parent.width
           spacing: 6
-          Rectangle {
+          IconBtn {
             Layout.preferredWidth: 30
             Layout.preferredHeight: 26
             radius: 3
-            color: upMa.containsMouse ? Theme.fg : "transparent"
-            border.color: Theme.fg
-            border.width: 1
-            QIcon { anchors.centerIn: parent; name: "arrow-up"; size: 16; color: upMa.containsMouse ? Theme.bg : Theme.fg }
-            MouseArea { id: upMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.goUp() }
+            bordered: true
+            icon: "arrow-up"
+            iconSize: 16
+            onClicked: root.goUp()
           }
-          Rectangle {
+          IconBtn {
             Layout.preferredWidth: 30
             Layout.preferredHeight: 26
             radius: 3
-            color: homeMa.containsMouse ? Theme.fg : "transparent"
-            border.color: Theme.fg
-            border.width: 1
-            QIcon { anchors.centerIn: parent; name: "home"; size: 16; color: homeMa.containsMouse ? Theme.bg : Theme.fg }
-            MouseArea { id: homeMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.goHome() }
+            bordered: true
+            icon: "home"
+            iconSize: 16
+            onClicked: root.goHome()
           }
           Text {
             Layout.fillWidth: true
@@ -372,7 +319,7 @@ Scope {
           clip: true
           spacing: root.rowSpacing
           model: root.results
-          highlightMoveDuration: 150
+          highlightMoveDuration: 120
           highlightMoveVelocity: -1
 
           focus: true
@@ -418,7 +365,7 @@ Scope {
             required property int index
             width: listView.width
             height: root.rowH
-            color: root.selIdx === index ? Theme.fg : (rowMa.containsMouse ? "#33ffffff" : "transparent")
+            color: root.selIdx === index ? Theme.fg : (rowMa.containsMouse ? Theme.hover : "transparent")
 
             RowLayout {
               anchors.fill: parent
@@ -441,10 +388,10 @@ Scope {
                   width: 26
                   height: 26
                   clip: true
-                  color: "#111111"
+                  color: Theme.bgAlt
                   Image {
                     anchors.fill: parent
-                    source: !modelData.isDir ? root.fileUrl(modelData.fullPath) : ""
+                    source: !modelData.isDir ? Util.fileUrl(modelData.fullPath) : ""
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     cache: true

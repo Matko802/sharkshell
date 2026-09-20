@@ -5,7 +5,6 @@ let
     cp -r $src/. $out/quickshell/
   '';
 
-  # Matugen template setup: input template paths are baked in at build time.
   matugenConfig = pkgs.runCommand "sharkshell-matugen-config" { src = ./matugen; } ''
     mkdir -p $out/matugen/templates
     cp $src/templates/kitty.conf $src/templates/niri-borders.kdl $out/matugen/templates/

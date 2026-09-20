@@ -3,37 +3,19 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "DynamicColor.js" as DynColor
+import "Util.js" as Util
 
-// Dynamic (wallpaper) theme, Noctalia-style.
-//
-// When disabled (default) everything uses the declarative Theme defaults
-// and kitty + niri keep their static files.
-// When enabled, one matugen run renders the app templates
-// (~/.config/matugen, see sharkshell/matugen/) and dumps JSON that feeds
-// the shell palette (Theme.*) with a smooth animated transition.
-// App reloads (kitty SIGUSR1, niri load-config-file) are triggered here.
-//
-// Generated state lives in ~/.cache/sharkshell/ :
-//   dynamic-theme-enabled  "1"/"0"
-//   dynamic-scheme.json    cached matugen output
-//   dynamic-scheme-wall    wallpaper path the cache belongs to
 Scope {
   id: root
 
   property bool enabled: false
   property bool generating: false
-  // True when the app files on disk (kitty/niri templates output) hold
-  // dynamic content. Tracked because re-enabling with a matching cached
-  // scheme must still re-render when the files hold defaults.
   property bool appsThemed: false
 
-  // Flat map of material role name -> "#rrggbb" (dark scheme from matugen)
   property var roles: ({})
 
   readonly property string cacheDir: Quickshell.env("HOME") + "/.cache/sharkshell"
   readonly property string kittyConfName: "kitty-dynamic.conf"
-  // Separate folder for the niri selection (active) / inactive border theme.
-  // Stock niri config includes this file; quickshell rewrites it.
   readonly property string niriDir: Quickshell.env("HOME") + "/.config/niri-dynamic"
   readonly property string niriBorders: root.niriDir + "/borders.kdl"
 
@@ -41,8 +23,6 @@ Scope {
     return DynColor.validOr(root.roles[name], fallback)
   }
 
-  // --- Shell palette: same background colors as the generated apps ---
-  // bg matches the scheme background (and kitty) exactly.
   readonly property color dynBg: root.role("background", "#111111")
   readonly property color dynBgAlt: DynColor.mix(root.dynBg, root.role("primary", "#ffffff"), 0.18)
   readonly property color dynFg: root.role("on_surface", "#ffffff")
@@ -53,7 +33,6 @@ Scope {
   readonly property color dynMuted2: DynColor.mix(root.role("on_surface_variant", "#888888"), root.dynBg, 0.45)
   readonly property color dynMuted3: DynColor.mix(root.role("on_surface_variant", "#888888"), root.dynBg, 0.70)
 
-  // --- public API used by Theme.qml ---
   readonly property color bg: root.dynBg
   readonly property color bgAlt: root.dynBgAlt
   readonly property color fg: root.dynFg
@@ -72,9 +51,6 @@ Scope {
     root.setEnabled(!root.enabled)
   }
 
-  // Force a fresh matugen run (re-renders the app templates even when
-  // the scheme is already cached - enabling must restore app files that
-  // the disable path overwrote with defaults).
   function regenerate() {
     if (!root.enabled || root.generating)
       return
@@ -82,15 +58,9 @@ Scope {
     root.extractFor(WallpaperState.path)
   }
 
-  function shellQuote(value) {
-    return "'" + String(value).replace(/'/g, "'\\''") + "'"
-  }
-
   onEnabledChanged: {
     enabledFile.setText(root.enabled ? "1" : "0")
     if (root.enabled) {
-      // Cached scheme already drives the shell via bindings.
-      // App files refresh below unless they already hold this scheme.
       if (!root.appsThemed || WallpaperState.path !== root.schemeWall)
         root.regenerate()
     } else {
@@ -140,7 +110,6 @@ Scope {
     }
   }
 
-  // Wallpaper path the cached scheme was generated from.
   FileView {
     id: schemeWallFile
     path: root.cacheDir + "/dynamic-scheme-wall"
@@ -153,19 +122,16 @@ Scope {
     }
   }
 
-  // Off-state files are flushed synchronously through bash (write and
-  // app reloads happen in one chain, so reloads can never overtake
-  // the writes).
   property string pendingKittyText: ""
   property string pendingNiriText: ""
 
   Process {
     id: defaultsProc
     command: ["bash", "-c",
-      "printf '%s' " + root.shellQuote(root.pendingKittyText)
-      + " > " + root.shellQuote(root.cacheDir + "/" + root.kittyConfName) + ";"
-      + "printf '%s' " + root.shellQuote(root.pendingNiriText)
-      + " > " + root.shellQuote(root.niriBorders) + ";"
+      "printf '%s' " + Util.shellQuote(root.pendingKittyText)
+      + " > " + Util.shellQuote(root.cacheDir + "/" + root.kittyConfName) + ";"
+      + "printf '%s' " + Util.shellQuote(root.pendingNiriText)
+      + " > " + Util.shellQuote(root.niriBorders) + ";"
       + " pkill -USR1 kitty >/dev/null 2>&1;"
       + " rt=\"$XDG_RUNTIME_DIR\"; [ -z \"$rt\" ] && rt=\"/run/user/$(id -u)\";"
       + " for s in \"$rt\"/niri.*.sock; do"
@@ -179,6 +145,81 @@ Scope {
     root.pendingNiriText = root.niriText("#ffffffff", "#444444ff")
     if (!defaultsProc.running)
       defaultsProc.running = true
+  }
+
+  function dimRow(hex) {
+    var m = /^#?([0-9a-fA-F]{6})/.exec(String(hex || ""))
+    if (!m) return String(hex)
+    function hx(v) {
+      var c = Math.max(0, Math.min(255, Math.round(v * 0.8)))
+      var h = c.toString(16)
+      return h.length < 2 ? "0" + h : h
+    }
+    return "#" + hx(parseInt(m[1].substr(0, 2), 16)) + hx(parseInt(m[1].substr(2, 2), 16)) + hx(parseInt(m[1].substr(4, 2), 16))
+  }
+
+  function dimBright(hex) {
+    var m = /^#?([0-9a-fA-F]{6})/.exec(String(hex || ""))
+    if (!m) return String(hex)
+    var r = parseInt(m[1].substr(0, 2), 16)
+    var g = parseInt(m[1].substr(2, 2), 16)
+    var b = parseInt(m[1].substr(4, 2), 16)
+    var mx = Math.max(r, Math.max(g, b))
+    if (mx <= 200) return "#" + m[1].toLowerCase()
+    var s = 200 / mx
+    function hx(v) {
+      var c = Math.max(0, Math.min(255, Math.round(v)))
+      var h = c.toString(16)
+      return h.length < 2 ? "0" + h : h
+    }
+    return "#" + hx(r * s) + hx(g * s) + hx(b * s)
+  }
+
+  function themedKittyColors() {
+    return {
+      source: "matugen scheme (white levels dimmed)",
+      background: root.role("background", "#000000"),
+      foreground: root.dimBright(root.role("on_surface", "#ffffff")),
+      cursor: root.role("primary", "#bbbbbb"),
+      selBg: root.role("primary_container", "#b5d5ff"),
+      selFg: root.dimBright(root.role("on_primary_container", "#000000")),
+      ansi: [
+        root.role("surface", "#000000"),
+        root.role("error", "#ff5555"),
+        root.role("primary", "#55ff55"),
+        root.role("secondary", "#ffff55"),
+        root.role("tertiary", "#5555ff"),
+        root.role("tertiary_fixed_dim", "#ff55ff"),
+        root.role("secondary_fixed_dim", "#55ffff"),
+        root.dimBright(root.role("on_surface_variant", "#999999")),
+        root.dimRow(root.role("outline_variant", "#545454")),
+        root.dimRow(root.role("on_error_container", "#ff5555")),
+        root.dimRow(root.role("on_tertiary_container", "#55ff55")),
+        root.dimRow(root.role("on_secondary_container", "#ffff55")),
+        root.dimRow(root.role("primary_fixed", "#5555ff")),
+        root.dimRow(root.role("secondary_fixed", "#ff55ff")),
+        root.dimRow(root.role("tertiary_fixed", "#55ffff")),
+        root.dimRow(root.role("on_surface", "#ffffff"))
+      ],
+      tabActiveFg: root.role("inverse_on_surface", "#444444"),
+      tabActiveBg: root.role("primary", "#b5d5ff"),
+      tabInactiveFg: root.dimBright(root.role("on_surface_variant", "#ffffff")),
+      tabInactiveBg: root.role("surface", "#000000")
+    }
+  }
+
+  Process {
+    id: kittyOnlyProc
+    command: ["bash", "-c",
+      "printf '%s' " + Util.shellQuote(root.pendingKittyText)
+      + " > " + Util.shellQuote(root.cacheDir + "/" + root.kittyConfName) + ";"
+      + " pkill -USR1 kitty >/dev/null 2>&1; exit 0"]
+  }
+
+  function writeThemedKitty() {
+    root.pendingKittyText = root.kittyText(root.themedKittyColors())
+    if (!kittyOnlyProc.running)
+      kittyOnlyProc.running = true
   }
 
   function applySchemeText(text) {
@@ -231,13 +272,11 @@ Scope {
   Process {
     id: extractProc
     property string output: ""
-    // One run renders the matugen templates (kitty + niri files) and
-    // dumps the scheme JSON that feeds the shell palette.
     command: ["bash", "-c",
       "set -o pipefail;"
-      + " mkdir -p " + root.shellQuote(root.cacheDir) + " " + root.shellQuote(root.niriDir) + ";"
+      + " mkdir -p " + Util.shellQuote(root.cacheDir) + " " + Util.shellQuote(root.niriDir) + ";"
       + " command -v matugen >/dev/null 2>&1 || exit 3;"
-      + " wall=" + root.shellQuote(root.pendingWall) + ";"
+      + " wall=" + Util.shellQuote(root.pendingWall) + ";"
       + " [ -f \"$wall\" ] || exit 4;"
       + " matugen image \"$wall\" --mode dark -j hex --source-color-index 0 2>/dev/null"]
     stdout: SplitParser {
@@ -248,8 +287,6 @@ Scope {
     onExited: function(exitCode) {
       root.generating = false
       if (!root.enabled) {
-        // Toggled off mid-run: matugen rendered dynamic files anyway,
-        // so restore the off-state files and reload.
         root.appsThemed = false
         root.restoreDefaults()
         return
@@ -263,13 +300,12 @@ Scope {
       if (root.applySchemeText(out)) {
         schemeCache.setText(out)
         schemeWallFile.setText(root.schemeWall)
-        // Templates were rendered above: reload the apps.
         root.appsThemed = true
+        root.writeThemedKitty()
         root.reloadKitty()
         root.reloadNiri()
       }
       root.lastDoneWall = root.pendingWall
-      // wallpaper changed while we were working: catch up
       if (root.enabled && WallpaperState.path !== "" && WallpaperState.path !== root.lastDoneWall)
         root.extractFor(WallpaperState.path)
     }
@@ -278,7 +314,7 @@ Scope {
   Process {
     id: mkdirProc
     command: ["bash", "-c",
-      "mkdir -p " + root.shellQuote(root.cacheDir) + " " + root.shellQuote(root.niriDir)]
+      "mkdir -p " + Util.shellQuote(root.cacheDir) + " " + Util.shellQuote(root.niriDir)]
     onExited: root.ensureOutputs()
   }
 
@@ -287,8 +323,6 @@ Scope {
     command: ["pkill", "-USR1", "kitty"]
   }
 
-  // File writes can still be flushing when a reload fires; the settle
-  // timer re-fires both reloads once things have landed.
   Timer {
     id: settleTimer
     interval: 1500
@@ -336,10 +370,12 @@ Scope {
       root.restoreDefaults()
     } else if (Object.keys(root.roles).length === 0 && WallpaperState.path !== "") {
       root.regenerate()
+    } else if (Object.keys(root.roles).length === 0) {
+      root.appsThemed = false
+      root.restoreDefaults()
     }
   }
 
-  // --- kitty defaults for dynamic-off (matugen templates cover on) ---
   function kittyText(o) {
     var L = []
     L.push("# Generated by sharkshell dynamic theme - do not edit.")
@@ -362,15 +398,15 @@ Scope {
     return {
       source: "static default (dynamic theme off)",
       background: "#000000",
-      foreground: "#ffffff",
+      foreground: "#e0e0e0",
       cursor: "#bbbbbb",
       selBg: "#b5d5ff",
       selFg: "#000000",
       ansi: ["#000000", "#ff5555", "#b2ffd5", "#fbffc2", "#8686ff", "#ff557d", "#25ffba", "#999999",
-             "#545454", "#ff5555", "#55ff55", "#ffff55", "#5555ff", "#ff55ff", "#55ffff", "#ffffff"],
+             "#434343", "#cc4444", "#44cc44", "#cccc44", "#4444cc", "#cc44cc", "#44cccc", "#b3b3b3"],
       tabActiveFg: "#444444",
       tabActiveBg: "#b5d5ff",
-      tabInactiveFg: "#ffffff",
+      tabInactiveFg: "#e0e0e0",
       tabInactiveBg: "#000000"
     }
   }

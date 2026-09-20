@@ -1,25 +1,51 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
-import QtQuick.Layouts
+import QtQml.Models
 
-PanelWindow {
-  id: root
-  anchors.top: true
-  anchors.right: true
-  margins.top: 38
-  margins.right: 8
-  implicitWidth: popupColumn.implicitWidth
-  implicitHeight: popupColumn.implicitHeight
-  color: "transparent"
-  WlrLayershell.namespace: "quickshell-modal"
-  WlrLayershell.layer: WlrLayer.Overlay
-  WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-  exclusionMode: ExclusionMode.Ignore
+Scope {
+  id: toastScope
 
-  visible: NotificationServer.popupModel.count > 0 && !ControlState.open && !ClockState.open && !SettingsState.open
+  property var popupWindows: []
 
-  mask: Region { item: popupColumn }
+  function syncWindows() {
+    var a = []
+    for (var i = 0; i < inst.count; i++) {
+      var o = inst.objectAt(i)
+      if (o) a.push(o)
+    }
+    toastScope.popupWindows = a
+    toastScope.scheduleReposition()
+  }
+
+  function scheduleReposition() {
+    repositionTimer.restart()
+  }
+
+  Timer {
+    id: repositionTimer
+    interval: 32
+    repeat: false
+    onTriggered: toastScope.repositionAll()
+  }
+
+  function repositionAll() {
+    var y = 38
+    for (var i = 0; i < toastScope.popupWindows.length; i++) {
+      var w = toastScope.popupWindows[i]
+      if (!w || !w.setStackPosition) continue
+      w.setStackPosition(y)
+      var h = w.cardHeight || 0
+      y += (h > 0 ? h : 80) + 8
+    }
+  }
+
+  function dismissAllPopups() {
+    for (var i = 0; i < inst.count; i++) {
+      var o = inst.objectAt(i)
+      if (o && o.dismissCard) o.dismissCard()
+    }
+  }
 
   Connections {
     target: ControlState
@@ -40,77 +66,116 @@ PanelWindow {
     }
   }
 
-  ColumnLayout {
-    id: popupColumn
-    anchors.fill: parent
-    spacing: 8
+  Instantiator {
+    id: inst
+    model: NotificationServer.popupModel
+    onObjectAdded: (index, obj) => toastScope.syncWindows()
+    onObjectRemoved: (index, obj) => toastScope.syncWindows()
 
-    Repeater {
-      id: rep
-      model: NotificationServer.popupModel
+    delegate: PanelWindow {
+      id: toastWin
+      required property int notifId
+      required property string app
+      required property string appIcon
+      required property string summary
+      required property string body
+      required property int urgency
+      required property string image
+      required property string desktopEntry
+      required property string appName
+      required property bool leaving
+      onLeavingChanged: { if (leaving) toastWin.dismissCard() }
 
-      delegate: Item {
-        id: cardSlot
-        required property int index
-        required property int notifId
-        required property string app
-        required property string appIcon
-        required property string summary
-        required property string body
-        required property int urgency
-        required property string image
-        required property string desktopEntry
-        required property string appName
-
-        Layout.preferredWidth: card.implicitWidth
-        Layout.alignment: Qt.AlignRight
-        implicitHeight: card.implicitHeight
-
-        readonly property double lifetime: 5000
-        property real remaining: 1.0
-        readonly property bool ticking: lifetime > 0 && !card.hovered && !ControlState.open && !ClockState.open && !SettingsState.open
-
-        Component.onCompleted: cardSlot.remaining = 1.0
-
-        Timer {
-          interval: 50
-          repeat: true
-          running: cardSlot.ticking
-          onTriggered: {
-            cardSlot.remaining -= 50 / cardSlot.lifetime
-            if (cardSlot.remaining <= 0) {
-              cardSlot.remaining = 0
-              root.dismissAllPopups()
-            }
-          }
+      anchors.top: true
+      anchors.right: true
+      anchors.bottom: true
+      margins.top: 0
+      margins.right: 8
+      margins.bottom: 0
+      property int cardY: 38
+      property int lastCardY: 0
+      property real yOff: 0
+      onCardYChanged: {
+        if (lastCardY > 0 && cardY !== lastCardY) {
+          yOff = yOff + (lastCardY - cardY)
+          yGlide.restart()
         }
+        lastCardY = cardY
+      }
+      function setStackPosition(y) { toastWin.cardY = y }
+      NumberAnimation { id: yGlide; target: toastWin; property: "yOff"; to: 0; duration: 200; easing.type: Easing.OutCubic }
+      implicitWidth: card.implicitWidth
+      implicitHeight: card.implicitHeight
+      color: "transparent"
+      WlrLayershell.namespace: "quickshell-modal"
+      BackgroundEffect.blurRegion: Region { item: toastWin.blurReady ? card : null }
+      WlrLayershell.layer: WlrLayer.Overlay
+      WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+      exclusionMode: ExclusionMode.Ignore
 
-        function dismiss() { if (!card.dismissing) card.dismiss() }
+      visible: NotificationServer.popupModel.count > 0 && !ControlState.open && !ClockState.open && !SettingsState.open
 
-        NotificationPopup {
-          id: card
-          anchors.right: parent.right
-          notifId: cardSlot.notifId
-          app: cardSlot.app
-          appIcon: cardSlot.appIcon
-          summary: cardSlot.summary
-          body: cardSlot.body
-          urgency: cardSlot.urgency
-          image: cardSlot.image
-          desktopEntry: cardSlot.desktopEntry
-          appName: cardSlot.appName
-          onDismissed: NotificationServer.removePopup(cardSlot.notifId)
-          onCloseRequested: NotificationServer.removePopup(cardSlot.notifId)
-          onCardClicked: NotificationServer.focusPopup(cardSlot.notifId)
+      mask: Region { item: card }
+
+      readonly property bool blurReady: card.entered && !card.dismissing && Math.abs(card.x) < 1
+      readonly property int cardHeight: card.implicitHeight
+      onCardHeightChanged: toastScope.scheduleReposition()
+
+      property double lifetime: 5000
+      property double deadline: 0
+      property bool paused: false
+      property double pauseTime: 0
+
+      Component.onCompleted: {
+        toastWin.deadline = Date.now() + toastWin.lifetime
+        toastWin.lastCardY = toastWin.cardY
+      }
+      function pause() {
+        if (!toastWin.paused) {
+          toastWin.paused = true
+          toastWin.pauseTime = Date.now()
         }
       }
-    }
-  }
+      function resume() {
+        if (toastWin.paused) {
+          toastWin.paused = false
+          toastWin.deadline += Date.now() - toastWin.pauseTime
+        }
+      }
+      function dismissCard() { if (!card.dismissing) card.dismiss() }
 
-  function dismissAllPopups() {
-    for (let i = 0; i < rep.count; i++) {
-      const s = rep.itemAt(i)
-      if (s && s.dismiss) s.dismiss()
+      NotificationPopup {
+        id: card
+        y: toastWin.cardY + toastWin.yOff
+        width: parent.width
+        height: implicitHeight
+        notifId: toastWin.notifId
+        app: toastWin.app
+        appIcon: toastWin.appIcon
+        summary: toastWin.summary
+        body: toastWin.body
+        urgency: toastWin.urgency
+        image: toastWin.image
+        desktopEntry: toastWin.desktopEntry
+        appName: toastWin.appName
+        onHoveredChanged: {
+          if (card.hovered) toastWin.pause()
+          else toastWin.resume()
+        }
+        onDismissed: NotificationServer.removePopup(toastWin.notifId)
+        onCloseRequested: toastWin.dismissCard()
+        onCardClicked: NotificationServer.focusPopup(toastWin.notifId)
+      }
+
+      Timer {
+        interval: 100
+        repeat: true
+        running: true
+        onTriggered: {
+          if (toastWin.paused) return
+          if (Date.now() >= toastWin.deadline) toastWin.dismissCard()
+        }
+      }
     }
   }
 }

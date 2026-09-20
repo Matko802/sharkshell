@@ -2,25 +2,13 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "Util.js" as Util
 
-// Transparency mode (independent from the dynamic wallpaper theme).
-//
-// When on: quickshell surfaces (Theme.bg / Theme.bgAlt) turn translucent
-// with niri background blur behind them, and the kitty terminal goes
-// translucent (via its own config) with blur behind it too.
-// Borders and text stay opaque for readability.
-// When off (default): everything exactly as before.
-//
-// The niri side lives in ~/.config/niri-dynamic/transparency.kdl,
-// included by the stock niri config. Quickshell rewrites it on toggle.
-// The kitty side lives in ~/.cache/sharkshell/kitty-transparency.conf,
-// included at the end of kitty.conf.
 Scope {
   id: root
 
   property bool transparent: false
 
-  // Terminal translucency while transparent mode is on.
   readonly property real terminalOpacity: 0.85
 
   readonly property string cacheDir: Quickshell.env("HOME") + "/.cache/sharkshell"
@@ -34,10 +22,6 @@ Scope {
 
   function toggle() {
     root.setTransparent(!root.transparent)
-  }
-
-  function shellQuote(value) {
-    return "'" + String(value).replace(/'/g, "'\\''") + "'"
   }
 
   onTransparentChanged: {
@@ -93,27 +77,6 @@ Scope {
       + "    xray true\n"
       + "  }\n"
       + "}\n"
-      + "layer-rule {\n"
-      + "  match namespace=\"^quickshell$\"\n"
-      + "  background-effect {\n"
-      + "    blur true\n"
-      + "    xray true\n"
-      + "  }\n"
-      + "}\n"
-      + "layer-rule {\n"
-      + "  match namespace=\"^quickshell-modal$\"\n"
-      + "  background-effect {\n"
-      + "    blur true\n"
-      + "    xray true\n"
-      + "  }\n"
-      + "}\n"
-      + "layer-rule {\n"
-      + "  match namespace=\"^quickshell-blur$\"\n"
-      + "  background-effect {\n"
-      + "    blur true\n"
-      + "    xray true\n"
-      + "  }\n"
-      + "}\n"
   }
 
   function writeNiri() {
@@ -128,7 +91,7 @@ Scope {
   Process {
     id: mkdirProc
     command: ["bash", "-c",
-      "mkdir -p " + root.shellQuote(root.cacheDir) + " " + root.shellQuote(root.niriDir)]
+      "mkdir -p " + Util.shellQuote(root.cacheDir) + " " + Util.shellQuote(root.niriDir)]
     onExited: {
       root.writeNiri()
       root.writeKittyTrans()
@@ -156,7 +119,6 @@ Scope {
     command: ["pkill", "-USR1", "kitty"]
   }
 
-  // See DynamicTheme: re-fire reloads after file writes have landed.
   Timer {
     id: settleTimer
     interval: 1500

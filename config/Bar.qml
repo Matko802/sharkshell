@@ -2,12 +2,17 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 import Quickshell
-import Quickshell.Services.UPower
 
 Item {
+  id: root
   anchors.fill: parent
 
+  property bool rightOnly: false
+  property bool menuOpen: false
+  signal menuRequested(string section)
+
   RowLayout {
+    visible: !root.rightOnly
     anchors.left: parent.left
     anchors.top: parent.top
     anchors.bottom: parent.bottom
@@ -24,6 +29,7 @@ Item {
 
   Rectangle {
     id: clockCenterBtn
+    visible: !root.rightOnly
     anchors.centerIn: parent
     implicitWidth: clockCenterRow.implicitWidth + 14
     implicitHeight: 22
@@ -73,8 +79,25 @@ Item {
     anchors.bottom: parent.bottom
     spacing: Theme.spacingS
 
-    Tray {}
-    Language {}
+    Tray {
+      visible: !root.rightOnly
+    }
+    Item {
+      Layout.preferredWidth: langLabel.implicitWidth
+      Layout.preferredHeight: 18
+      Language {
+        id: langLabel
+        anchors.fill: parent
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
+      }
+      MouseArea {
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: Quickshell.execDetached(["/run/current-system/sw/bin/niri", "msg", "action", "switch-layout", "next"])
+      }
+    }
 
     Rectangle {
       id: quickSettingsBtn
@@ -84,32 +107,23 @@ Item {
       implicitWidth: quickSettingsRow.implicitWidth + 14
       Behavior on implicitWidth { NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut } }
       radius: Theme.rounding
-      color: quickSettingsMa.containsMouse ? Theme.fg : "transparent"
-      border.color: quickSettingsMa.containsMouse ? Theme.outline : "transparent"
+      color: (quickSettingsMa.containsMouse && !root.menuOpen) ? Theme.fg : "transparent"
+      border.color: (quickSettingsMa.containsMouse && !root.menuOpen) ? Theme.outline : "transparent"
       border.width: 1
+
+      Battery { id: bat }
 
       RowLayout {
         id: quickSettingsRow
         anchors.centerIn: parent
         spacing: Theme.spacingS
 
-        Item { Layout.preferredWidth: 18; Layout.preferredHeight: 18; QIcon { anchors.centerIn: parent; name: Audio.icon; size: 18; color: quickSettingsMa.containsMouse ? Theme.bg : Theme.fg } }
-        Item { Layout.preferredWidth: 18; Layout.preferredHeight: 18; QIcon { anchors.centerIn: parent; name: Network.online ? Network.icon : "wifi-off"; size: 18; color: quickSettingsMa.containsMouse ? Theme.bg : (Network.online ? Theme.fg : "#777777") } }
+        Item { Layout.preferredWidth: 18; Layout.preferredHeight: 18; QIcon { anchors.centerIn: parent; name: Audio.icon; size: 18; color: (quickSettingsMa.containsMouse && !root.menuOpen) ? Theme.bg : Theme.fg } }
+        Item { Layout.preferredWidth: 18; Layout.preferredHeight: 18; QIcon { anchors.centerIn: parent; name: Network.online ? Network.icon : "wifi-off"; size: 18; color: (quickSettingsMa.containsMouse && !root.menuOpen) ? Theme.bg : (Network.online ? Theme.fg : Theme.muted2) } }
         Item {
           Layout.preferredWidth: 18; Layout.preferredHeight: 18
-          property string batName: {
-            try {
-              const dev = UPower.displayDevice
-              if (!dev || !dev.ready || !dev.isLaptopBattery) return ""
-              const p = Math.max(0, Math.min(100, Math.round(dev.percentage * 100)))
-              const lv = Math.floor(p / 10) * 10
-              if (dev.state === UPowerDeviceState.Charging && lv < 100) return "bat-" + lv + "-chg"
-              if (dev.state === UPowerDeviceState.FullyCharged) return "bat-charged"
-              return "bat-" + lv
-            } catch (e) { return "" }
-          }
-          visible: batName !== ""
-          QIcon { anchors.centerIn: parent; name: parent.batName; size: 18; color: quickSettingsMa.containsMouse ? Theme.bg : Theme.fg }
+          visible: bat.batName !== ""
+          QIcon { anchors.centerIn: parent; name: bat.batName; size: 18; color: (quickSettingsMa.containsMouse && !root.menuOpen) ? Theme.bg : Theme.fg }
         }
       }
 
@@ -118,7 +132,12 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        onClicked: ControlState.toggle(quickSettingsBtn.QsWindow.window)
+        onClicked: {
+          if (root.rightOnly)
+            root.menuRequested("quick")
+          else
+            ControlState.toggle(quickSettingsBtn.QsWindow.window)
+        }
         onWheel: wheel => {
           Audio.setVol((Audio.vol < 0 ? 50 : Audio.vol) + (wheel.angleDelta.y > 0 ? 5 : -5))
         }

@@ -8,7 +8,6 @@ Scope {
   id: root
 
   property bool open: false
-  property bool blurReady: false
   property bool closePending: false
   property int selIdx: 0
   property int hoverIdx: -1
@@ -34,22 +33,6 @@ Scope {
     onTriggered: {
       root.open = false
       closeCleanTimer.restart()
-    }
-  }
-
-  Timer {
-    id: blurTimer
-    interval: 270
-    onTriggered: { if (root.open) root.blurReady = true }
-  }
-
-  onOpenChanged: {
-    if (root.open) {
-      root.blurReady = false
-      blurTimer.restart()
-    } else {
-      root.blurReady = false
-      blurTimer.stop()
     }
   }
 
@@ -113,6 +96,12 @@ Scope {
     { name: "SUSPEND", icon: "suspend", cmd: ["sh", "-c", "quickshell ipc call lock lock; systemctl suspend -i"] }
   ]
   readonly property var entries: root.canHibernate ? root.allEntries : root.allEntries.filter(e => e.name !== "HIBERNATE")
+  onEntriesChanged: {
+    if (root.selIdx >= root.entries.length)
+      root.selIdx = Math.max(0, root.entries.length - 1)
+    if (root.hoverIdx >= root.entries.length)
+      root.hoverIdx = -1
+  }
 
   function move(step) {
     root.selIdx = Math.max(0, Math.min(root.entries.length - 1, root.selIdx + step))
@@ -132,58 +121,33 @@ Scope {
   }
 
   PanelWindow {
-    anchors.top: true
-    margins.top: 42
-    implicitWidth: panel.width
-    implicitHeight: panel.height
-    exclusionMode: ExclusionMode.Ignore
-    color: "transparent"
-    WlrLayershell.namespace: "quickshell-blur"
-    WlrLayershell.layer: WlrLayer.Top
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-    visible: (root.open || root.closePending) && root.blurReady
-
-    Rectangle {
-      anchors.fill: parent
-      color: Theme.bg
-    }
-  }
-
-  PanelWindow {
     id: menuWindow
     anchors.top: true
     anchors.bottom: true
     anchors.left: true
     anchors.right: true
-    margins.top: 30
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
-    WlrLayershell.namespace: "quickshell-backdrop"
+    WlrLayershell.namespace: "quickshell-modal"
+    BackgroundEffect.blurRegion: Region { item: panel.anchors.topMargin >= 30 ? panel : null }
+    mask: Region { item: panel }
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     visible: root.open || root.closePending
-
-    MouseArea {
-      anchors.fill: parent
-      onClicked: root.requestClose()
-    }
 
     Rectangle {
       id: panel
       anchors.horizontalCenter: parent.horizontalCenter
       anchors.top: parent.top
-      anchors.topMargin: root.open ? 12 : -220
-      width: 6 * root.tile + 5 * root.tileSpacing + 32
+      anchors.topMargin: root.open ? 30 : -220
+      width: root.entries.length * root.tile + Math.max(0, root.entries.length - 1) * root.tileSpacing + 32
       height: root.tile + 32
-      color: "transparent"
-      Rectangle {
-        anchors.fill: parent
-        color: Theme.bg
-        opacity: root.blurReady ? 0 : 1
-      }
+      color: Theme.bg
+      opacity: (panel.anchors.topMargin + 220) / 250
       border.color: Theme.fg
       border.width: 1
-      Behavior on anchors.topMargin { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+      Behavior on anchors.topMargin { NumberAnimation { duration: 170; easing.type: Easing.OutExpo } }
+      Behavior on width { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
       focus: true
 
       Keys.priority: Keys.BeforeItem
