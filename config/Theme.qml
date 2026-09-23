@@ -22,7 +22,7 @@ Singleton {
   readonly property int animDefault: 140
   readonly property int animSlow: 200
   readonly property int themeTransition: 600
-  readonly property real surfaceAlpha: TransparencyState.transparent ? 0.85 : 1.0
+  readonly property real surfaceAlpha: TransparencyState.transparent ? 1.0 - TransparencyState.amount : 1.0
   readonly property int easingOut: Easing.OutCubic
   readonly property int easingIn: Easing.InCubic
   readonly property int easingDefault: Easing.OutCubic
@@ -48,7 +48,7 @@ Singleton {
   property color muted3: DynamicTheme.enabled ? DynamicTheme.muted3 : "#333333"
   Behavior on muted3 { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
   readonly property color hover: "#33ffffff"
-  readonly property color match: "#cb4b16"
+  readonly property color match: DynamicTheme.enabled ? DynamicTheme.satRole("tertiary", "#cb4b16", 0.5) : "#cb4b16"
   readonly property color onSelect: "#586e75"
   readonly property color error: "#ff5555"
   property color lockBgBase: (TransparencyState.transparent && DynamicTheme.enabled) ? DynamicTheme.bg : "#000000"
@@ -58,5 +58,10 @@ Singleton {
     id: materialLoader
     source: "fonts/material-icons.ttf"
   }
+  FontLoader {
+    id: outlinedLoader
+    source: "fonts/material-icons-outlined.otf"
+  }
   readonly property string materialFontFamily: materialLoader.name || "Material Icons"
+  readonly property string outlinedFontFamily: outlinedLoader.name || "Material Icons Outlined"
 }

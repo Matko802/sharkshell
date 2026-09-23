@@ -8,7 +8,7 @@ Scope {
 
   property string mode: "bars"
   property int bars: 48
-  readonly property var modes: ["bars", "wave"]
+  readonly property var modes: ["bars", "wave", "oscilloscope"]
   readonly property var barOptions: [24, 32, 48, 64]
   readonly property string cacheDir: Quickshell.env("HOME") + "/.cache/sharkshell"
 
@@ -22,6 +22,7 @@ Scope {
   }
   function modeLabel() {
     if (root.mode === "wave") return "Wave"
+    if (root.mode === "oscilloscope") return "Oscilloscope"
     return "Bars"
   }
 

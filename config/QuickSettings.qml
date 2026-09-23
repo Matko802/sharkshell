@@ -251,6 +251,16 @@ ColumnLayout {
     }
   }
 
+  Timer {
+    id: connAnim
+    running: Network.connecting !== ""
+    interval: 250
+    repeat: true
+    property int step: 0
+    onRunningChanged: if (running) step = 0
+    onTriggered: step = (step + 1) % 5
+  }
+
   ColumnLayout {
     id: netExpCol
     Layout.fillWidth: true
@@ -397,6 +407,8 @@ ColumnLayout {
           delegate: RowLayout {
             required property var modelData
             readonly property bool isActive: modelData.active || modelData.ssid === Network.activeSsid
+            readonly property bool isConnecting: Network.connecting === modelData.ssid
+            readonly property bool needsPw: modelData.secure && (Network.knownSsids.indexOf(modelData.ssid) < 0 || modelData.ssid === Network.failedSsid)
             Layout.fillWidth: true
             spacing: 8
             height: 20
@@ -405,14 +417,14 @@ ColumnLayout {
               Layout.preferredHeight: 13
               QIcon {
                 anchors.centerIn: parent
-                name: Network.sigIcon(modelData.sig)
+                name: isConnecting ? Network.sigIcon(connAnim.step * 25) : Network.sigIcon(modelData.sig)
                 size: 13
-                color: isActive ? Theme.fg : Theme.muted2
+                color: (isActive || isConnecting) ? Theme.fg : Theme.muted2
               }
             }
             Text {
               text: modelData.ssid
-              color: isActive ? Theme.fg : Theme.muted2
+              color: (isActive || isConnecting) ? Theme.fg : Theme.muted2
               font.pixelSize: 11
               elide: Text.ElideRight
               Layout.fillWidth: true
@@ -420,10 +432,10 @@ ColumnLayout {
             Item {
               Layout.preferredWidth: 12
               Layout.preferredHeight: 12
-              visible: isActive || modelData.secure
+              visible: isActive || needsPw
               QIcon {
                 anchors.centerIn: parent
-                name: isActive ? "check" : (modelData.secure ? "wifi-lock" : "")
+                name: isActive ? "check" : (needsPw ? "wifi-lock" : "")
                 size: 12
                 color: isActive ? Theme.fg : Theme.muted2
               }
@@ -434,7 +446,7 @@ ColumnLayout {
               onClicked: {
                 if (Network.connecting !== "" || isActive)
                   return
-                if (modelData.secure) {
+                if (needsPw) {
                   root.pwFor = modelData.ssid
                   pwInput.text = ""
                 } else {

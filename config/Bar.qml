@@ -9,7 +9,11 @@ Item {
 
   property bool rightOnly: false
   property bool menuOpen: false
+  property bool qsHover: false
+  readonly property real qsBtnWidth: quickSettingsBtn.implicitWidth
   signal menuRequested(string section)
+
+  onMenuOpenChanged: root.qsHover = false
 
   RowLayout {
     visible: !root.rightOnly
@@ -107,8 +111,8 @@ Item {
       implicitWidth: quickSettingsRow.implicitWidth + 14
       Behavior on implicitWidth { NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut } }
       radius: Theme.rounding
-      color: (quickSettingsMa.containsMouse && !root.menuOpen) ? Theme.fg : "transparent"
-      border.color: (quickSettingsMa.containsMouse && !root.menuOpen) ? Theme.outline : "transparent"
+      color: (root.qsHover && !root.menuOpen) ? Theme.fg : "transparent"
+      border.color: (root.qsHover && !root.menuOpen) ? Theme.outline : "transparent"
       border.width: 1
 
       Battery { id: bat }
@@ -118,12 +122,12 @@ Item {
         anchors.centerIn: parent
         spacing: Theme.spacingS
 
-        Item { Layout.preferredWidth: 18; Layout.preferredHeight: 18; QIcon { anchors.centerIn: parent; name: Audio.icon; size: 18; color: (quickSettingsMa.containsMouse && !root.menuOpen) ? Theme.bg : Theme.fg } }
-        Item { Layout.preferredWidth: 18; Layout.preferredHeight: 18; QIcon { anchors.centerIn: parent; name: Network.online ? Network.icon : "wifi-off"; size: 18; color: (quickSettingsMa.containsMouse && !root.menuOpen) ? Theme.bg : (Network.online ? Theme.fg : Theme.muted2) } }
+        Item { Layout.preferredWidth: 18; Layout.preferredHeight: 18; QIcon { anchors.centerIn: parent; name: Audio.icon; size: 18; color: (root.qsHover && !root.menuOpen) ? Theme.bg : Theme.fg } }
+        Item { Layout.preferredWidth: 18; Layout.preferredHeight: 18; QIcon { anchors.centerIn: parent; name: Network.online ? Network.icon : "wifi-off"; size: 18; color: (root.qsHover && !root.menuOpen) ? Theme.bg : (Network.online ? Theme.fg : Theme.muted2) } }
         Item {
           Layout.preferredWidth: 18; Layout.preferredHeight: 18
           visible: bat.batName !== ""
-          QIcon { anchors.centerIn: parent; name: bat.batName; size: 18; color: (quickSettingsMa.containsMouse && !root.menuOpen) ? Theme.bg : Theme.fg }
+          QIcon { anchors.centerIn: parent; name: bat.batName; size: 18; color: (root.qsHover && !root.menuOpen) ? Theme.bg : Theme.fg }
         }
       }
 
@@ -132,6 +136,8 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
+        onEntered: root.qsHover = true
+        onExited: root.qsHover = false
         onClicked: {
           if (root.rightOnly)
             root.menuRequested("quick")

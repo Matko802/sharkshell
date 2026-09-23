@@ -23,15 +23,19 @@ Scope {
     return DynColor.validOr(root.roles[name], fallback)
   }
 
+  function satRole(name, fallback, amt) {
+    return DynColor.saturate(root.role(name, fallback), amt)
+  }
+
   readonly property color dynBg: root.role("background", "#111111")
-  readonly property color dynBgAlt: DynColor.mix(root.dynBg, root.role("primary", "#ffffff"), 0.18)
+  readonly property color dynBgAlt: DynColor.saturate(DynColor.mix(root.dynBg, root.role("secondary", "#ffffff"), 0.16), 0.3)
   readonly property color dynFg: root.role("on_surface", "#ffffff")
-  readonly property color dynOutline: root.role("primary", "#ffffff")
-  readonly property color dynBorder: DynColor.mix(root.dynBg, root.role("primary", "#ffffff"), 0.28)
-  readonly property color dynBorderStrong: DynColor.mix(root.dynBg, root.role("primary", "#ffffff"), 0.45)
+  readonly property color dynOutline: DynColor.saturate(root.role("primary", "#ffffff"), 0.5)
+  readonly property color dynBorder: DynColor.saturate(DynColor.mix(root.dynBg, root.role("secondary", "#ffffff"), 0.30), 0.8)
+  readonly property color dynBorderStrong: DynColor.saturate(DynColor.mix(root.dynBg, root.role("secondary", "#ffffff"), 0.48), 0.8)
   readonly property color dynMuted: root.role("on_surface_variant", "#888888")
-  readonly property color dynMuted2: DynColor.mix(root.role("on_surface_variant", "#888888"), root.dynBg, 0.45)
-  readonly property color dynMuted3: DynColor.mix(root.role("on_surface_variant", "#888888"), root.dynBg, 0.70)
+  readonly property color dynMuted2: DynColor.saturate(DynColor.mix(DynColor.mix(root.role("on_surface_variant", "#888888"), root.role("tertiary", "#888888"), 0.35), root.dynBg, 0.30), 1.0)
+  readonly property color dynMuted3: DynColor.saturate(DynColor.mix(DynColor.mix(root.role("on_surface_variant", "#888888"), root.role("tertiary", "#888888"), 0.35), root.dynBg, 0.60), 1.0)
 
   readonly property color bg: root.dynBg
   readonly property color bgAlt: root.dynBgAlt

@@ -8,7 +8,8 @@ Rectangle {
   property bool swallowClicks: false
   property bool open: false
   readonly property real contentHeight: qs.implicitHeight
-  readonly property bool sliding: slideIn.running || slideOut.running
+  property real slideProg: root.open ? 1 : 0
+  Behavior on slideProg { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
 
   signal activity()
 
@@ -16,19 +17,7 @@ Rectangle {
   border.color: Theme.outline
   border.width: 1
 
-  transform: Translate { id: slide }
-
-  NumberAnimation { id: slideIn; target: slide; property: "y"; to: 0; duration: 250; easing.type: Easing.OutCubic }
-  NumberAnimation { id: slideOut; target: slide; property: "y"; to: -root.height - 8; duration: 250; easing.type: Easing.InCubic }
-
-  onOpenChanged: {
-    if (root.open) {
-      slide.y = -root.height - 8
-      slideIn.restart()
-    } else {
-      slideOut.restart()
-    }
-  }
+  transform: Translate { y: -(1 - root.slideProg) * (root.height + 8) }
 
   MouseArea {
     anchors.fill: parent

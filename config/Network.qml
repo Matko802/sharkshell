@@ -20,6 +20,8 @@ Scope {
   property string lastError: ""
   property bool expanded: false
   property string activeSsid: ""
+  property var knownSsids: []
+  property string failedSsid: ""
 
   readonly property bool online: kind === "eth" || kind === "wifi"
   readonly property string icon: {
@@ -83,12 +85,32 @@ Scope {
     if (scanProc.running)
       scanProc.running = false
     scanProc.running = true
+    if (knownProc.running)
+      knownProc.running = false
+    knownProc.running = true
+  }
+
+  Process {
+    id: knownProc
+    command: ["nmcli", "-t", "-f", "NAME,TYPE", "connection", "show"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        const out = []
+        for (const line of text.split("\n")) {
+          if (!line.endsWith(":802-11-wireless"))
+            continue
+          out.push(line.slice(0, -16).replace(/\\:/g, ":"))
+        }
+        root.knownSsids = out
+      }
+    }
   }
 
   function connectTo(ssid, password) {
     if (root.connecting !== "")
       return
     root.lastError = ""
+    root.failedSsid = ""
     root.connecting = ssid
     connProc.command = password ? ["nmcli", "device", "wifi", "connect", ssid, "password", password] : ["nmcli", "device", "wifi", "connect", ssid]
     connProc.running = true
@@ -99,8 +121,10 @@ Scope {
     root.connecting = ""
     if (!ok)
       root.lastError = "failed to connect to " + was
-    else
+    else {
       root.activeSsid = was
+      root.failedSsid = ""
+    }
     errTimer.restart()
     scanTimer.restart()
   }

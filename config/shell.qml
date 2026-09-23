@@ -26,31 +26,42 @@ ShellRoot {
     }
   }
 
-  function applyFs(d) {
-    if (!d || !d.layout) { root.fullscreenActive = false; return }
-    const ws = d.layout.window_size
-    const ts = d.layout.tile_size
-    const ow = Quickshell.screens.length > 0 ? Math.round(Quickshell.screens[0].width) : 1920
-    const oh = Quickshell.screens.length > 0 ? Math.round(Quickshell.screens[0].height) : 1080
-    const wFs = ws && Math.round(ws[0]) === ow && Math.round(ws[1]) === oh
-    const tFs = ts && Math.round(ts[0]) === ow && Math.round(ts[1]) === oh
-    root.fullscreenActive = wFs || tFs
+  property int focusedWindowId: -1
+  property int focusedWorkspaceId: -1
+  property var windowLayouts: ({})
+
+  function isFsLayout(l) {
+    if (!l || !l.tile_size) return false
+    for (let i = 0; i < Quickshell.screens.length; ++i) {
+      const s = Quickshell.screens[i]
+      if (Math.abs(l.tile_size[0] - s.width) <= 2 && Math.abs(l.tile_size[1] - s.height) <= 2) return true
+    }
+    return false
+  }
+  function refreshFs() {
+    root.fullscreenActive = isFsLayout(root.windowLayouts[root.focusedWindowId])
+  }
+  function pollFs() {
+    if (!niriFsPoll.running) niriFsPoll.running = true
   }
   Process {
     id: niriFsPoll
     running: false
-    command: ["/run/current-system/sw/bin/niri", "msg", "-j", "focused-window"]
+    command: ["/run/current-system/sw/bin/niri", "msg", "-j", "windows"]
     stdout: StdioCollector {
       onStreamFinished: {
-        try { applyFs(JSON.parse(text.trim())) } catch (e) {
-          const ow = Quickshell.screens.length > 0 ? Math.round(Quickshell.screens[0].width) : 1920
-          const oh = Quickshell.screens.length > 0 ? Math.round(Quickshell.screens[0].height) : 1080
-          const pat1 = "[" + ow + "," + oh + "]"
-          const pat2 = "[" + ow + ".0," + oh + ".0]"
-          const pat3 = "[" + ow + ", " + oh + "]"
-          const pat4 = "[" + ow + ".0, " + oh + ".0]"
-          root.fullscreenActive = text.includes(pat1) || text.includes(pat2) || text.includes(pat3) || text.includes(pat4)
-        }
+        try {
+          const wins = JSON.parse(text.trim())
+          const layouts = {}
+          let fid = -1
+          for (const w of wins) {
+            if (w.layout) layouts[w.id] = w.layout
+            if (w.is_focused) fid = w.id
+          }
+          root.windowLayouts = layouts
+          if (fid >= 0) root.focusedWindowId = fid
+          refreshFs()
+        } catch (e) {}
       }
     }
   }
@@ -60,19 +71,68 @@ ShellRoot {
     command: ["sh", "-c", "command -v niri >/dev/null 2>&1 && stdbuf -oL niri msg -j event-stream 2>/dev/null || sleep 999999"]
     stdout: SplitParser {
       onRead: data => {
-        if (data.includes("Window") || data.includes("Workspace") || data.includes("Overview") || data.includes("Fullscreen")) {
-          if (!niriFsPoll.running) niriFsPoll.running = true
-          try {
-            const j = JSON.parse(data)
-            const w = j.WindowOpenedOrChanged?.window || j.WindowFocusChanged || null
-            const wins = j.WindowsChanged?.windows
-            if (wins) {
-              const f = wins.find(x => x.is_focused)
-              if (f) applyFs(f)
-            } else if (j.WindowOpenedOrChanged?.window?.is_focused) {
-              applyFs(j.WindowOpenedOrChanged.window)
-            }
-          } catch (e) {}
+        let j = null
+        try { j = JSON.parse(data) } catch (e) { return }
+        if (j.WindowsChanged) {
+          const layouts = {}
+          let fid = -1
+          for (const w of j.WindowsChanged.windows) {
+            if (w.layout) layouts[w.id] = w.layout
+            if (w.is_focused) fid = w.id
+          }
+          root.windowLayouts = layouts
+          if (fid >= 0) root.focusedWindowId = fid
+          refreshFs()
+          return
+        }
+        if (j.WindowOpenedOrChanged && j.WindowOpenedOrChanged.window) {
+          const w = j.WindowOpenedOrChanged.window
+          if (w.layout) root.windowLayouts[w.id] = w.layout
+          if (w.is_focused) {
+            root.focusedWindowId = w.id
+            refreshFs()
+          }
+          return
+        }
+        if (j.WindowFocusChanged !== undefined) {
+          const id = j.WindowFocusChanged ? j.WindowFocusChanged.id : -1
+          root.focusedWindowId = (id == null ? -1 : id)
+          if (root.windowLayouts[root.focusedWindowId]) refreshFs()
+          else if (root.focusedWindowId >= 0) pollFs()
+          else refreshFs()
+          return
+        }
+        if (j.WindowLayoutsChanged && j.WindowLayoutsChanged.changes) {
+          let hit = false
+          for (const c of j.WindowLayoutsChanged.changes) {
+            root.windowLayouts[c[0]] = c[1]
+            if (c[0] === root.focusedWindowId) hit = true
+          }
+          if (hit) refreshFs()
+          return
+        }
+        if (j.WindowClosed !== undefined) {
+          const cid = (typeof j.WindowClosed === "number") ? j.WindowClosed : j.WindowClosed.id
+          if (cid !== undefined) {
+            delete root.windowLayouts[cid]
+            if (cid === root.focusedWindowId) pollFs()
+          }
+          return
+        }
+        if (j.WorkspacesChanged && j.WorkspacesChanged.workspaces) {
+          for (const ws of j.WorkspacesChanged.workspaces) {
+            if (ws.is_focused) root.focusedWorkspaceId = ws.id
+          }
+          return
+        }
+        if (j.WorkspaceActiveWindowChanged) {
+          const e = j.WorkspaceActiveWindowChanged
+          if (e.workspace_id === root.focusedWorkspaceId && e.active_window_id != null) {
+            root.focusedWindowId = e.active_window_id
+            if (root.windowLayouts[e.active_window_id]) refreshFs()
+            else pollFs()
+          }
+          return
         }
       }
     }
@@ -96,7 +156,7 @@ ShellRoot {
         readonly property bool barVisible: root.barShown || clockMenu.shown || settingsMenu.shown || controlCard.shown
         visible: barVisible
         mask: Region { item: root.barShown ? barBg : null }
-        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.layer: WlrLayer.Top
         Rectangle {
           id: barBg
           anchors.fill: parent
@@ -157,7 +217,7 @@ ShellRoot {
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     WlrLayershell.namespace: "quickshell-backdrop"
-    WlrLayershell.layer: WlrLayer.Top
+    WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     visible: (launcher.open || launcher.closePending)
       || (emojiPicker.open || emojiPicker.closePending)

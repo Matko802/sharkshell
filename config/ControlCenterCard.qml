@@ -16,10 +16,10 @@ PanelWindow {
   exclusionMode: ExclusionMode.Ignore
   color: "transparent"
   WlrLayershell.namespace: "quickshell-modal"
-  BackgroundEffect.blurRegion: Region { item: !card.sliding ? card : null }
+  BackgroundEffect.blurRegion: Region { item: card.slideProg >= 1 ? card : null }
   WlrLayershell.layer: WlrLayer.Overlay
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
-  readonly property bool shown: card.open || card.sliding
+  readonly property bool shown: card.slideProg > 0
   screen: ccCard.targetScreen
   visible: ccCard.shown && (!ControlState.screen || ControlState.screen === ccCard.targetScreen)
   implicitHeight: Math.min(card.contentHeight + 32, maxCardHeight)

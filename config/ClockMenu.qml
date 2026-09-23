@@ -46,6 +46,22 @@ PanelWindow {
       }
     }
   }
+  property var _wasPlaying: []
+  Timer {
+    interval: 1000
+    running: true
+    repeat: true
+    onTriggered: {
+      const vals = Mpris.players.values || []
+      const prev = root._wasPlaying
+      let latest = -1
+      for (let i = 0; i < vals.length; i++) {
+        if (vals[i] && vals[i].isPlaying && prev[i] !== true) latest = i
+      }
+      root._wasPlaying = vals.map(v => !!(v && v.isPlaying))
+      if (latest >= 0) root.mediaIdx = latest
+    }
+  }
 
   property var sysVals: ["--", "--", "--", "--"]
   property var cpuHist: []
@@ -751,8 +767,8 @@ PanelWindow {
                           spacing: 2
                           Text {
                             Layout.fillWidth: true
-                            Layout.maximumHeight: 30
-                            clip: true
+                            maximumLineCount: 2
+                            elide: Text.ElideRight
                             text: mediaSingle.cur ? (mediaSingle.cur.trackTitle || "Unknown") : "no songs playing"
                             color: Theme.fg
                             font.family: Theme.fontFamily
@@ -786,7 +802,7 @@ PanelWindow {
                           Process {
                             id: visProc
                             running: root.shown && root.activeTab === 2
-                            command: ["sh", "-c", "V=\"$HOME/.cache/sharkshell/cava.conf\"; L=/mnt/ssd/My-Files/Projects/sharkvis/target/release/sharkvis; M=" + (VisualizerState.mode === "wave" ? "wave" : "bars") + "; B=" + VisualizerState.bars + "; if [ -x \"$L\" ]; then exec \"$L\" --raw --raw-mode \"$M\" --bars \"$B\" --fps 30; elif command -v sharkvis >/dev/null 2>&1; then exec sharkvis --raw --raw-mode \"$M\" --bars \"$B\" --fps 30; elif command -v cava >/dev/null 2>&1; then exec cava -p \"$V\"; else exit 0; fi"]
+                            command: ["sh", "-c", "V=\"$HOME/.cache/sharkshell/cava.conf\"; L=/mnt/ssd/My-Files/Projects/sharkvis/target/release/sharkvis; M=" + VisualizerState.mode + "; B=" + VisualizerState.bars + "; if [ -x \"$L\" ]; then exec \"$L\" --raw --raw-mode \"$M\" --bars \"$B\" --fps 30; elif command -v sharkvis >/dev/null 2>&1; then exec sharkvis --raw --raw-mode \"$M\" --bars \"$B\" --fps 30; elif command -v cava >/dev/null 2>&1; then exec cava -p \"$V\"; else exit 0; fi"]
                             stdout: SplitParser {
                               onRead: data => {
                                 const parts = String(data).split(";")
@@ -826,19 +842,16 @@ PanelWindow {
                             id: waveCanvas
                             anchors.fill: parent
                             anchors.margins: 8
-                            visible: VisualizerState.mode === "wave"
+                            visible: VisualizerState.mode !== "bars"
                             property var pts: mediaSingle.levels
                             onPtsChanged: requestPaint()
                             onVisibleChanged: if (visible) requestPaint()
-                            onPaint: {
-                              var ctx = getContext("2d")
-                              ctx.clearRect(0, 0, width, height)
-                              var n = pts ? pts.length : 0
-                              if (n < 2 || width <= 0 || height <= 0) return
+                            function strokePath(ctx, w, a) {
                               ctx.strokeStyle = Theme.fg
-                              ctx.lineWidth = 2
-                              ctx.lineJoin = "round"
+                              ctx.lineWidth = w
+                              ctx.globalAlpha = a
                               ctx.beginPath()
+                              const n = pts ? pts.length : 0
                               for (var i = 0; i < n; i++) {
                                 var v = Util.clampPct(pts[i] || 0)
                                 var x = (i / (n - 1)) * width
@@ -847,6 +860,37 @@ PanelWindow {
                                 else ctx.lineTo(x, y)
                               }
                               ctx.stroke()
+                              ctx.globalAlpha = 1
+                            }
+                            function scopePath(ctx, w, a) {
+                              ctx.strokeStyle = Theme.fg
+                              ctx.lineWidth = w
+                              ctx.globalAlpha = a
+                              ctx.beginPath()
+                              const n = Math.floor((pts ? pts.length : 0) / 2)
+                              for (var i = 0; i < n; i++) {
+                                var x = Util.clampPct(pts[2 * i] || 0) / 100 * width
+                                var y = height - Util.clampPct(pts[2 * i + 1] || 0) / 100 * height
+                                if (i === 0) ctx.moveTo(x, y)
+                                else ctx.lineTo(x, y)
+                              }
+                              ctx.stroke()
+                              ctx.globalAlpha = 1
+                            }
+                            onPaint: {
+                              var ctx = getContext("2d")
+                              var n = pts ? pts.length : 0
+                              if (width <= 0 || height <= 0) return
+                              ctx.lineJoin = "round"
+                              if (VisualizerState.mode === "oscilloscope") {
+                                if (n < 4) return
+                                ctx.clearRect(0, 0, width, height)
+                                scopePath(ctx, 2, 1)
+                              } else {
+                                if (n < 2) return
+                                ctx.clearRect(0, 0, width, height)
+                                strokePath(ctx, 2, 1)
+                              }
                             }
                           }
                           Connections {
@@ -1047,13 +1091,13 @@ PanelWindow {
                         }
                       }
 
-                      Item {
-                        id: msRight
-                        visible: true
-                        Layout.fillHeight: true
-                        Layout.preferredWidth: swipeContainer.width * 0.46
-                        Layout.fillWidth: false
-                        clip: true
+                        Item {
+                          id: msRight
+                          visible: true
+                          Layout.fillHeight: true
+                          Layout.preferredWidth: msRight.height
+                          Layout.fillWidth: false
+                          clip: true
                         Image {
                           id: artImg
                           anchors.fill: parent
@@ -1077,16 +1121,18 @@ PanelWindow {
                             const dpr = Screen.devicePixelRatio ?? 1
                             return Qt.size(Math.max(1, Math.ceil(width * dpr)), Math.max(1, Math.ceil(height * dpr)))
                           }
-                          visible: mediaSingle.displayArt !== ""
+                          visible: mediaSingle.displayArt !== "" && artImg.status !== Image.Error
                         }
-                        AnimatedImage {
+                        Rectangle {
                           anchors.fill: parent
-                          source: "file:///mnt/ssd/My-Files/Pictures/animated%20shark.gif"
-                          fillMode: Image.PreserveAspectCrop
-                          playing: true
-                          cache: true
-                          smooth: true
-                          visible: mediaSingle.displayArt === ""
+                          color: Theme.bgAlt
+                          visible: !artImg.visible
+                          QIcon {
+                            anchors.centerIn: parent
+                            name: "music"
+                            size: 48
+                            color: Theme.muted2
+                          }
                         }
                         Item {
                           id: tabContainer

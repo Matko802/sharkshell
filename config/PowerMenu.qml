@@ -144,7 +144,7 @@ Scope {
       height: root.tile + 32
       color: Theme.bg
       opacity: (panel.anchors.topMargin + 220) / 250
-      border.color: Theme.fg
+      border.color: Theme.outline
       border.width: 1
       Behavior on anchors.topMargin { NumberAnimation { duration: 170; easing.type: Easing.OutExpo } }
       Behavior on width { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }

@@ -1,9 +1,5 @@
 [config]
 
-# Sharkshell dynamic theme templates.
-# input_path @TEMPLATE_DIR@ is substituted with the Nix store path at build time.
-# Rendered on every wallpaper change by: matugen image <wallpaper> --mode dark
-
 [templates.sharkshell-kitty]
 input_path = "@TEMPLATE_DIR@/kitty.conf"
 output_path = "/home/matko/.cache/sharkshell/kitty-dynamic.conf"

@@ -1,4 +1,3 @@
-.pragma library
 
 const CODEPOINTS = {
   "arrow-up": 0xE5D8,
@@ -15,6 +14,7 @@ const CODEPOINTS = {
   "chevron-left": 0xE5CB,
   "chevron-right": 0xE5CC,
   "lock": 0xE897,
+  "layers": 0xE53B,
   "settings": 0xE8B8,
   "preferences-system": 0xE8B8,
   "preferences-desktop-theme": 0xE40A,
@@ -41,6 +41,7 @@ const CODEPOINTS = {
   "audio-volume-medium": 0xE04D,
   "audio-volume-high": 0xE050,
   "mic": 0xE029,
+  "music": 0xE063,
   "mic-muted": 0xE02B,
   "wifi-none": 0xE4CA,
   "wifi-weak": 0xE4CA,
@@ -93,4 +94,12 @@ function resolve(name) {
 
 function has(name) {
   return !!CODEPOINTS[String(name)];
+}
+
+const OUTLINED = {
+  "coffee-off": true,
+};
+
+function isOutlined(name) {
+  return !!OUTLINED[String(name)];
 }

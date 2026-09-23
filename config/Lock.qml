@@ -147,7 +147,7 @@ Scope {
           layer.smooth: true
           layer.textureSize: Qt.size(Math.max(1, Math.round(lockBg.width / 2)), Math.max(1, Math.round(lockBg.height / 2)))
           layer.effect: GaussianBlur {
-            radius: surf.contentShown ? BlurState.radius : 0
+            radius: surf.contentShown ? BlurState.radius * 2 : 0
             cached: true
             Behavior on radius { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
           }
@@ -216,9 +216,20 @@ Scope {
 
         ShaderEffect {
           anchors.fill: parent
-          visible: surf.lockWallpaper !== ""
-          opacity: 0.04
+          opacity: 0.09
           fragmentShader: "varying highp vec2 qt_TexCoord0; float hash(highp vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); } void main() { float g = hash(qt_TexCoord0 * vec2(1920.0, 1080.0)); gl_FragColor = vec4(vec3(g), 1.0); }"
+        }
+
+        MouseArea {
+          anchors.fill: parent
+          hoverEnabled: true
+          cursorShape: surf.contentShown ? Qt.ArrowCursor : Qt.BlankCursor
+          onPositionChanged: {
+            if (graceActive)
+              LockState.locked = false
+            else
+              surf.wake()
+          }
         }
 
         Rectangle {
@@ -386,13 +397,36 @@ Scope {
           Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
 
           Bar {
+            id: lockBar
             rightOnly: true
             menuOpen: surf.menuOpen
             onMenuRequested: section => surf.openMenu(section)
           }
         }
 
+        MouseArea {
+          anchors.fill: parent
+          hoverEnabled: false
+          onPressed: function(mouse) {
+            if (graceActive) {
+              LockState.locked = false
+            } else {
+              if (surf.menuOpen) {
+                const onBtn = mouse.y <= 30 && mouse.x >= surf.width - lockBar.qsBtnWidth
+                if (!onBtn) {
+                  const my = menuClip.y + lockMenu.y
+                  if (mouse.x < lockMenu.x || mouse.y < my || mouse.y > my + lockMenu.height)
+                    surf.menuOpen = false
+                }
+              }
+              surf.wake()
+              mouse.accepted = false
+            }
+          }
+        }
+
         Item {
+          id: menuClip
           anchors.fill: parent
           anchors.topMargin: 30
           clip: true
@@ -405,7 +439,7 @@ Scope {
             anchors.rightMargin: 8
             width: 356
             height: Math.min(lockMenu.contentHeight + 28, 500)
-            visible: lockMenu.open || lockMenu.sliding
+            visible: lockMenu.slideProg > 0
             active: surf.menuOpen && surf.contentShown
             open: surf.menuOpen && surf.contentShown
             onActivity: surf.wake()
@@ -468,25 +502,6 @@ Scope {
             LockState.locked = false
           } else {
             surf.wake()
-          }
-        }
-
-        MouseArea {
-          anchors.fill: parent
-          hoverEnabled: true
-          onPositionChanged: {
-            if (graceActive)
-              LockState.locked = false
-            else
-              surf.wake()
-          }
-          onPressed: function(mouse) {
-            if (graceActive) {
-              LockState.locked = false
-            } else {
-              surf.wake()
-              mouse.accepted = false
-            }
           }
         }
       }

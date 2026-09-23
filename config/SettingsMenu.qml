@@ -36,8 +36,16 @@ PanelWindow {
     { name: "Theme", glyph: "wallpaper" },
     { name: "Sound", glyph: "audio-volume-high" },
     { name: "User", glyph: "user-circle" },
-    { name: "Visual", glyph: "equalizer" }
+    { name: "Visual", glyph: "equalizer" },
+    { name: "Power", glyph: "suspend" }
   ]
+
+  function fmtDur(s) {
+    if (s <= 0) return "off"
+    if (s < 60) return s + "s"
+    const m = Math.round(s / 6) / 10
+    return (m % 1 === 0 ? String(m) : m.toFixed(1)) + "m"
+  }
 
   readonly property var themeItems: [
     { name: "Wallpaper", glyph: "wallpaper", action: "wallpaper", hint: "Set desktop wallpaper" }
@@ -67,7 +75,7 @@ PanelWindow {
   }
 
   readonly property var visualItems: [{ kind: "mode" }, { kind: "bars" }]
-  readonly property var currentItems: root.activeTab === 0 ? root.themeItems : (root.activeTab === 3 ? root.visualItems : root.audioModel)
+  readonly property var currentItems: root.activeTab === 0 ? root.themeItems : (root.activeTab === 3 ? root.visualItems : (root.activeTab === 4 ? [] : root.audioModel))
 
   function activate(i) {
     const item = root.currentItems[i]
@@ -315,56 +323,28 @@ PanelWindow {
                   }
                 }
 
-                Rectangle {
-                  Layout.fillWidth: true
-                  Layout.preferredHeight: 32
-                  color: root.hoverIdx === -9 ? Theme.bgAlt : "transparent"
-                  border.color: root.hoverIdx === -9 ? Theme.borderStrong : Theme.border
-                  border.width: 1
-                  MouseArea {
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onEntered: root.hoverIdx = -9
-                    onExited: { if (root.hoverIdx === -9) root.hoverIdx = -1 }
-                    onClicked: TransparencyState.toggle()
+                SettingSlider {
+                  label: "Blur"
+                  icon: "opacity"
+                  value: BlurState.radius / BlurState.max
+                  text: String(Math.round(BlurState.radius))
+                  onUserSet: v => BlurState.setRadius(v * BlurState.max)
+                  onReset: BlurState.reset()
+                }
+
+                SettingSlider {
+                  label: "Transparency"
+                  icon: "layers"
+                  value: TransparencyState.amount / TransparencyState.amountMax
+                  text: Math.round(TransparencyState.amount * 100) + "%"
+                  onUserSet: v => {
+                    const a = v * TransparencyState.amountMax
+                    TransparencyState.setAmount(a)
+                    TransparencyState.setTransparent(a > 0)
                   }
-                  RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 56
-                    spacing: 10
-                    Item {
-                      Layout.preferredWidth: 20
-                      Layout.preferredHeight: 20
-                      QIcon {
-                        anchors.centerIn: parent
-                        name: "opacity"
-                        size: 18
-                        color: Theme.fg
-                      }
-                    }
-                    ColumnLayout {
-                      Layout.fillWidth: true
-                      Layout.fillHeight: true
-                      Layout.topMargin: 8
-                      Layout.bottomMargin: 8
-                      spacing: 2
-                      Text {
-                        text: "Transparency"
-                        color: Theme.fg
-                        font.family: root.fontFamily
-                        font.pixelSize: 12
-                        font.weight: Font.DemiBold
-                      }
-                    }
-                  }
-                  CToggle {
-                    anchors.right: parent.right
-                    anchors.rightMargin: 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    checked: TransparencyState.transparent
-                    onToggled: v => TransparencyState.setTransparent(v)
+                  onReset: {
+                    TransparencyState.resetAmount()
+                    TransparencyState.setTransparent(true)
                   }
                 }
 
@@ -627,62 +607,38 @@ PanelWindow {
                     }
                   }
                 }
+              }
 
-                Rectangle {
-                  Layout.fillWidth: true
-                  Layout.preferredHeight: 32
-                  color: "transparent"
-                  border.color: Theme.border
-                  border.width: 1
-                  RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
-                    spacing: 10
-                    Item {
-                      Layout.preferredWidth: 20
-                      Layout.preferredHeight: 20
-                      QIcon {
-                        anchors.centerIn: parent
-                        name: "opacity"
-                        size: 18
-                        color: Theme.fg
-                      }
-                    }
-                    Text {
-                      text: "Blur"
-                      color: Theme.fg
-                      font.family: root.fontFamily
-                      font.pixelSize: 12
-                      font.weight: Font.DemiBold
-                    }
-                    CSlider {
-                      Layout.fillWidth: true
-                      value: BlurState.radius / BlurState.max
-                      onUserSet: v => BlurState.setRadius(v * BlurState.max)
-                    }
-                    Text {
-                      text: String(Math.round(BlurState.radius))
-                      color: Theme.muted
-                      font.family: root.fontFamily
-                      font.pixelSize: 11
-                      Layout.preferredWidth: 20
-                      horizontalAlignment: Text.AlignRight
-                    }
-                    Text {
-                      text: "reset"
-                      color: resetMa.containsMouse ? Theme.fg : Theme.muted
-                      font.family: root.fontFamily
-                      font.pixelSize: 10
-                      MouseArea {
-                        id: resetMa
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: BlurState.reset()
-                      }
-                    }
-                  }
+              ColumnLayout {
+                id: tab4col
+                width: pageFlick.width
+                spacing: 8
+
+                SettingSlider {
+                  label: "Lock"
+                  icon: "lock"
+                  value: IdleManager.lockTimeout / 1800
+                  text: root.fmtDur(IdleManager.lockTimeout)
+                  onUserSet: v => IdleManager.setLockTimeout(v * 1800)
+                  onReset: IdleManager.setLockTimeout(IdleManager.lockDef)
+                }
+
+                SettingSlider {
+                  label: "Monitor"
+                  icon: "device-desktop"
+                  value: IdleManager.screenOffDelay / 1800
+                  text: root.fmtDur(IdleManager.screenOffDelay)
+                  onUserSet: v => IdleManager.setScreenOffDelay(v * 1800)
+                  onReset: IdleManager.setScreenOffDelay(IdleManager.screenOffDef)
+                }
+
+                SettingSlider {
+                  label: "Sleep"
+                  icon: "suspend"
+                  value: IdleManager.suspendTimeout / 3600
+                  text: root.fmtDur(IdleManager.suspendTimeout)
+                  onUserSet: v => IdleManager.setSuspendTimeout(v * 3600)
+                  onReset: IdleManager.setSuspendTimeout(IdleManager.suspendDef)
                 }
               }
             }
