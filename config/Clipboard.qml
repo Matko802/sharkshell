@@ -269,8 +269,8 @@ Scope {
     color: "transparent"
     WlrLayershell.namespace: "quickshell-modal"
     BackgroundEffect.blurRegion: Region {
-      item: card.cardProg >= 1 ? card : null
-      Region { item: card.cardProg >= 1 ? tabsPill : null }
+      item: card
+      Region { item: tabsPill }
     }
     mask: Region {
       item: card
