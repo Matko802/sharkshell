@@ -214,22 +214,13 @@ Scope {
   }
 
   function armBlur() {
-    root.blurReady = false
+    root.blurReady = true
+    blurNudgeTimer.restart()
   }
 
   function disarmBlur() {
     blurNudgeTimer.stop()
     root.blurReady = false
-  }
-
-  Connections {
-    target: card
-    function onCardProgChanged() {
-      if (root.open && !root.closePending && card.cardProg >= 0.999) {
-        root.blurReady = true
-        blurNudgeTimer.restart()
-      }
-    }
   }
 
   function requestClose() {
