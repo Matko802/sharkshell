@@ -199,7 +199,7 @@ Scope {
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     WlrLayershell.namespace: "quickshell-modal"
-    BackgroundEffect.blurRegion: Region { item: card }
+    BackgroundEffect.blurRegion: Region { item: root.open && !root.closePending ? card : null }
     mask: Region { item: card }
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
