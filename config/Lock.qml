@@ -145,9 +145,10 @@ Scope {
 
           layer.enabled: root.blurEnabled
           layer.smooth: true
-          layer.textureSize: Qt.size(Math.max(1, Math.round(lockBg.width / 2)), Math.max(1, Math.round(lockBg.height / 2)))
+          layer.textureSize: Qt.size(Math.max(1, Math.round(lockBg.width)), Math.max(1, Math.round(lockBg.height)))
           layer.effect: GaussianBlur {
-            radius: surf.contentShown ? BlurState.radius * 2 : 0
+            radius: surf.contentShown ? BlurState.radius : 0
+            transparentBorder: true
             cached: true
             Behavior on radius { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
           }
@@ -267,7 +268,7 @@ Scope {
               radius: 48
               clip: true
               color: Theme.bgAlt
-              border.color: Theme.fg
+              border.color: Theme.outline
               border.width: 2
               Image {
                 anchors.fill: parent
@@ -343,7 +344,7 @@ Scope {
 
               background: Rectangle {
                 color: Theme.bg
-                border.color: lockContext.showFailure ? Theme.error : Theme.fg
+                border.color: lockContext.showFailure ? Theme.error : Theme.outline
                 border.width: 1
               }
 

@@ -70,22 +70,4 @@ Text {
     }
   }
 
-  Process {
-    running: true
-    command: ["sh", "-c", "command -v mmsg >/dev/null 2>&1 && stdbuf -oL mmsg watch keyboardlayout 2>/dev/null || sleep 999999"]
-    stdout: SplitParser {
-      onRead: data => {
-        try {
-          const d = JSON.parse(data)
-          const name = String(d.layout || "").toLowerCase()
-          if (name.startsWith("slovak"))
-            langLabel.text = "sk"
-          else if (name.startsWith("english"))
-            langLabel.text = "us"
-          else
-            langLabel.text = name.split(/[\s(]/)[0] || "?"
-        } catch (e) {}
-      }
-    }
-  }
 }

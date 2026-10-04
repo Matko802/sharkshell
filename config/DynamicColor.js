@@ -105,3 +105,229 @@ function saturate(hex, amt) {
   hsl.s = clamp01(hsl.s * (1 + amt));
   return fromHsl(hsl.h, hsl.s, hsl.l);
 }
+
+function luminance(hex) {
+  var c = toRgb(hex);
+  if (!c) return 0;
+  function lin(v) {
+    v = v / 255;
+    return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  }
+  return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+}
+
+function contrastRatio(a, b) {
+  var la = luminance(a), lb = luminance(b);
+  var hi = Math.max(la, lb), lo = Math.min(la, lb);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+function setLightness(hex, targetL) {
+  var hsl = toHsl(hex);
+  if (!hsl) return String(hex);
+  targetL = clamp01(targetL);
+  return fromHsl(hsl.h, hsl.s, targetL);
+}
+
+function lightnessOf(hex) {
+  var hsl = toHsl(hex);
+  return hsl ? hsl.l : 0;
+}
+
+function saturationOf(hex) {
+  var hsl = toHsl(hex);
+  return hsl ? hsl.s : 0;
+}
+
+function vivid(hex, targetL, satAmt) {
+  var hsl = toHsl(hex);
+  if (!hsl) return String(hex);
+  if (satAmt === undefined) satAmt = 0.8;
+  if (targetL === undefined) targetL = 0.65;
+  hsl.s = clamp01(hsl.s * (1 + satAmt) + satAmt * 0.15);
+  if (saturationOf(hex) > 0.08 && hsl.s < 0.45) hsl.s = 0.45;
+  return fromHsl(hsl.h, hsl.s, clamp01(targetL));
+}
+
+function ensureContrastOnDark(fg, bg, minRatio) {
+  var l = lightnessOf(fg);
+  var guard = 0;
+  while (contrastRatio(fg, bg) < minRatio && guard < 20) {
+    l += 0.05;
+    if (l > 0.95) break;
+    fg = setLightness(fg, l);
+    guard++;
+  }
+  return fg;
+}
+
+function redness(hex) {
+  var c = toRgb(hex);
+  if (!c) return -1;
+  return c.r - Math.max(c.g, c.b);
+}
+
+function greenness(hex) {
+  var c = toRgb(hex);
+  if (!c) return -1;
+  return c.g - Math.max(c.r, c.b);
+}
+
+function blueness(hex) {
+  var c = toRgb(hex);
+  if (!c) return -1;
+  return c.b - Math.max(c.r, c.g);
+}
+
+function yellowness(hex) {
+  var c = toRgb(hex);
+  if (!c) return -1;
+  return Math.min(c.r, c.g) - c.b;
+}
+
+function magentaness(hex) {
+  var c = toRgb(hex);
+  if (!c) return -1;
+  return Math.min(c.r, c.b) - c.g;
+}
+
+function cyanness(hex) {
+  var c = toRgb(hex);
+  if (!c) return -1;
+  return Math.min(c.g, c.b) - c.r;
+}
+
+function pickExtreme(candidates, scoreFn) {
+  var best = null, bestScore = -1e9;
+  for (var i = 0; i < candidates.length; i++) {
+    var c = candidates[i];
+    if (!isValid(c)) continue;
+    var s = scoreFn(c);
+    if (s > bestScore) {
+      bestScore = s;
+      best = String(c);
+    }
+  }
+  return best;
+}
+
+function pickDarkest(candidates) {
+  var best = null, bestL = 1e9;
+  for (var i = 0; i < candidates.length; i++) {
+    var c = candidates[i];
+    if (!isValid(c)) continue;
+    var l = luminance(c);
+    if (l < bestL) {
+      bestL = l;
+      best = String(c);
+    }
+  }
+  return best;
+}
+
+function pickLightest(candidates) {
+  var best = null, bestL = -1e9;
+  for (var i = 0; i < candidates.length; i++) {
+    var c = candidates[i];
+    if (!isValid(c)) continue;
+    var l = luminance(c);
+    if (l > bestL) {
+      bestL = l;
+      best = String(c);
+    }
+  }
+  return best;
+}
+
+
+function hueDeg(hex) {
+  var hsl = toHsl(hex);
+  if (!hsl) return 0;
+  return hsl.h * 360;
+}
+
+function hueDist(a, b) {
+  var d = Math.abs(a - b) % 360;
+  return d > 180 ? 360 - d : d;
+}
+
+function closestByHue(candidates, targetHue, minSat) {
+  if (minSat === undefined) minSat = 0.12;
+  var best = null, bestScore = 1e9;
+  for (var pass = 0; pass < 3; pass++) {
+    best = null;
+    bestScore = 1e9;
+    for (var i = 0; i < candidates.length; i++) {
+      var c = candidates[i];
+      if (!isValid(c)) continue;
+      var hsl = toHsl(String(c));
+      if (!hsl) continue;
+      if (pass === 0) {
+        if (hsl.s < minSat || hsl.l < 0.18 || hsl.l > 0.90) continue;
+      } else if (pass === 1) {
+        if (hsl.l < 0.10 || hsl.l > 0.92) continue;
+      }
+      var d = hueDist(hsl.h * 360, targetHue);
+      var score = d - hsl.s * 15;
+      if (score < bestScore) {
+        bestScore = score;
+        best = String(c);
+      }
+    }
+    if (best) return best;
+  }
+  return null;
+}
+
+function parseHistogramColors(text) {
+  var out = [];
+  var re = /#([0-9a-fA-F]{6})\b/g;
+  var m;
+  while ((m = re.exec(String(text || ""))) !== null) {
+    var hex = ("#" + m[1]).toLowerCase();
+    var dup = false;
+    for (var i = 0; i < out.length; i++) {
+      if (out[i] === hex) {
+        dup = true;
+        break;
+      }
+    }
+    if (!dup) out.push(hex);
+  }
+  return out;
+}
+
+function closestByHueExcluding(candidates, targetHue, minSat, used) {
+  var filtered = [];
+  for (var i = 0; i < candidates.length; i++) {
+    var skip = false;
+    for (var j = 0; j < (used || []).length; j++) {
+      if (String(candidates[i]).toLowerCase() === String(used[j]).toLowerCase()) {
+        skip = true;
+        break;
+      }
+    }
+    if (!skip) filtered.push(candidates[i]);
+  }
+  var c = closestByHue(filtered, targetHue, minSat);
+  if (c) return c;
+  var best = null, bestScore = 1e9;
+  for (var k = 0; k < filtered.length; k++) {
+    var hsl = toHsl(String(filtered[k]));
+    if (!hsl) continue;
+    var minUsedDist = 360;
+    for (var u = 0; u < (used || []).length; u++) {
+      var uh = toHsl(String(used[u]));
+      if (!uh) continue;
+      var d = hueDist(hsl.h * 360, uh.h * 360);
+      if (d < minUsedDist) minUsedDist = d;
+    }
+    if (minUsedDist < 30) continue;
+    var score = hueDist(hsl.h * 360, targetHue) - hsl.s * 15;
+    if (score < bestScore) {
+      bestScore = score;
+      best = String(filtered[k]);
+    }
+  }
+  return best;
+}

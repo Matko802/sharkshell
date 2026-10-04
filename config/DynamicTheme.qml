@@ -13,11 +13,15 @@ Scope {
   property bool appsThemed: false
 
   property var roles: ({})
+  property var palettes: ({})
+  property var wallColors: ([])
 
   readonly property string cacheDir: Quickshell.env("HOME") + "/.cache/sharkshell"
+  readonly property string genDir: Quickshell.env("HOME") + "/.config/sharkshell"
   readonly property string kittyConfName: "kitty-dynamic.conf"
-  readonly property string niriDir: Quickshell.env("HOME") + "/.config/niri-dynamic"
-  readonly property string niriBorders: root.niriDir + "/borders.kdl"
+  readonly property string footConfName: "foot-dynamic.ini"
+  readonly property string niriDir: Quickshell.env("HOME") + "/.config/sharkshell"
+  readonly property string niriBorders: root.niriDir + "/niri/borders.kdl"
 
   function role(name, fallback) {
     return DynColor.validOr(root.roles[name], fallback)
@@ -25,6 +29,34 @@ Scope {
 
   function satRole(name, fallback, amt) {
     return DynColor.saturate(root.role(name, fallback), amt)
+  }
+
+  function pal(name, levels, fallback) {
+    var p = root.palettes[name]
+    if (p) {
+      for (var i = 0; i < levels.length; i++) {
+        var c = p[levels[i]]
+        if (c && DynColor.isValid(c)) return String(c)
+      }
+    }
+    return fallback
+  }
+
+  function palAll(name, levels) {
+    var out = []
+    var p = root.palettes[name]
+    if (!p) return out
+    if (levels) {
+      for (var i = 0; i < levels.length; i++) {
+        var c = p[levels[i]]
+        if (c && DynColor.isValid(c)) out.push(String(c))
+      }
+      return out
+    }
+    for (var k in p) {
+      if (p[k] && DynColor.isValid(p[k])) out.push(String(p[k]))
+    }
+    return out
   }
 
   readonly property color dynBg: root.role("background", "#111111")
@@ -127,13 +159,17 @@ Scope {
   }
 
   property string pendingKittyText: ""
+  property string pendingFootText: ""
   property string pendingNiriText: ""
 
   Process {
     id: defaultsProc
     command: ["bash", "-c",
-      "printf '%s' " + Util.shellQuote(root.pendingKittyText)
-      + " > " + Util.shellQuote(root.cacheDir + "/" + root.kittyConfName) + ";"
+      "mkdir -p " + Util.shellQuote(root.niriDir + "/niri") + " " + Util.shellQuote(root.genDir + "/kitty") + " " + Util.shellQuote(root.genDir + "/foot") + ";"
+      + "printf '%s' " + Util.shellQuote(root.pendingKittyText)
+      + " > " + Util.shellQuote(root.genDir + "/kitty/" + root.kittyConfName) + ";"
+      + "printf '%s' " + Util.shellQuote(root.pendingFootText)
+      + " > " + Util.shellQuote(root.genDir + "/foot/" + root.footConfName) + ";"
       + "printf '%s' " + Util.shellQuote(root.pendingNiriText)
       + " > " + Util.shellQuote(root.niriBorders) + ";"
       + " pkill -USR1 kitty >/dev/null 2>&1;"
@@ -146,6 +182,7 @@ Scope {
 
   function restoreDefaults() {
     root.pendingKittyText = root.kittyText(root.defaultKittyColors())
+    root.pendingFootText = root.footText(root.defaultKittyColors())
     root.pendingNiriText = root.niriText("#ffffffff", "#444444ff")
     if (!defaultsProc.running)
       defaultsProc.running = true
@@ -180,30 +217,98 @@ Scope {
   }
 
   function themedKittyColors() {
+    var bg = root.role("background", "#000000")
+    var wc = root.wallColors.length > 0 ? root.wallColors : []
+
+    var neutralAll = root.palAll("neutral")
+    var blackCands = ["#000000"].concat(neutralAll).concat([root.role("surface_container_lowest", "#000000"), bg])
+    if (wc.length > 0) blackCands = blackCands.concat(wc)
+    var black = DynColor.pickDarkest(blackCands) || "#000000"
+
+    var greyBase = root.pal("neutral", ["50", "60", "40", "35"], "#767872")
+    var whiteBase = root.pal("neutral", ["80", "90", "70"], root.role("on_surface_variant", "#c6c7c1"))
+    if (wc.length > 0) {
+      var sortedByLum = wc.slice().sort(function(a, b) {
+        return DynColor.luminance(a) - DynColor.luminance(b)
+      })
+      if (sortedByLum.length >= 6)
+        greyBase = sortedByLum[Math.floor(sortedByLum.length * 0.45)]
+      var lightCands = sortedByLum.filter(function(c) {
+        var l = DynColor.lightnessOf(c)
+        return l > 0.55 && l < 0.95
+      })
+      if (lightCands.length > 0) whiteBase = lightCands[lightCands.length - 1]
+    }
+    var grey = DynColor.ensureContrastOnDark(greyBase, bg, 3.5)
+    var white = DynColor.ensureContrastOnDark(DynColor.vivid(whiteBase, 0.72, 0.1), bg, 7.0)
+    var brightWhite = "#ffffff"
+
+    var usedHues = []
+    function takeHue(hue, minSat) {
+      var c = DynColor.closestByHueExcluding(wc, hue, minSat, usedHues)
+      if (c && DynColor.hueDist(DynColor.hueDeg(c), hue) > 65)
+        return null
+      if (c) usedHues.push(c)
+      return c
+    }
+    var redBase = wc.length > 0 ? takeHue(0, 0.12) : null
+    var greenBase = wc.length > 0 ? takeHue(120, 0.12) : null
+    var yellowBase = wc.length > 0 ? takeHue(55, 0.15) : null
+    var blueBase = wc.length > 0 ? takeHue(215, 0.15) : null
+    var cyanBase = wc.length > 0 ? takeHue(185, 0.12) : null
+    var magentaBase = wc.length > 0 ? takeHue(300, 0.12) : null
+
+    var midLevels = ["30", "35", "40", "50", "60", "70"]
+    if (!redBase)
+      redBase = DynColor.pickExtreme(root.palAll("error", midLevels), DynColor.redness)
+        || root.pal("error", ["50", "60", "40"], root.role("error", "#ff5449"))
+    if (!greenBase)
+      greenBase = DynColor.pickExtreme(root.palAll("primary", midLevels), DynColor.greenness)
+        || root.pal("primary", ["60", "50", "70"], root.role("primary", "#4cc38a"))
+    if (!cyanBase)
+      cyanBase = DynColor.pickExtreme(root.palAll("tertiary", midLevels), DynColor.cyanness)
+        || root.pal("tertiary", ["60", "70", "50"], root.role("tertiary", "#56b6c2"))
+    if (!yellowBase) yellowBase = "#e5c07b"
+    if (!blueBase) blueBase = "#61afef"
+    if (!magentaBase) magentaBase = "#c678dd"
+
+    var red = DynColor.ensureContrastOnDark(DynColor.vivid(redBase, 0.65, 0.8), bg, 4.5)
+    var green = DynColor.ensureContrastOnDark(DynColor.vivid(greenBase, 0.65, 0.8), bg, 4.5)
+    var yellow = DynColor.ensureContrastOnDark(DynColor.vivid(yellowBase, 0.65, 0.6), bg, 4.5)
+    var blue = DynColor.ensureContrastOnDark(DynColor.vivid(blueBase, 0.65, 0.6), bg, 4.5)
+    var magenta = DynColor.ensureContrastOnDark(DynColor.vivid(magentaBase, 0.65, 0.6), bg, 4.5)
+    var cyan = DynColor.ensureContrastOnDark(DynColor.vivid(cyanBase, 0.65, 0.8), bg, 4.5)
+    var redBright = DynColor.ensureContrastOnDark(DynColor.vivid(redBase, 0.75, 0.8), bg, 5.5)
+    var greenBright = DynColor.ensureContrastOnDark(DynColor.vivid(greenBase, 0.75, 0.8), bg, 5.5)
+    var yellowBright = DynColor.ensureContrastOnDark(DynColor.vivid(yellowBase, 0.75, 0.6), bg, 5.5)
+    var blueBright = DynColor.ensureContrastOnDark(DynColor.vivid(blueBase, 0.75, 0.6), bg, 5.5)
+    var magentaBright = DynColor.ensureContrastOnDark(DynColor.vivid(magentaBase, 0.75, 0.6), bg, 5.5)
+    var cyanBright = DynColor.ensureContrastOnDark(DynColor.vivid(cyanBase, 0.75, 0.8), bg, 5.5)
+
     return {
-      source: "matugen scheme (white levels dimmed)",
-      background: root.role("background", "#000000"),
+      source: "pywal-style wallpaper hues + matugen UI",
+      background: bg,
       foreground: root.dimBright(root.role("on_surface", "#ffffff")),
       cursor: root.role("primary", "#bbbbbb"),
       selBg: root.role("primary_container", "#b5d5ff"),
       selFg: root.dimBright(root.role("on_primary_container", "#000000")),
       ansi: [
-        root.role("surface", "#000000"),
-        root.role("error", "#ff5555"),
-        root.role("primary", "#55ff55"),
-        root.role("secondary", "#ffff55"),
-        root.role("tertiary", "#5555ff"),
-        root.role("tertiary_fixed_dim", "#ff55ff"),
-        root.role("secondary_fixed_dim", "#55ffff"),
-        root.dimBright(root.role("on_surface_variant", "#999999")),
-        root.dimRow(root.role("outline_variant", "#545454")),
-        root.dimRow(root.role("on_error_container", "#ff5555")),
-        root.dimRow(root.role("on_tertiary_container", "#55ff55")),
-        root.dimRow(root.role("on_secondary_container", "#ffff55")),
-        root.dimRow(root.role("primary_fixed", "#5555ff")),
-        root.dimRow(root.role("secondary_fixed", "#ff55ff")),
-        root.dimRow(root.role("tertiary_fixed", "#55ffff")),
-        root.dimRow(root.role("on_surface", "#ffffff"))
+        black,
+        red,
+        green,
+        yellow,
+        blue,
+        magenta,
+        cyan,
+        white,
+        grey,
+        redBright,
+        greenBright,
+        yellowBright,
+        blueBright,
+        magentaBright,
+        cyanBright,
+        brightWhite
       ],
       tabActiveFg: root.role("inverse_on_surface", "#444444"),
       tabActiveBg: root.role("primary", "#b5d5ff"),
@@ -215,15 +320,46 @@ Scope {
   Process {
     id: kittyOnlyProc
     command: ["bash", "-c",
-      "printf '%s' " + Util.shellQuote(root.pendingKittyText)
-      + " > " + Util.shellQuote(root.cacheDir + "/" + root.kittyConfName) + ";"
+      "mkdir -p " + Util.shellQuote(root.genDir + "/kitty") + " " + Util.shellQuote(root.genDir + "/foot") + ";"
+      + "printf '%s' " + Util.shellQuote(root.pendingKittyText)
+      + " > " + Util.shellQuote(root.genDir + "/kitty/" + root.kittyConfName) + ";"
+      + "printf '%s' " + Util.shellQuote(root.pendingFootText)
+      + " > " + Util.shellQuote(root.genDir + "/foot/" + root.footConfName) + ";"
       + " pkill -USR1 kitty >/dev/null 2>&1; exit 0"]
+  }
+
+  Process {
+    id: footOnlyProc
+    command: ["bash", "-c",
+      "mkdir -p " + Util.shellQuote(root.genDir + "/foot") + ";"
+      + "printf '%s' " + Util.shellQuote(root.pendingFootText)
+      + " > " + Util.shellQuote(root.genDir + "/foot/" + root.footConfName) + "; exit 0"]
   }
 
   function writeThemedKitty() {
     root.pendingKittyText = root.kittyText(root.themedKittyColors())
+    root.pendingFootText = root.footText(root.themedKittyColors())
     if (!kittyOnlyProc.running)
       kittyOnlyProc.running = true
+  }
+
+  function writeThemedFoot() {
+    root.pendingFootText = root.footText(root.themedKittyColors())
+    if (!footOnlyProc.running)
+      footOnlyProc.running = true
+  }
+
+  function writeDefaultFoot() {
+    root.pendingFootText = root.footText(root.defaultKittyColors())
+    if (!footOnlyProc.running)
+      footOnlyProc.running = true
+  }
+
+  function refreshFoot() {
+    if (root.enabled && root.appsThemed)
+      root.writeThemedFoot()
+    else
+      root.writeDefaultFoot()
   }
 
   function applySchemeText(text) {
@@ -251,6 +387,23 @@ Scope {
     if (!map["background"] || !map["primary"])
       return false
     root.roles = map
+    var pmap = {}
+    if (obj.palettes) {
+      for (var pname in obj.palettes) {
+        var pentry = obj.palettes[pname]
+        if (!pentry) continue
+        var lmap = {}
+        for (var lvl in pentry) {
+          var lentry = pentry[lvl]
+          if (!lentry) continue
+          var lc = (lentry.dark && lentry.dark.color) || lentry.color || (lentry.default && lentry.default.color) || ""
+          if (DynColor.isValid(lc))
+            lmap[String(lvl)] = String(lc)
+        }
+        pmap[pname] = lmap
+      }
+    }
+    root.palettes = pmap
     if (root.pendingWall !== "")
       root.schemeWall = root.pendingWall
     return true
@@ -271,6 +424,47 @@ Scope {
     extractProc.output = ""
     root.generating = true
     extractProc.running = true
+    root.extractWallColors(root.pendingWall)
+  }
+
+  property string wallColorsWall: ""
+
+  function extractWallColors(wall) {
+    if (!wall || wall === "")
+      return
+    root.wallColorsWall = String(wall)
+    magickProc.output = ""
+    if (!magickProc.running)
+      magickProc.running = true
+  }
+
+  Process {
+    id: magickProc
+    property string output: ""
+    command: ["bash", "-c",
+      " wall=" + Util.shellQuote(root.wallColorsWall) + ";"
+      + " [ -f \"$wall\" ] || exit 4;"
+      + " command -v magick >/dev/null 2>&1 || exit 3;"
+      + " magick \"$wall\" -resize 200x200! -colors 16 -depth 8 -format \"%c\" histogram:info: 2>/dev/null"]
+    stdout: SplitParser {
+      onRead: function(data) {
+        magickProc.output += data + "\n"
+      }
+    }
+    onExited: function(exitCode) {
+      var out = magickProc.output
+      magickProc.output = ""
+      if (exitCode !== 0 || out.trim() === "")
+        return
+      var cols = DynColor.parseHistogramColors(out)
+      if (cols.length >= 4) {
+        root.wallColors = cols
+        if (root.enabled && root.appsThemed) {
+          root.writeThemedKitty()
+          root.reloadKitty()
+        }
+      }
+    }
   }
 
   Process {
@@ -278,7 +472,7 @@ Scope {
     property string output: ""
     command: ["bash", "-c",
       "set -o pipefail;"
-      + " mkdir -p " + Util.shellQuote(root.cacheDir) + " " + Util.shellQuote(root.niriDir) + ";"
+      + " mkdir -p " + Util.shellQuote(root.cacheDir) + " " + Util.shellQuote(root.niriDir + "/niri") + " " + Util.shellQuote(root.genDir + "/kitty") + " " + Util.shellQuote(root.genDir + "/foot") + ";"
       + " command -v matugen >/dev/null 2>&1 || exit 3;"
       + " wall=" + Util.shellQuote(root.pendingWall) + ";"
       + " [ -f \"$wall\" ] || exit 4;"
@@ -318,7 +512,7 @@ Scope {
   Process {
     id: mkdirProc
     command: ["bash", "-c",
-      "mkdir -p " + Util.shellQuote(root.cacheDir) + " " + Util.shellQuote(root.niriDir)]
+      "mkdir -p " + Util.shellQuote(root.cacheDir) + " " + Util.shellQuote(root.niriDir + "/niri") + " " + Util.shellQuote(root.genDir + "/kitty") + " " + Util.shellQuote(root.genDir + "/foot")]
     onExited: root.ensureOutputs()
   }
 
@@ -377,6 +571,8 @@ Scope {
     } else if (Object.keys(root.roles).length === 0) {
       root.appsThemed = false
       root.restoreDefaults()
+    } else if (WallpaperState.path !== "") {
+      root.extractWallColors(WallpaperState.path)
     }
   }
 
@@ -395,6 +591,37 @@ Scope {
     L.push("active_tab_background " + o.tabActiveBg)
     L.push("inactive_tab_foreground " + o.tabInactiveFg)
     L.push("inactive_tab_background " + o.tabInactiveBg)
+    return L.join("\n") + "\n"
+  }
+
+  function footHex(hex) {
+    var m = /^#?([0-9a-fA-F]{6})/.exec(String(hex || ""))
+    return m ? m[1].toLowerCase() : "ffffff"
+  }
+
+  function footAlpha() {
+    var op = 1.0
+    try {
+      op = TransparencyState.transparent ? TransparencyState.terminalOpacity : 1.0
+    } catch (e) {
+    }
+    return String(Math.round(Math.min(1, Math.max(0, op)) * 100) / 100)
+  }
+
+  function footText(o) {
+    var L = []
+    L.push("# Generated by sharkshell dynamic theme - do not edit.")
+    L.push("# Source: " + o.source)
+    L.push("[colors-dark]")
+    L.push("background=" + root.footHex(o.background))
+    L.push("foreground=" + root.footHex(o.foreground))
+    L.push("selection-background=" + root.footHex(o.selBg))
+    L.push("selection-foreground=" + root.footHex(o.selFg))
+    L.push("alpha=" + root.footAlpha())
+    for (var i = 0; i < 8; i++)
+      L.push("regular" + i + "=" + root.footHex(o.ansi[i]))
+    for (var j = 8; j < 16; j++)
+      L.push("bright" + (j - 8) + "=" + root.footHex(o.ansi[j]))
     return L.join("\n") + "\n"
   }
 

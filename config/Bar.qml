@@ -38,8 +38,6 @@ Item {
     implicitWidth: clockCenterRow.implicitWidth + 14
     implicitHeight: 22
     color: clockCenterMa.containsMouse ? Theme.fg : "transparent"
-    border.color: clockCenterMa.containsMouse ? Theme.outline : "transparent"
-    border.width: 1
     Behavior on implicitWidth { NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut } }
     RowLayout {
       id: clockCenterRow
@@ -112,8 +110,6 @@ Item {
       Behavior on implicitWidth { NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut } }
       radius: Theme.rounding
       color: (root.qsHover && !root.menuOpen) ? Theme.fg : "transparent"
-      border.color: (root.qsHover && !root.menuOpen) ? Theme.outline : "transparent"
-      border.width: 1
 
       Battery { id: bat }
 

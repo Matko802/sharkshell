@@ -2,8 +2,8 @@
 
 [templates.sharkshell-kitty]
 input_path = "@TEMPLATE_DIR@/kitty.conf"
-output_path = "/home/matko/.cache/sharkshell/kitty-dynamic.conf"
+output_path = "/home/matko/.config/sharkshell/kitty/kitty-dynamic.conf"
 
 [templates.sharkshell-niri]
 input_path = "@TEMPLATE_DIR@/niri-borders.kdl"
-output_path = "/home/matko/.config/niri-dynamic/borders.kdl"
+output_path = "/home/matko/.config/sharkshell/niri/borders.kdl"

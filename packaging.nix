@@ -13,9 +13,24 @@ let
 
   outputPower = pkgs.callPackage ./output-power.nix { };
 
+  # Named shortcuts matching the QML file names (clockmenu, powermenu, ...)
+  # so keybinds show meaningful names instead of identical quickshell calls.
+  ipcCmd = name: target: action: pkgs.writeShellScriptBin name
+    "exec ${pkgs.quickshell}/bin/quickshell ipc call ${target} ${action}";
+  ipcCmds = [
+    (ipcCmd "lock" "lock" "lock")
+    (ipcCmd "powermenu" "power" "toggle")
+    (ipcCmd "bar" "bar" "toggle")
+    (ipcCmd "emojipicker" "emoji" "toggle")
+    (ipcCmd "launcher" "launcher" "toggle")
+    (ipcCmd "settingsmenu" "settings" "toggle")
+    (ipcCmd "clipboard" "clipboard" "toggle")
+    (ipcCmd "clockmenu" "clock" "toggle")
+  ];
+
   sharkshell = pkgs.symlinkJoin {
     name = "sharkshell";
-    paths = [ pkgs.quickshell ];
+    paths = [ pkgs.quickshell ] ++ ipcCmds;
     buildInputs = [ pkgs.makeWrapper ];
     postBuild = ''
       mkdir -p "$out/lib/qt-6/qml/Quickshell"

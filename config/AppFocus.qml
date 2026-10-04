@@ -11,8 +11,11 @@ Scope {
   function focus(n) {
     const raw = n ? (n.desktopEntry || n.appName || "") : ""
     if (!raw) return
-    const cmd = 'app="' + String(raw).replace(/"/g, '\\"') + '"; id=$(mmsg get all-clients 2>/dev/null | python3 -c "import json,sys; app=sys.argv[1].lower(); data=json.load(sys.stdin); cs=data.get(\'clients\',[]); m=[c for c in cs if app==c.get(\'appid\',\'\').lower() or app in c.get(\'appid\',\'\').lower() or app in c.get(\'title\',\'\').lower()]; print(m[0][\'id\'] if m else \'\')" "$app" 2>/dev/null); [ -n "$id" ] && mmsg dispatch focusid client,$id 2>/dev/null || true'
-    runProc.command = ["bash", "-c", cmd]
+    const app = String(raw).replace(/"/g, '\\"')
+    runProc.command = ["sh", "-c",
+      "ID=$(niri msg -j windows 2>/dev/null | tr '}' '\\n' | grep -i \"" + app + "\" | head -1 | grep -o '\"id\":[0-9]*' | cut -d: -f2)"
+      + " && [ -n \"$ID\" ] && niri msg action focus-window --id \"$ID\" 2>/dev/null"
+    ]
     runProc.running = true
   }
 }

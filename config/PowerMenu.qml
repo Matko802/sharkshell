@@ -88,14 +88,14 @@ Scope {
   }
 
   readonly property var allEntries: [
-    { name: "LOCK", icon: "lock", cmd: ["quickshell", "ipc", "call", "lock", "lock"] },
-    { name: "HIBERNATE", icon: "hibernate", cmd: ["sh", "-c", "systemctl hibernate"] },
-    { name: "LOG OUT", icon: "logout", cmd: ["sh", "-c", "if command -v niri >/dev/null 2>&1; then niri msg action quit --skip-confirmation; else mmsg dispatch quit 2>/dev/null || loginctl terminate-user \"\" 2>/dev/null || systemctl --user exit; fi"] },
-    { name: "REBOOT", icon: "reboot", cmd: ["sh", "-c", "systemctl reboot"] },
-    { name: "SHUTDOWN", icon: "shutdown", cmd: ["sh", "-c", "systemctl poweroff"] },
-    { name: "SUSPEND", icon: "suspend", cmd: ["sh", "-c", "quickshell ipc call lock lock; systemctl suspend -i"] }
+    { name: "Lock", icon: "lock", cmd: ["quickshell", "ipc", "call", "lock", "lock"] },
+    { name: "Hibernate", icon: "hibernate", cmd: ["sh", "-c", "systemctl hibernate"] },
+    { name: "Log out", icon: "logout", cmd: ["sh", "-c", "if command -v niri >/dev/null 2>&1; then niri msg action quit --skip-confirmation; else mmsg dispatch quit 2>/dev/null || loginctl terminate-user \"\" 2>/dev/null || systemctl --user exit; fi"] },
+    { name: "Reboot", icon: "reboot", cmd: ["sh", "-c", "systemctl reboot"] },
+    { name: "Shutdown", icon: "shutdown", cmd: ["sh", "-c", "systemctl poweroff"] },
+    { name: "Suspend", icon: "suspend", cmd: ["sh", "-c", "quickshell ipc call lock lock; systemctl suspend -i"] }
   ]
-  readonly property var entries: root.canHibernate ? root.allEntries : root.allEntries.filter(e => e.name !== "HIBERNATE")
+  readonly property var entries: root.canHibernate ? root.allEntries : root.allEntries.filter(e => e.name !== "Hibernate")
   onEntriesChanged: {
     if (root.selIdx >= root.entries.length)
       root.selIdx = Math.max(0, root.entries.length - 1)

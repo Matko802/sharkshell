@@ -98,11 +98,6 @@ Row {
           if (niriCheck.isNiri) {
             Quickshell.execDetached(["niri", "msg", "action", "focus-workspace", String(modelData.index)])
             setActiveByIndex(modelData.index)
-          } else {
-            if (mouse.button === Qt.RightButton)
-              Quickshell.execDetached(["mmsg", "dispatch", "toggle," + modelData.index])
-            else
-              Quickshell.execDetached(["mmsg", "dispatch", "view," + modelData.index + ",0"])
           }
         }
       }
@@ -205,31 +200,4 @@ Row {
     })).sort((a, b) => a.index - b.index))
   }
 
-  Process {
-    id: mangoWatch
-    running: false
-    command: ["stdbuf", "-oL", "mmsg", "watch", "all-tags"]
-    stdout: SplitParser {
-      onRead: data => {
-        try {
-          const d = JSON.parse(data)
-          const groups = d.all_tags || []
-          const arr = groups.length ? (groups[0].tags || []) : []
-          const next = arr
-            .filter(t => t.is_active || (t.client_count || 0) > 0 || !!t.is_urgent)
-            .map(t => ({
-              index: t.index,
-              active: !!t.is_active,
-              occupied: (t.client_count || 0) > 0,
-              urgent: !!t.is_urgent
-            }))
-          const json = JSON.stringify(next)
-          if (json !== repeater.lastJson) {
-            repeater.lastJson = json
-            repeater.model = next
-          }
-        } catch (e) {}
-      }
-    }
-  }
 }

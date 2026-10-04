@@ -30,15 +30,13 @@ static void registryRemove(void*, wl_registry*, uint32_t id) {
 
 const wl_registry_listener s_registryListener = {registryGlobal, registryRemove};
 
-}  // namespace
+}
 
 OutputPower::OutputPower(QObject* parent) : QObject(parent) {}
 
 OutputPower::~OutputPower() = default;
 
 void OutputPower::setAllPower(bool on) const {
-  // Connect our own client socket to the same compositor (via WAYLAND_DISPLAY),
-  // rather than reaching into QGuiApplication's Wayland integration.
   wl_display* display = wl_display_connect(nullptr);
   if (!display) {
     qWarning("OutputPower: could not connect to Wayland display (WAYLAND_DISPLAY?)");

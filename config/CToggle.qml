@@ -9,8 +9,6 @@ Rectangle {
   implicitWidth: 32
   implicitHeight: 16
   color: checked ? Theme.fg : Theme.bg
-  border.color: Theme.fg
-  border.width: 1
 
   Behavior on color {
     ColorAnimation {

@@ -67,7 +67,7 @@ PanelWindow {
     y: osd.shown ? parent.height - 56 - 64 : parent.height
     Behavior on y { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
     color: Theme.bg
-    border.color: Theme.fg
+    border.color: Theme.outline
     border.width: 1
 
     RowLayout {

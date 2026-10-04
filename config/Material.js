@@ -84,6 +84,11 @@ const CODEPOINTS = {
   "shutdown": 0xE8AC,
   "suspend": 0xEF44,
   "hibernate": 0xF03D,
+  "pin": 0xF045,
+  "push_pin": 0xF10D,
+  "push-pin": 0xF10D,
+  "keep": 0xF10D,
+  "pin-drop": 0xE55E,
 };
 
 function resolve(name) {

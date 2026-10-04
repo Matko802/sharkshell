@@ -34,6 +34,8 @@ Scope {
   property int browseSel: 0
   property string browseFilter: ""
   readonly property int browseRowH: 34
+  property var browseImageArray: []
+  property string browseImageDir: ""
 
   function requestClose() {
     if (!root.opened || root.closePending)
@@ -226,11 +228,7 @@ Scope {
     root.browsing = true
     const first = root.imageDirs.split("\n").map(s => s.trim()).find(s => s !== "")
     root.browseDir = first || Quickshell.env("HOME") || "/home/matko"
-    root.browseFilter = ""
-    root.browseSel = 0
-    root.browseArray = []
-    browseProc.output = ""
-    browseProc.running = true
+    root.browseRefresh()
     browseView.forceActiveFocus()
   }
 
@@ -259,6 +257,10 @@ Scope {
     root.browseArray = []
     browseProc.output = ""
     browseProc.running = true
+    root.browseImageArray = []
+    root.browseImageDir = root.browseDir
+    loadBrowseImagesProc.output = ""
+    loadBrowseImagesProc.running = true
   }
 
   function browseDescend(i) {
@@ -339,6 +341,59 @@ Scope {
     entries.sort((a, b) => a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1)
     root.browseArray = entries
     browseView.forceActiveFocus()
+  }
+
+  function applyBrowse(i) {
+    const entry = root.browseImageArray[i]
+    if (!entry)
+      return
+    root.selectedImage = entry.filePath
+    if (root.isLockTab)
+      WallpaperState.setLock(entry.filePath)
+    else
+      WallpaperState.set(entry.filePath)
+  }
+
+  Process {
+    id: loadBrowseImagesProc
+    property string output: ""
+    command: ["bash", "-c",
+      "cache_dir=\"$HOME/.cache/quickshell/image-selector\"; mkdir -p \"$cache_dir\";"
+      + " dir=" + Util.shellQuote(root.browseDir) + "; [[ -d \"$dir\" ]] || exit 0;"
+      + " find -L \"$dir\" -maxdepth 1 -type f"
+      + " \\( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.bmp' -o -iname '*.webp' \\) -print0"
+      + " | sort -z | while IFS= read -r -d '' image; do"
+      + " hash=$(md5sum \"$image\" | cut -d ' ' -f 1); thumb=\"$cache_dir/$hash.jpg\";"
+      + " if [[ ! -f $thumb ]]; then"
+      + " magick \"$image\"[0] -auto-orient -thumbnail '768x475^' -gravity center -extent 768x475 \"$thumb\" 2>/dev/null || thumb=$image;"
+      + " fi; printf '%s\\t%s\\n' \"$image\" \"$thumb\"; done"]
+    stdout: SplitParser {
+      onRead: function(data) {
+        loadBrowseImagesProc.output += data + "\n"
+      }
+    }
+    onExited: root.loadBrowseImageRows(output)
+  }
+
+  function loadBrowseImageRows(rows) {
+    if (root.browseImageDir !== root.browseDir)
+      return
+    const newImages = []
+    const seen = {}
+    for (const row of rows.split("\n")) {
+      if (!row)
+        continue
+      const columns = row.split("\t")
+      const path = columns[0]
+      if (!path)
+        continue
+      const fileName = path.split("/").pop()
+      if (seen[fileName])
+        continue
+      seen[fileName] = true
+      newImages.push({ filePath: path, fileName: fileName, thumbnailPath: columns[1] || path })
+    }
+    root.browseImageArray = newImages
   }
 
   Process {
@@ -440,9 +495,9 @@ Scope {
               required property int index
               width: (parent.width - 4) / 2
               height: 26
-              radius: 3
+              radius: Theme.rounding
               color: root.activeTab === index ? Theme.fg : "transparent"
-              border.color: Theme.fg
+              border.color: Theme.outline
               border.width: 1
 
               Text {
@@ -674,9 +729,9 @@ Scope {
             anchors.centerIn: parent
             width: 130
             height: 24
-            radius: 3
+            radius: Theme.rounding
             color: useDesktopMa.containsMouse ? Theme.fg : "transparent"
-            border.color: Theme.fg
+            border.color: Theme.outline
             border.width: 1
 
             Text {
@@ -750,7 +805,7 @@ Scope {
           Rectangle {
             anchors.fill: parent
             color: Theme.bg
-            border.color: Theme.fg
+            border.color: Theme.outline
             border.width: 1
 
             TextInput {
@@ -817,9 +872,9 @@ Scope {
           Rectangle {
             Layout.preferredWidth: 30
             Layout.preferredHeight: 26
-            radius: 3
+            radius: Theme.rounding
             color: browseUpMa.containsMouse ? Theme.fg : "transparent"
-            border.color: Theme.fg
+            border.color: Theme.outline
             border.width: 1
             QIcon { anchors.centerIn: parent; name: "arrow-up"; size: 16; color: browseUpMa.containsMouse ? Theme.bg : Theme.fg }
             MouseArea { id: browseUpMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.browseGoUp() }
@@ -827,9 +882,9 @@ Scope {
           Rectangle {
             Layout.preferredWidth: 30
             Layout.preferredHeight: 26
-            radius: 3
+            radius: Theme.rounding
             color: browseHomeMa.containsMouse ? Theme.fg : "transparent"
-            border.color: Theme.fg
+            border.color: Theme.outline
             border.width: 1
             QIcon { anchors.centerIn: parent; name: "home"; size: 16; color: browseHomeMa.containsMouse ? Theme.bg : Theme.fg }
             MouseArea { id: browseHomeMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.browseGoHome() }
@@ -846,9 +901,9 @@ Scope {
           Rectangle {
             Layout.preferredWidth: 84
             Layout.preferredHeight: 26
-            radius: 3
+            radius: Theme.rounding
             color: browseUseMa.containsMouse ? Theme.fg : "transparent"
-            border.color: Theme.fg
+            border.color: Theme.outline
             border.width: 1
             Text {
               anchors.centerIn: parent
@@ -969,6 +1024,68 @@ Scope {
           font.family: root.fontFamily
           font.pixelSize: 10
           elide: Text.ElideRight
+        }
+
+        Text {
+          width: parent.width
+          text: "Images in this folder — click to apply live"
+          color: Theme.fg
+          opacity: 0.7
+          font.family: root.fontFamily
+          font.pixelSize: 10
+        }
+
+        GridView {
+          id: browseGrid
+          width: parent.width
+          height: Math.min(3, Math.max(1, Math.ceil(root.browseImageArray.length / 2))) * 118
+          clip: true
+          cellWidth: Math.floor(width / 2)
+          cellHeight: 118
+          model: root.browseImageArray
+          interactive: false
+
+          delegate: Item {
+            required property var modelData
+            required property int index
+            width: browseGrid.cellWidth
+            height: browseGrid.cellHeight
+
+            Image {
+              anchors.fill: parent
+              anchors.margins: 3
+              source: Util.fileUrl(modelData.thumbnailPath)
+              fillMode: Image.PreserveAspectCrop
+              asynchronous: true
+              cache: true
+              smooth: true
+            }
+
+            Rectangle {
+              anchors.fill: parent
+              anchors.margins: 3
+              color: modelData.filePath === root.selectedImage ? Theme.hover : "transparent"
+              border.width: browseGridMa.containsMouse ? 2 : (modelData.filePath === root.selectedImage ? 2 : 0)
+              border.color: Theme.outline
+            }
+
+            MouseArea {
+              id: browseGridMa
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.applyBrowse(index)
+            }
+          }
+
+          Text {
+            visible: root.browseImageArray.length === 0
+            anchors.centerIn: parent
+            text: "no images in this folder"
+            color: Theme.muted
+            font.family: root.fontFamily
+            font.pointSize: 11
+          }
         }
       }
     }

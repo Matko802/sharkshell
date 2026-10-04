@@ -317,7 +317,7 @@ ColumnLayout {
         Layout.fillWidth: true
         implicitHeight: 22
         color: Theme.bgAlt
-        border.color: Theme.fg
+        border.color: Theme.outline
         border.width: 1
         TextInput {
           id: pwInput
@@ -348,7 +348,7 @@ ColumnLayout {
           implicitWidth: 54
           implicitHeight: 20
           color: pwOkMa.pressed ? Theme.fg : Theme.bg
-          border.color: Theme.fg
+          border.color: Theme.outline
           border.width: 1
           Text {
             anchors.centerIn: parent
@@ -367,7 +367,7 @@ ColumnLayout {
           implicitWidth: 48
           implicitHeight: 20
           color: pwNoMa.pressed ? Theme.fg : Theme.bg
-          border.color: Theme.fg
+          border.color: Theme.outline
           border.width: 1
           Text {
             anchors.centerIn: parent

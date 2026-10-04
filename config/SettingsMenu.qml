@@ -390,7 +390,7 @@ PanelWindow {
                       radius: 18
                       clip: true
     color: Theme.bg
-                      border.color: Theme.fg
+                      border.color: Theme.outline
                       border.width: 1
                       Image {
                         anchors.fill: parent
@@ -428,7 +428,7 @@ PanelWindow {
                       Layout.preferredWidth: 60
                       Layout.preferredHeight: 26
                       color: root.hoverIdx === -6 ? Theme.fg : "transparent"
-                      border.color: Theme.fg
+                      border.color: Theme.outline
                       border.width: 1
                       Text {
                         anchors.centerIn: parent
@@ -451,7 +451,7 @@ PanelWindow {
                       Layout.preferredHeight: 26
                       visible: AvatarState.path !== ""
                       color: root.hoverIdx === -7 ? Theme.fg : "transparent"
-                      border.color: Theme.fg
+                      border.color: Theme.outline
                       border.width: 1
                       Text {
                         anchors.centerIn: parent
@@ -517,7 +517,7 @@ PanelWindow {
                   Layout.preferredHeight: 32
                   color: root.selIdx === 0 ? Theme.fg
                        : (root.hoverIdx === -10 ? Theme.bgAlt : "transparent")
-                  border.color: root.selIdx === 0 ? Theme.fg
+                  border.color: root.selIdx === 0 ? Theme.outline
                        : (root.hoverIdx === -10 ? Theme.borderStrong : Theme.border)
                   border.width: 1
                   MouseArea {
@@ -565,7 +565,7 @@ PanelWindow {
                   Layout.preferredHeight: 32
                   color: root.selIdx === 1 ? Theme.fg
                        : (root.hoverIdx === -11 ? Theme.bgAlt : "transparent")
-                  border.color: root.selIdx === 1 ? Theme.fg
+                  border.color: root.selIdx === 1 ? Theme.outline
                        : (root.hoverIdx === -11 ? Theme.borderStrong : Theme.border)
                   border.width: 1
                   MouseArea {
@@ -695,7 +695,7 @@ PanelWindow {
         visible: !modelData.header
         color: root.selIdx === index ? Theme.fg
              : (root.hoverIdx === index ? Theme.bgAlt : "transparent")
-        border.color: root.selIdx === index ? Theme.fg
+        border.color: root.selIdx === index ? Theme.outline
              : (modelData.def ? Theme.fg : (root.hoverIdx === index ? Theme.borderStrong : Theme.border))
         border.width: 1
         opacity: modelData.header ? 0 : 1

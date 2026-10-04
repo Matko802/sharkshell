@@ -3,7 +3,10 @@ import Quickshell
 import Quickshell.Services.SystemTray
 
 Row {
+  id: trayRoot
   spacing: Theme.spacingS
+
+  property var menuOwner: null
 
   Repeater {
     model: SystemTray.items
@@ -14,6 +17,16 @@ Row {
       property bool wantMenu: false
       width: 18
       height: 18
+
+      function toggleTrayMenu() {
+        if (trayItem.wantMenu && trayRoot.menuOwner === trayItem.modelData) {
+          trayItem.wantMenu = false
+          trayRoot.menuOwner = null
+        } else {
+          trayItem.wantMenu = true
+          trayRoot.menuOwner = trayItem.modelData
+        }
+      }
 
       Image {
         anchors.centerIn: parent
@@ -32,7 +45,7 @@ Row {
           if (mouse.button === Qt.RightButton || (mouse.button === Qt.LeftButton && trayItem.modelData.onlyMenu)) {
             if (!trayItem.modelData.hasMenu)
               return
-            trayItem.wantMenu = !trayItem.wantMenu
+            trayItem.toggleTrayMenu()
           } else if (mouse.button === Qt.MiddleButton) {
             trayItem.modelData.secondaryActivate()
           } else {
@@ -42,25 +55,15 @@ Row {
         onWheel: wheel => trayItem.modelData.scroll(wheel.angleDelta.y > 0 ? 1 : -1, false)
       }
 
-      Loader {
-        id: menuLoader
-        active: trayItem.wantMenu
-        sourceComponent: menuComp
-        onLoaded: item.open()
-        onActiveChanged: {
-          if (!active)
-            return
-        }
-      }
-
-      Component {
-        id: menuComp
-        QsMenuAnchor {
-          menu: trayItem.modelData.menu
-          anchor.window: trayItem.QsWindow.window
-          anchor.item: trayItem
-          anchor.edges: Edges.Bottom
-          anchor.gravity: Edges.Bottom
+      TrayMenu {
+        trayData: trayItem.modelData
+        anchorItem: trayItem
+        anchorWindow: trayItem.QsWindow.window
+        open: trayItem.wantMenu && trayRoot.menuOwner === trayItem.modelData
+        onRequestClose: {
+          trayItem.wantMenu = false
+          if (trayRoot.menuOwner === trayItem.modelData)
+            trayRoot.menuOwner = null
         }
       }
     }

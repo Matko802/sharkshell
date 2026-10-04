@@ -32,10 +32,20 @@ Item {
         }
         return false
     }
+    property bool mediaPaused: {
+        const ps = Mpris.players ? Mpris.players.values : []
+        let any = false
+        for (let i = 0; i < ps.length; i++) {
+            if (!ps[i]) continue
+            any = true
+            if (ps[i].isPlaying) return false
+        }
+        return any
+    }
     property bool audioActive: false
     property bool gameMode: false
     property bool stayAwake: false
-    readonly property bool _inhibited: mediaPlaying || audioActive || gameMode || stayAwake
+    readonly property bool _inhibited: mediaPlaying || gameMode || stayAwake || (audioActive && !mediaPaused)
 
     function _setScreen(off) {
         if (off === root.screenIsOff)
@@ -195,7 +205,7 @@ Item {
 
     Process {
         id: audioCheck
-        command: ["sh", "-c", "pw-dump 2>/dev/null | awk '/^  \\{$/ { b=\"\"; f=1; next } /^  \\},?$/ { if (f && b ~ /\"media.class\"[[:space:]]*:[[:space:]]*\"Stream\\/Output\\/Audio\"/ && b ~ /\"state\"[[:space:]]*:[[:space:]]*\"running\"/ && b !~ /\"pulse.corked\"[[:space:]]*:[[:space:]]*true/) { print \"P\"; exit } f=0; next } f { b = b \"\\n\" $0 }' | grep -q P"]
+        command: ["sh", "-c", "pw-dump 2>/dev/null | awk '/^  \\{$/ { b=\"\"; f=1; next } /^  \\},?$/ { if (f && b ~ /\"media.class\"[[:space:]]*:[[:space:]]*\"Stream\\/Output\\/Audio\"/ && b ~ /\"state\"[[:space:]]*:[[:space:]]*\"running\"/ && b !~ /\"pulse.corked\"[[:space:]]*:[[:space:]]*true/ && b !~ /\"node.name\"[[:space:]]*:[[:space:]]*\"alsa_(playback|capture)\\./) { print \"P\"; exit } f=0; next } f { b = b \"\\n\" $0 }' | grep -q P"]
         onExited: (exitCode) => {
             root.audioActive = (exitCode === 0)
             if (exitCode === 0)

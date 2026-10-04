@@ -59,16 +59,27 @@ Rectangle {
       horizontalAlignment: Text.AlignRight
     }
 
-    Text {
-      text: "reset"
-      color: resetMa.containsMouse ? Theme.fg : Theme.muted
-      font.family: Theme.fontFamily
-      font.pixelSize: 10
+    Item {
+      Layout.preferredWidth: 52
+      Layout.preferredHeight: 24
+      Rectangle {
+        anchors.fill: parent
+        color: resetMa.containsPress ? Theme.muted : "transparent"
+      }
+      Text {
+        anchors.centerIn: parent
+        text: "reset"
+        color: resetMa.containsPress ? Theme.bg : (resetMa.containsMouse ? Theme.fg : Theme.muted)
+        font.family: Theme.fontFamily
+        font.pixelSize: 10
+      }
       MouseArea {
         id: resetMa
         anchors.fill: parent
+        anchors.margins: -6
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
+        preventStealing: true
         onClicked: root.reset()
       }
     }

@@ -240,7 +240,7 @@ Scope {
       height: listViewCol.implicitHeight + 16
       color: Theme.bg
       opacity: (panel.anchors.leftMargin + panel.width) / (20 + panel.width)
-      border.color: Theme.fg
+      border.color: Theme.outline
       border.width: 1
       Behavior on anchors.leftMargin { NumberAnimation { duration: 170; easing.type: Easing.OutExpo } }
 
@@ -293,7 +293,7 @@ Scope {
             Layout.preferredHeight: 26
             radius: 3
             color: clearMa.containsMouse ? Theme.fg : "transparent"
-            border.color: Theme.fg
+            border.color: Theme.outline
             border.width: 1
             Text {
               anchors.centerIn: parent

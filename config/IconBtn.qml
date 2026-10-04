@@ -10,7 +10,7 @@ Rectangle {
   signal clicked()
 
   color: ma.containsMouse || ma.pressed ? Theme.fg : "transparent"
-  border.color: Theme.fg
+  border.color: Theme.outline
   border.width: bordered ? 1 : 0
 
   QIcon {

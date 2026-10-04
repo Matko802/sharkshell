@@ -289,7 +289,7 @@ Scope {
       width: root.boxWidth
       height: col.implicitHeight + 16
       color: Theme.bg
-      border.color: Theme.fg
+      border.color: Theme.outline
       border.width: 1
       property real cardProg: root.open ? 1 : 0
       scale: 0.92 + 0.08 * cardProg
@@ -311,7 +311,7 @@ Scope {
           Layout.fillWidth: true
           Layout.preferredHeight: 28
           color: "transparent"
-          border.color: Theme.fg
+          border.color: Theme.outline
           border.width: 1
           RowLayout {
             anchors.fill: parent
@@ -509,7 +509,7 @@ Scope {
                 cellHeight: root.imgCellH
                 model: root.imageEntries
                 currentIndex: root.selIdx
-                highlight: Rectangle { color: "transparent"; border.color: Theme.fg; border.width: 2 }
+                highlight: Rectangle { color: "transparent"; border.color: Theme.outline; border.width: 2 }
                 highlightMoveDuration: 120
 
                 delegate: Rectangle {
@@ -539,7 +539,7 @@ Scope {
                     anchors.margins: 4
                     color: isHover ? Theme.hover : "transparent"
                     border.width: 0
-                    border.color: Theme.fg
+                    border.color: Theme.outline
                   }
 
                   MouseArea {

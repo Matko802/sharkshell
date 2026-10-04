@@ -220,7 +220,7 @@ Scope {
       width: root.cols * root.cellSize + 20
       height: col.implicitHeight + 16
       color: Theme.bg
-      border.color: Theme.fg
+      border.color: Theme.outline
       border.width: 1
       property real cardProg: root.open ? 1 : 0
       scale: 0.92 + 0.08 * cardProg
@@ -242,7 +242,7 @@ Scope {
           Layout.fillWidth: true
           Layout.preferredHeight: 28
           color: "transparent"
-          border.color: Theme.fg
+          border.color: Theme.outline
           border.width: 1
           RowLayout {
             anchors.fill: parent
