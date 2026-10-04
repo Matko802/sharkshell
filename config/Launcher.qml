@@ -24,7 +24,7 @@ Scope {
   property string holdSource: ""
   property int holdDuration: 800
   property double holdStartMs: 0
-  readonly property int pinHoldMsKbd: 2000
+  readonly property int pinHoldMsKbd: 1000
   readonly property int pinHoldMsMouse: 800
 
   function entryId(e) {
