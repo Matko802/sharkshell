@@ -22,31 +22,33 @@ Scope {
 
   property bool closePending: false
   property bool blurReady: false
+  property int blurNudge: 0
 
   Timer {
-    id: blurDelay
-    interval: 100
+    id: blurNudgeTimer
+    interval: 400
     onTriggered: {
-      if (root.open && !root.closePending)
-        root.blurReady = true
+      if (root.open && !root.closePending && root.blurReady)
+        root.blurNudge = (root.blurNudge + 1) % 2
     }
   }
 
   function armBlur() {
     root.blurReady = false
-    blurDelay.restart()
   }
 
   function disarmBlur() {
-    blurDelay.stop()
+    blurNudgeTimer.stop()
     root.blurReady = false
   }
 
   Connections {
     target: card
     function onCardProgChanged() {
-      if (root.open && !root.closePending && !root.blurReady)
-        blurDelay.restart()
+      if (root.open && !root.closePending && card.cardProg >= 0.999) {
+        root.blurReady = true
+        blurNudgeTimer.restart()
+      }
     }
   }
 
@@ -300,6 +302,7 @@ Scope {
     color: "transparent"
     WlrLayershell.namespace: "quickshell-modal"
     BackgroundEffect.blurRegion: Region {
+      radius: root.blurNudge
       item: root.blurReady ? card : null
       Region { item: root.blurReady ? tabsPill : null }
     }
