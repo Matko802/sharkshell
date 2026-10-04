@@ -21,29 +21,10 @@ Scope {
   readonly property color matchColor: Theme.match
 
   property bool closePending: false
-  property int blurNudge: 0
-
-  Timer {
-    id: blurNudgeTimer
-    interval: 400
-    onTriggered: {
-      if (root.open && !root.closePending)
-        root.blurNudge = (root.blurNudge + 1) % 2
-    }
-  }
-
-  function armBlur() {
-    blurNudgeTimer.restart()
-  }
-
-  function disarmBlur() {
-    blurNudgeTimer.stop()
-  }
 
   function requestClose() {
     if (!root.open || root.closePending)
       return
-    root.disarmBlur()
     root.closePending = true
     root.open = false
     closeTimer.restart()
@@ -51,7 +32,6 @@ Scope {
 
   function forceClose() {
     closeTimer.stop()
-    root.disarmBlur()
     root.closePending = false
     root.open = false
   }
@@ -80,7 +60,6 @@ Scope {
     root.selIdx = 0
     root.hoverIdx = -1
     root.open = true
-    root.armBlur()
     listProc.running = true
   }
 
@@ -290,17 +269,8 @@ Scope {
     color: "transparent"
     WlrLayershell.namespace: "quickshell-modal"
     BackgroundEffect.blurRegion: Region {
-      radius: root.blurNudge
-      x: Math.round(card.x + (card.width * (1 - card.scale)) / 2)
-      y: Math.round(card.y + (card.height * (1 - card.scale)) / 2)
-      width: Math.round(card.width * card.scale)
-      height: Math.round(card.height * card.scale)
-      Region {
-        x: Math.round(tabsPill.x + (tabsPill.width * (1 - tabsPill.scale)) / 2)
-        y: Math.round(tabsPill.y + (tabsPill.height * (1 - tabsPill.scale)) / 2)
-        width: Math.round(tabsPill.width * tabsPill.scale)
-        height: Math.round(tabsPill.height * tabsPill.scale)
-      }
+      item: card.cardProg >= 1 ? card : null
+      Region { item: card.cardProg >= 1 ? tabsPill : null }
     }
     mask: Region {
       item: card
