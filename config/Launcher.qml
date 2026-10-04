@@ -201,11 +201,40 @@ Scope {
   }
 
   property bool closePending: false
+  property bool blurReady: false
+
+  Timer {
+    id: blurDelay
+    interval: 100
+    onTriggered: {
+      if (root.open && !root.closePending)
+        root.blurReady = true
+    }
+  }
+
+  function armBlur() {
+    root.blurReady = false
+    blurDelay.restart()
+  }
+
+  function disarmBlur() {
+    blurDelay.stop()
+    root.blurReady = false
+  }
+
+  Connections {
+    target: card
+    function onCardProgChanged() {
+      if (root.open && !root.closePending && !root.blurReady)
+        blurDelay.restart()
+    }
+  }
 
   function requestClose() {
     if (!root.open || root.closePending)
       return
     root.cancelHold()
+    root.disarmBlur()
     root.closePending = true
     root.open = false
     closeTimer.restart()
@@ -214,6 +243,7 @@ Scope {
   function forceClose() {
     closeTimer.stop()
     root.cancelHold()
+    root.disarmBlur()
     root.closePending = false
     root.open = false
   }
@@ -245,6 +275,7 @@ Scope {
     root.hoverIdx = -1
     root.cancelHold()
     root.open = true
+    root.armBlur()
   }
 
   function launch(i) {
@@ -384,7 +415,7 @@ Scope {
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     WlrLayershell.namespace: "quickshell-modal"
-    BackgroundEffect.blurRegion: Region { item: root.open && !root.closePending ? card : null }
+    BackgroundEffect.blurRegion: Region { item: root.blurReady ? card : null }
     mask: Region { item: card }
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
