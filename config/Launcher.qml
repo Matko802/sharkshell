@@ -584,7 +584,7 @@ Scope {
                 Layout.preferredWidth: 16
                 Layout.preferredHeight: 16
                 Layout.alignment: Qt.AlignVCenter
-                visible: holding
+                visible: pinned
                 QIcon {
                   anchors.centerIn: parent
                   name: "push_pin"
