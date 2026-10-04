@@ -15,16 +15,13 @@ Scope {
   property int hoverIdx: -1
   property bool mouseOverList: false
   readonly property string fontFamily: Theme.fontFamily
-  // Same dynamic accent as topbar active workspace (Theme.outline = saturated primary)
   readonly property color matchColor: Theme.outline
 
-  // --- Pinned apps (persisted, shown on top) ---
   property var pinnedIds: []
-  // Hold-to-pin state (shared for keyboard + mouse)
   property int holdIdx: -1
   property real holdProgress: 0
   property bool holdFired: false
-  property string holdSource: "" // "kbd" | "mouse" | ""
+  property string holdSource: ""
   property int holdDuration: 800
   property double holdStartMs: 0
   readonly property int pinHoldMsKbd: 2000
@@ -60,7 +57,7 @@ Scope {
       arr.push(id)
     root.pinnedIds = arr
     root.savePinned()
-    return at < 0 // true if now pinned
+    return at < 0
   }
   function startHold(idx, source, duration) {
     if (idx < 0 || idx >= root.results.length)
@@ -81,7 +78,6 @@ Scope {
     root.holdFired = false
     root.holdSource = ""
   }
-  // Short-press Enter helper (launch or run-command)
   function activateIdx(i) {
     if (root.query.trim() !== "" && root.results.length === 0)
       root.runCommand()
@@ -101,7 +97,6 @@ Scope {
       root.holdFired = true
       root.holdProgress = 1
       root.togglePinAt(root.holdIdx)
-      // Results reorder (pinned go top) — keep hold marker on the (un)pinned row
       for (let i = 0; i < root.results.length; i++) {
         if (root.entryId(root.results[i]) === id) {
           root.holdIdx = i
@@ -109,7 +104,6 @@ Scope {
           break
         }
       }
-      // keep holdIdx/holdFired set so release/click can suppress launch
     }
   }
   Timer {
@@ -290,7 +284,6 @@ Scope {
     return name.length > root.maxNameChars ? name.slice(0, root.maxNameChars - 1) + "\u2026" : name
   }
 
-  // Selected rows sit on a white highlight, so the match needs a dark color to stay visible
   function hl(rawName, selected) {
     const name = root.fit(rawName)
     const q = root.query.toLowerCase()
@@ -314,7 +307,6 @@ Scope {
   }
 
   readonly property var sortedApps: {
-    // Depend on pinnedIds so order updates on (un)pin
     const pins = root.pinnedIds
     const all = DesktopEntries.applications.values.filter(e => !e.noDisplay)
     const alpha = all.slice().sort((a, b) => a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1)
@@ -493,7 +485,6 @@ Scope {
                       return
                     }
                     if (root.query.trim() !== "" && root.results.length === 0) {
-                      // Nothing to pin, wait for release to run command
                       root.holdIdx = -1
                       root.holdSource = "kbd-cmd"
                       root.holdFired = false
@@ -504,7 +495,6 @@ Scope {
                       event.accepted = true
                       return
                     }
-                    // Hold Enter 5s to pin, release earlier to launch
                     root.startHold(root.selIdx, "kbd", root.pinHoldMsKbd)
                     event.accepted = true
                   } else if ((event.key === Qt.Key_N || event.key === Qt.Key_P) && (event.modifiers & Qt.ControlModifier)) {
@@ -538,7 +528,6 @@ Scope {
                     if (!fired) {
                       root.activateIdx(idx >= 0 ? idx : root.selIdx)
                     }
-                    // else: long hold already (un)pinned, stay open
                     event.accepted = true
                   }
                 }
@@ -591,7 +580,6 @@ Scope {
                 clip: true
                 Layout.fillWidth: true
               }
-              // M3 pin icon: only shown while a hold-to-pin is in progress
               Item {
                 Layout.preferredWidth: 16
                 Layout.preferredHeight: 16
@@ -606,7 +594,6 @@ Scope {
               }
             }
 
-            // Hold-to-pin progress bar: black when row selected, white otherwise
             Rectangle {
               anchors.left: parent.left
               anchors.bottom: parent.bottom
@@ -623,8 +610,6 @@ Scope {
               onEntered: { root.hoverIdx = index; root.mouseOverList = true }
               onExited: { if (root.hoverIdx === index) root.hoverIdx = -1; root.mouseOverList = false }
               onPressed: mouse => {
-                // Hold click (~800ms) to (un)pin; release quickly to launch.
-                // Pin itself fires in holdTimer.onTriggered.
                 if (mouse.button === Qt.LeftButton)
                   root.startHold(index, "mouse", root.pinHoldMsMouse)
               }
@@ -640,10 +625,7 @@ Scope {
                 root.cancelHold()
                 if (!fired)
                   root.launch(index)
-                // else: long hold already (un)pinned, stay open
               }
-              // Launch is handled in onReleased; swallow onClicked to avoid
-              // double-launch (pressed->released->clicked ordering).
               onClicked: mouse => {}
               onCanceled: root.cancelHold()
             }
