@@ -21,26 +21,23 @@ Scope {
   readonly property color matchColor: Theme.match
 
   property bool closePending: false
-  property bool blurReady: false
   property int blurNudge: 0
 
   Timer {
     id: blurNudgeTimer
     interval: 400
     onTriggered: {
-      if (root.open && !root.closePending && root.blurReady)
+      if (root.open && !root.closePending)
         root.blurNudge = (root.blurNudge + 1) % 2
     }
   }
 
   function armBlur() {
-    root.blurReady = true
     blurNudgeTimer.restart()
   }
 
   function disarmBlur() {
     blurNudgeTimer.stop()
-    root.blurReady = false
   }
 
   function requestClose() {
@@ -294,8 +291,16 @@ Scope {
     WlrLayershell.namespace: "quickshell-modal"
     BackgroundEffect.blurRegion: Region {
       radius: root.blurNudge
-      item: root.blurReady ? card : null
-      Region { item: root.blurReady ? tabsPill : null }
+      x: Math.round(card.x + (card.width * (1 - card.scale)) / 2)
+      y: Math.round(card.y + (card.height * (1 - card.scale)) / 2)
+      width: Math.round(card.width * card.scale)
+      height: Math.round(card.height * card.scale)
+      Region {
+        x: Math.round(tabsPill.x + (tabsPill.width * (1 - tabsPill.scale)) / 2)
+        y: Math.round(tabsPill.y + (tabsPill.height * (1 - tabsPill.scale)) / 2)
+        width: Math.round(tabsPill.width * tabsPill.scale)
+        height: Math.round(tabsPill.height * tabsPill.scale)
+      }
     }
     mask: Region {
       item: card
