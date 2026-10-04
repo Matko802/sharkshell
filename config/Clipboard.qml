@@ -268,8 +268,14 @@ Scope {
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     WlrLayershell.namespace: "quickshell-modal"
-    BackgroundEffect.blurRegion: Region { item: card.cardProg >= 1 ? card : null }
-    mask: Region { item: card }
+    BackgroundEffect.blurRegion: Region {
+      item: card.cardProg >= 1 ? card : null
+      Region { item: card.cardProg >= 1 ? tabsPill : null }
+    }
+    mask: Region {
+      item: card
+      Region { item: tabsPill }
+    }
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     visible: root.open || root.closePending
@@ -281,6 +287,49 @@ Scope {
       repeat: true
       interval: 500
       onTriggered: { if (root.open && !search.activeFocus) search.forceActiveFocus() }
+    }
+
+    Rectangle {
+      id: tabsPill
+      anchors.horizontalCenter: card.horizontalCenter
+      anchors.bottom: card.top
+      anchors.bottomMargin: 8
+      width: 240
+      height: 28
+      color: Theme.bg
+      border.color: Theme.outline
+      border.width: 1
+      scale: 0.92 + 0.08 * card.cardProg
+      opacity: card.cardProg
+
+      RowLayout {
+        anchors.fill: parent
+        spacing: 0
+        Repeater {
+          model: [
+            { label: "Text", idx: 0 },
+            { label: "Images", idx: 1 }
+          ]
+          delegate: Item {
+            required property var modelData
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            property bool active: root.tab === (modelData.idx === 0 ? "text" : "images")
+            Text {
+              anchors.centerIn: parent
+              text: modelData.label
+              color: parent.active ? Theme.fg : Theme.muted2
+              font.family: root.fontFamily
+              font.pixelSize: 11
+            }
+            MouseArea {
+              anchors.fill: parent
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.tab = modelData.idx === 0 ? "text" : "images"
+            }
+          }
+        }
+      }
     }
 
     Rectangle {
@@ -391,35 +440,6 @@ Scope {
                     event.accepted = true
                   }
                 }
-              }
-            }
-          }
-        }
-
-        RowLayout {
-          Layout.fillWidth: true
-          spacing: 0
-          Repeater {
-            model: [
-              { label: "Text", idx: 0 },
-              { label: "Images", idx: 1 }
-            ]
-            delegate: Item {
-              required property var modelData
-              Layout.fillWidth: true
-              Layout.preferredHeight: 28
-              property bool active: root.tab === (modelData.idx === 0 ? "text" : "images")
-              Text {
-                anchors.centerIn: parent
-                text: modelData.label
-                color: parent.active ? Theme.fg : Theme.muted2
-                font.family: root.fontFamily
-                font.pixelSize: 11
-              }
-              MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: root.tab = modelData.idx === 0 ? "text" : "images"
               }
             }
           }
