@@ -920,9 +920,6 @@ Scope {
     printErrors: false
   }
 
-  property string iniText3: ""
-  property string iniText4: ""
-
   FileView {
     id: gtkIniFile3
     path: root.gtk3IniPath
