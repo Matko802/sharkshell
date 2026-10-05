@@ -14,7 +14,7 @@ PanelWindow {
   exclusionMode: ExclusionMode.Ignore
   color: "transparent"
   WlrLayershell.namespace: "quickshell-modal"
-  BackgroundEffect.blurRegion: Region { item: bg }
+  BackgroundEffect.blurRegion: Region { item: osd.shown ? bg : null }
   WlrLayershell.layer: WlrLayer.Overlay
   implicitWidth: 380
   implicitHeight: 200
