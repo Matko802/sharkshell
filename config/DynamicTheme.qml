@@ -103,10 +103,27 @@ Scope {
     return root.darkMode ? "dark" : "light"
   }
 
+  property string schemeTextDark: ""
+  property string schemeTextLight: ""
+  property string schemeWallDark: ""
+  property string schemeWallLight: ""
+
   onDarkModeChanged: {
     darkModeFile.setText(root.darkMode ? "1" : "0")
-    if (root.enabled)
-      root.regenerate()
+    if (!root.enabled)
+      return
+    var txt = root.darkMode ? root.schemeTextDark : root.schemeTextLight
+    var wl = root.darkMode ? root.schemeWallDark : root.schemeWallLight
+    if (txt !== "" && wl !== "" && wl === WallpaperState.path && root.applySchemeText(txt)) {
+      root.appliedMode = root.schemeMode()
+      root.appsThemed = true
+      root.writeThemedKitty()
+      root.reloadKitty()
+      root.writeThemedNiri()
+      root.reloadNiri()
+      root.pushAppThemes()
+    }
+    root.regenerate()
   }
 
   function regenerate() {
@@ -207,6 +224,38 @@ Scope {
       if (t === "dark" || t === "light")
         root.cachedSchemeMode = t
     }
+  }
+
+  FileView {
+    id: schemeCacheDark
+    path: root.cacheDir + "/dynamic-scheme-dark.json"
+    watchChanges: false
+    printErrors: false
+    onLoaded: root.schemeTextDark = text()
+  }
+
+  FileView {
+    id: schemeCacheLight
+    path: root.cacheDir + "/dynamic-scheme-light.json"
+    watchChanges: false
+    printErrors: false
+    onLoaded: root.schemeTextLight = text()
+  }
+
+  FileView {
+    id: schemeWallDarkFile
+    path: root.cacheDir + "/dynamic-scheme-wall-dark"
+    watchChanges: false
+    printErrors: false
+    onLoaded: root.schemeWallDark = text().trim()
+  }
+
+  FileView {
+    id: schemeWallLightFile
+    path: root.cacheDir + "/dynamic-scheme-wall-light"
+    watchChanges: false
+    printErrors: false
+    onLoaded: root.schemeWallLight = text().trim()
   }
 
   property string pendingKittyText: ""
@@ -551,11 +600,23 @@ Scope {
         schemeCache.setText(out)
         schemeWallFile.setText(root.schemeWall)
         schemeModeFile.setText(root.schemeMode())
+        if (root.darkMode) {
+          root.schemeTextDark = out
+          root.schemeWallDark = root.schemeWall
+          schemeCacheDark.setText(out)
+          schemeWallDarkFile.setText(root.schemeWall)
+        } else {
+          root.schemeTextLight = out
+          root.schemeWallLight = root.schemeWall
+          schemeCacheLight.setText(out)
+          schemeWallLightFile.setText(root.schemeWall)
+        }
         root.cachedSchemeMode = root.schemeMode()
         root.appliedMode = root.schemeMode()
         root.appsThemed = true
         root.writeThemedKitty()
         root.reloadKitty()
+        root.writeThemedNiri()
         root.reloadNiri()
         root.pushAppThemes()
       }
@@ -620,6 +681,19 @@ Scope {
       + "    active-color \"" + active + "\"\n"
       + "    inactive-color \"" + inactive + "\"\n"
       + "  }\n}\n"
+  }
+
+  function writeThemedNiri() {
+    var active = root.satRole("primary", "#ffffff", 0.5) + "ff"
+    var inactive = root.role("surface_container_highest", "#444444") + "ff"
+    niriBordersFile.setText(root.niriText(active, inactive))
+  }
+
+  FileView {
+    id: niriBordersFile
+    path: root.niriBorders
+    watchChanges: false
+    printErrors: false
   }
 
   function ensureOutputs() {
