@@ -124,6 +124,7 @@ Scope {
     } else {
       root.appsThemed = false
       root.restoreDefaults()
+      root.resetAppThemes()
     }
   }
 
@@ -863,7 +864,8 @@ Scope {
     return JSON.stringify(o)
   }
 
-  function settingsIniText(cur) {
+  function settingsIniText(cur, dark) {
+    var darkFlag = ((dark === undefined ? root.darkMode : !!dark) ? "1" : "0")
     var t = String(cur || "")
     if (t.trim() === "") {
       t = "[Settings]\n"
@@ -872,10 +874,10 @@ Scope {
         + "gtk-font-name=" + Theme.fontFamily + " 10\n"
         + "gtk-cursor-theme-name=Adwaita\n"
         + "gtk-cursor-theme-size=24\n"
-        + "gtk-application-prefer-dark-theme=" + (root.darkMode ? "1" : "0") + "\n"
+        + "gtk-application-prefer-dark-theme=" + darkFlag + "\n"
       return t
     }
-    var dark = root.darkMode ? "1" : "0"
+    var dark = darkFlag
     if (/gtk-application-prefer-dark-theme\s*=/.test(t))
       t = t.replace(/gtk-application-prefer-dark-theme\s*=\s*[01]/, "gtk-application-prefer-dark-theme=" + dark)
     else
@@ -896,12 +898,26 @@ Scope {
     root.pushColorScheme()
   }
 
-  function pushColorScheme() {
-    if (!root.enabled)
+  function pushColorScheme(mode) {
+    if (!root.enabled && !mode)
       return
+    var m = mode || (root.darkMode ? "dark" : "light")
     colorSchemeProc.running = false
-    colorSchemeProc.command = ["dconf", "write", "/org/gnome/desktop/interface/color-scheme", "'prefer-" + (root.darkMode ? "dark" : "light") + "'"]
+    colorSchemeProc.command = ["dconf", "write", "/org/gnome/desktop/interface/color-scheme", "'prefer-" + m + "'"]
     colorSchemeProc.running = true
+  }
+
+  Process {
+    id: resetThemeProc
+    command: ["bash", "-c", "rm -f \"$HOME/.config/qtengine/config.json\" \"$HOME/.config/sharkshell/kde-dynamic.colors\" \"$HOME/.config/gtk-3.0/gtk.css\" \"$HOME/.config/gtk-4.0/gtk.css\""]
+  }
+
+  function resetAppThemes() {
+    resetThemeProc.running = false
+    resetThemeProc.running = true
+    gtkIniFile3.setText(root.settingsIniText(root.iniText3, true))
+    gtkIniFile4.setText(root.settingsIniText(root.iniText4, true))
+    root.pushColorScheme("dark")
   }
 
   Process {
