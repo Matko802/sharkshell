@@ -121,7 +121,6 @@ Scope {
       root.reloadKitty()
       root.writeThemedNiri()
       root.reloadNiri()
-      root.pushAppThemes()
     }
     root.regenerate()
   }
@@ -141,7 +140,6 @@ Scope {
     } else {
       root.appsThemed = false
       root.restoreDefaults()
-      root.resetAppThemes()
     }
   }
 
@@ -184,8 +182,7 @@ Scope {
     onLoaded: {
       var t = text().trim()
       if (t !== "")
-        if (root.applySchemeText(t))
-          root.pushAppThemes()
+        root.applySchemeText(t)
     }
   }
 
@@ -618,7 +615,6 @@ Scope {
         root.reloadKitty()
         root.writeThemedNiri()
         root.reloadNiri()
-        root.pushAppThemes()
       }
       root.lastDoneWall = root.pendingWall
       if (root.enabled && WallpaperState.path !== "" && WallpaperState.path !== root.lastDoneWall)
@@ -774,14 +770,6 @@ Scope {
       tabInactiveFg: "#e0e0e0",
       tabInactiveBg: "#000000"
     }
-  }
-
-  function pushAppThemes() {
-    AppTheme.push()
-  }
-
-  function resetAppThemes() {
-    AppTheme.reset()
   }
 
   Component.onCompleted: {
