@@ -304,9 +304,10 @@ Scope {
             font.family: Theme.fontFamily
 
             Timer {
-              running: true
+              running: LockState.locked
               repeat: true
               interval: 1000
+              triggeredOnStart: true
 
               onTriggered: clock.date = new Date();
             }

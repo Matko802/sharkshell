@@ -50,7 +50,7 @@ Item {
         font.pixelSize: 12
         property int notifCount: NotificationServer.meaningfulCount
         Timer {
-          interval: 1000; running: true; repeat: true; triggeredOnStart: true
+          interval: 1000; running: !IdleManager.gaming; repeat: true; triggeredOnStart: true
           onTriggered: {
             const d = new Date()
             const pad = n => String(n).padStart(2, "0")

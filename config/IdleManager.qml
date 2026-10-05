@@ -44,6 +44,8 @@ Item {
     }
     property bool audioActive: false
     property bool gameMode: false
+    property bool fullscreenActive: false
+    readonly property bool gaming: gameMode || fullscreenActive
     property bool stayAwake: false
     readonly property bool _inhibited: mediaPlaying || gameMode || stayAwake || (audioActive && !mediaPaused)
 
@@ -174,7 +176,7 @@ Item {
     }
 
     Timer {
-        interval: 3000
+        interval: root.gameMode ? 10000 : 3000
         running: root.enabled
         repeat: true
         triggeredOnStart: true

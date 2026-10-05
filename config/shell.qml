@@ -20,6 +20,12 @@ ShellRoot {
     function hide(): void { root.barEnabled = false }
   }
 
+  Binding {
+    target: IdleManager
+    property: "fullscreenActive"
+    value: root.fsActive
+  }
+
   Connections {
     target: LockState
     function onLockedChanged() {

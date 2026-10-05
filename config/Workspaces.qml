@@ -168,7 +168,7 @@ Row {
   }
   Timer {
     interval: 2000
-    running: niriCheck.isNiri
+    running: niriCheck.isNiri && !IdleManager.gaming
     repeat: true
     triggeredOnStart: true
     onTriggered: {

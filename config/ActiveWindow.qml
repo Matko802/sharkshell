@@ -84,7 +84,7 @@ RowLayout {
   Timer {
     id: niriTimer
     interval: 1000
-    running: true
+    running: !IdleManager.gaming
     repeat: true
     triggeredOnStart: true
     onTriggered: {

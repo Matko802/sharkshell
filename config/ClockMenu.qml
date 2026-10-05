@@ -49,8 +49,9 @@ PanelWindow {
   property var _wasPlaying: []
   Timer {
     interval: 1000
-    running: true
+    running: root.shown
     repeat: true
+    triggeredOnStart: true
     onTriggered: {
       const vals = Mpris.players.values || []
       const prev = root._wasPlaying
