@@ -114,6 +114,7 @@ ShellRoot {
     WlrLayershell.namespace: "quickshell-backdrop"
     WlrLayershell.layer: WlrLayer.Top
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    mask: Region { }
     visible: (launcher.open || launcher.closePending)
       || (emojiPicker.open || emojiPicker.closePending)
       || (clipboard.open || clipboard.closePending)
