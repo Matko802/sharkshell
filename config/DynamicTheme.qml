@@ -840,18 +840,34 @@ Scope {
     L.push(D("theme_selected_fg_color", onPrim))
     L.push(D("shade_color", shade))
     L.push(D("scrollbar_outline_color", root.darkMode ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)"))
+    L.push("")
+    L.push("* { border-radius: 0px; }")
     return L.join("\n") + "\n"
   }
 
   function qtengineJsonText() {
-    return "{\"theme\": {\"colorScheme\": \"" + root.kdeColorsPath + "\"}}"
+    var o = {
+      theme: {
+        colorScheme: root.kdeColorsPath,
+        iconTheme: "Papirus-Dark",
+        style: "breeze",
+        font: { family: Theme.fontFamily, size: 11, weight: -1 },
+        fontFixed: { family: Theme.fontFamily, size: 11, weight: -1 }
+      },
+      misc: {
+        singleClickActivate: false,
+        menusHaveIcons: true,
+        shortcutsForContextMenus: true
+      }
+    }
+    return JSON.stringify(o)
   }
 
   function settingsIniText(cur) {
     var t = String(cur || "")
     if (t.trim() === "") {
       t = "[Settings]\n"
-        + "gtk-theme-name=MatkosAmoled\n"
+        + "gtk-theme-name=Adwaita\n"
         + "gtk-icon-theme-name=Papirus-Dark\n"
         + "gtk-font-name=" + Theme.fontFamily + " 10\n"
         + "gtk-cursor-theme-name=Adwaita\n"
