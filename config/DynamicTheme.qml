@@ -87,6 +87,28 @@ Scope {
     root.setEnabled(!root.enabled)
   }
 
+  property bool darkMode: true
+  property string cachedSchemeMode: ""
+  property string appliedMode: ""
+
+  function setDarkMode(v) {
+    root.darkMode = !!v
+  }
+
+  function toggleDarkMode() {
+    root.setDarkMode(!root.darkMode)
+  }
+
+  function schemeMode() {
+    return root.darkMode ? "dark" : "light"
+  }
+
+  onDarkModeChanged: {
+    darkModeFile.setText(root.darkMode ? "1" : "0")
+    if (root.enabled)
+      root.regenerate()
+  }
+
   function regenerate() {
     if (!root.enabled || root.generating)
       return
@@ -97,7 +119,7 @@ Scope {
   onEnabledChanged: {
     enabledFile.setText(root.enabled ? "1" : "0")
     if (root.enabled) {
-      if (!root.appsThemed || WallpaperState.path !== root.schemeWall)
+      if (!root.appsThemed || WallpaperState.path !== root.schemeWall || root.cachedSchemeMode !== root.schemeMode())
         root.regenerate()
     } else {
       root.appsThemed = false
@@ -119,6 +141,8 @@ Scope {
     function enable(): void { root.setEnabled(true) }
     function disable(): void { root.setEnabled(false) }
     function regenerate(): void { root.regenerate() }
+    function setDark(v: bool): void { root.setDarkMode(v) }
+    function toggleDark(): void { root.toggleDarkMode() }
   }
 
   FileView {
@@ -142,7 +166,8 @@ Scope {
     onLoaded: {
       var t = text().trim()
       if (t !== "")
-        root.applySchemeText(t)
+        if (root.applySchemeText(t))
+          root.pushAppThemes()
     }
   }
 
@@ -155,6 +180,31 @@ Scope {
       var t = text().trim()
       if (t !== "")
         root.schemeWall = t
+    }
+  }
+
+  FileView {
+    id: darkModeFile
+    path: root.cacheDir + "/dynamic-theme-dark"
+    watchChanges: true
+    printErrors: false
+    onLoaded: {
+      var t = text().trim()
+      if (t !== "")
+        root.darkMode = (t === "1")
+    }
+    onFileChanged: reload()
+  }
+
+  FileView {
+    id: schemeModeFile
+    path: root.cacheDir + "/dynamic-scheme-mode"
+    watchChanges: false
+    printErrors: false
+    onLoaded: {
+      var t = text().trim()
+      if (t === "dark" || t === "light")
+        root.cachedSchemeMode = t
     }
   }
 
@@ -375,12 +425,13 @@ Scope {
     }
     if (!obj || !obj.colors)
       return false
+    var want = root.darkMode ? "dark" : "light"
     var map = {}
     for (var k in obj.colors) {
       var entry = obj.colors[k]
       if (!entry)
         continue
-      var c = (entry.dark && entry.dark.color) || entry.color || (entry.default && entry.default.color) || ""
+      var c = (entry[want] && entry[want].color) || (entry.default && entry.default.color) || entry.color || ""
       if (DynColor.isValid(c))
         map[k] = String(c)
     }
@@ -396,7 +447,7 @@ Scope {
         for (var lvl in pentry) {
           var lentry = pentry[lvl]
           if (!lentry) continue
-          var lc = (lentry.dark && lentry.dark.color) || lentry.color || (lentry.default && lentry.default.color) || ""
+          var lc = (lentry[want] && lentry[want].color) || (lentry.default && lentry.default.color) || lentry.color || ""
           if (DynColor.isValid(lc))
             lmap[String(lvl)] = String(lc)
         }
@@ -476,7 +527,7 @@ Scope {
       + " command -v matugen >/dev/null 2>&1 || exit 3;"
       + " wall=" + Util.shellQuote(root.pendingWall) + ";"
       + " [ -f \"$wall\" ] || exit 4;"
-      + " matugen image \"$wall\" --mode dark -j hex --source-color-index 0 2>/dev/null"]
+      + " matugen image \"$wall\" --mode " + (root.darkMode ? "dark" : "light") + " -j hex --source-color-index 0 2>/dev/null"]
     stdout: SplitParser {
       onRead: function(data) {
         extractProc.output += data + "\n"
@@ -498,21 +549,29 @@ Scope {
       if (root.applySchemeText(out)) {
         schemeCache.setText(out)
         schemeWallFile.setText(root.schemeWall)
+        schemeModeFile.setText(root.schemeMode())
+        root.cachedSchemeMode = root.schemeMode()
+        root.appliedMode = root.schemeMode()
         root.appsThemed = true
         root.writeThemedKitty()
         root.reloadKitty()
         root.reloadNiri()
+        root.pushAppThemes()
       }
       root.lastDoneWall = root.pendingWall
       if (root.enabled && WallpaperState.path !== "" && WallpaperState.path !== root.lastDoneWall)
         root.extractFor(WallpaperState.path)
+      else if (root.enabled && root.appliedMode !== "" && root.appliedMode !== root.schemeMode()) {
+        root.lastDoneWall = "@@none@@"
+        root.extractFor(WallpaperState.path)
+      }
     }
   }
 
   Process {
     id: mkdirProc
     command: ["bash", "-c",
-      "mkdir -p " + Util.shellQuote(root.cacheDir) + " " + Util.shellQuote(root.niriDir + "/niri") + " " + Util.shellQuote(root.genDir + "/kitty") + " " + Util.shellQuote(root.genDir + "/foot")]
+      "mkdir -p " + Util.shellQuote(root.cacheDir) + " " + Util.shellQuote(root.niriDir + "/niri") + " " + Util.shellQuote(root.genDir + "/kitty") + " " + Util.shellQuote(root.genDir + "/foot") + " " + Util.shellQuote(Quickshell.env("HOME") + "/.config/qtengine")]
     onExited: root.ensureOutputs()
   }
 
@@ -640,6 +699,244 @@ Scope {
       tabInactiveFg: "#e0e0e0",
       tabInactiveBg: "#000000"
     }
+  }
+
+  readonly property string kdeColorsPath: root.genDir + "/kde-dynamic.colors"
+  readonly property string qtengineConfigPath: Quickshell.env("HOME") + "/.config/qtengine/config.json"
+  readonly property string gtk3CssPath: Quickshell.env("HOME") + "/.config/gtk-3.0/gtk.css"
+  readonly property string gtk4CssPath: Quickshell.env("HOME") + "/.config/gtk-4.0/gtk.css"
+  readonly property string gtk3IniPath: Quickshell.env("HOME") + "/.config/gtk-3.0/settings.ini"
+  readonly property string gtk4IniPath: Quickshell.env("HOME") + "/.config/gtk-4.0/settings.ini"
+
+  property string iniText3: ""
+  property string iniText4: ""
+
+  function hexToRgb(hex) {
+    var m = /^#?([0-9a-fA-F]{6})([0-9a-fA-F]{2})?$/.exec(String(hex || ""))
+    if (!m)
+      return "0,0,0"
+    return parseInt(m[1].substr(0, 2), 16) + "," + parseInt(m[1].substr(2, 2), 16) + "," + parseInt(m[1].substr(4, 2), 16)
+  }
+
+  function roleRgb(name, fallback) {
+    return root.hexToRgb(root.role(name, fallback))
+  }
+
+  function kdeColorsText() {
+    var bg = root.roleRgb("background", "#111111")
+    var surf = root.roleRgb("surface", "#111111")
+    var contLow = root.roleRgb("surface_container_low", "#111111")
+    var cont = root.roleRgb("surface_container", "#111111")
+    var contHigh = root.roleRgb("surface_container_high", "#111111")
+    var contHighest = root.roleRgb("surface_container_highest", "#111111")
+    var onSurf = root.roleRgb("on_surface", "#ffffff")
+    var onSurfVar = root.roleRgb("on_surface_variant", "#888888")
+    var onBg = root.roleRgb("on_background", "#ffffff")
+    var prim = root.roleRgb("primary", "#bbbbbb")
+    var onPrim = root.roleRgb("on_primary", "#000000")
+    var primCont = root.roleRgb("primary_container", "#bbbbbb")
+    var onPrimCont = root.roleRgb("on_primary_container", "#000000")
+    var ter = root.roleRgb("tertiary", "#888888")
+    var err = root.roleRgb("error", "#ff5555")
+    var onErr = root.roleRgb("on_error", "#000000")
+    var invSurf = root.roleRgb("inverse_surface", "#ffffff")
+    var invOnSurf = root.roleRgb("inverse_on_surface", "#000000")
+    function sec(n, v) {
+      var L = ["[" + n + "]"]
+      var keys = ["BackgroundAlternate", "BackgroundNormal", "DecorationFocus", "DecorationHover", "ForegroundActive", "ForegroundInactive", "ForegroundLink", "ForegroundNegative", "ForegroundNeutral", "ForegroundNormal", "ForegroundPositive"]
+      for (var i = 0; i < keys.length; i++)
+        L.push(keys[i] + "=" + v[i])
+      return L.join("\n")
+    }
+    var L = []
+    L.push("# Generated by sharkshell dynamic theme - do not edit.")
+    L.push("[General]")
+    L.push("ColorScheme=SharkDynamic")
+    L.push("Name=SharkDynamic")
+    L.push("shadeSortColumn=true")
+    L.push("")
+    L.push(sec("Colors:Window", [contLow, bg, prim, prim, prim, onSurfVar, prim, err, onSurf, onBg, ter]))
+    L.push("")
+    L.push(sec("Colors:View", [contLow, surf, prim, prim, prim, onSurfVar, prim, err, onSurf, onSurf, ter]))
+    L.push("")
+    L.push(sec("Colors:Button", [contLow, contHigh, prim, prim, prim, onSurfVar, prim, err, onSurf, onSurf, ter]))
+    L.push("")
+    L.push(sec("Colors:Selection", [primCont, prim, prim, prim, onPrim, onPrimCont, onPrim, onErr, onPrim, onPrim, onPrim]))
+    L.push("")
+    L.push(sec("Colors:Tooltip", [invSurf, invSurf, prim, prim, invOnSurf, invOnSurf, prim, err, invOnSurf, invOnSurf, ter]))
+    L.push("")
+    L.push(sec("Colors:Complementary", [cont, contHigh, prim, prim, onPrim, onSurfVar, prim, err, onSurf, onSurf, ter]))
+    L.push("")
+    L.push("[ColorEffects:Disabled]")
+    L.push("Color=56,56,56")
+    L.push("ColorAmount=0")
+    L.push("ColorEffect=0")
+    L.push("ContrastAmount=0.65")
+    L.push("ContrastEffect=1")
+    L.push("IntensityAmount=-1")
+    L.push("IntensityEffect=0")
+    L.push("")
+    L.push("[ColorEffects:Inactive]")
+    L.push("ChangeSelectionColor=true")
+    L.push("Color=112,111,110")
+    L.push("ColorAmount=0.025")
+    L.push("ColorEffect=2")
+    L.push("ContrastAmount=0.1")
+    L.push("ContrastEffect=2")
+    L.push("Enable=true")
+    L.push("IntensityAmount=0.45")
+    L.push("IntensityEffect=2")
+    return L.join("\n") + "\n"
+  }
+
+  function gtkCssText() {
+    function D(n, v) {
+      return "@define-color " + n + " " + v + ";"
+    }
+    var surf = root.role("surface", "#111111")
+    var onSurf = root.role("on_surface", "#ffffff")
+    var cont = root.role("surface_container", "#111111")
+    var contHigh = root.role("surface_container_high", "#111111")
+    var contLow = root.role("surface_container_low", "#111111")
+    var bg = root.role("background", "#111111")
+    var prim = root.role("primary", "#bbbbbb")
+    var onPrim = root.role("on_primary", "#000000")
+    var shade = root.darkMode ? "rgba(0,0,0,0.36)" : "rgba(0,0,0,0.12)"
+    var L = []
+    L.push("/* Generated by sharkshell dynamic theme - do not edit. */")
+    L.push(D("window_bg_color", surf))
+    L.push(D("window_fg_color", onSurf))
+    L.push(D("view_bg_color", surf))
+    L.push(D("view_fg_color", onSurf))
+    L.push(D("headerbar_bg_color", cont))
+    L.push(D("headerbar_fg_color", onSurf))
+    L.push(D("headerbar_border_color", cont))
+    L.push(D("headerbar_backdrop_color", contLow))
+    L.push(D("headerbar_shade_color", contLow))
+    L.push(D("card_bg_color", cont))
+    L.push(D("card_fg_color", onSurf))
+    L.push(D("dialog_bg_color", surf))
+    L.push(D("dialog_fg_color", onSurf))
+    L.push(D("popover_bg_color", contHigh))
+    L.push(D("popover_fg_color", onSurf))
+    L.push(D("sidebar_bg_color", contLow))
+    L.push(D("sidebar_fg_color", onSurf))
+    L.push(D("sidebar_backdrop_color", contLow))
+    L.push(D("sidebar_border_color", contLow))
+    L.push(D("secondary_sidebar_bg_color", cont))
+    L.push(D("secondary_sidebar_fg_color", onSurf))
+    L.push(D("accent_bg_color", prim))
+    L.push(D("accent_fg_color", onPrim))
+    L.push(D("accent_color", prim))
+    L.push(D("destructive_bg_color", root.role("error", "#ff5555")))
+    L.push(D("destructive_fg_color", root.role("on_error", "#000000")))
+    L.push(D("success_bg_color", root.role("tertiary", "#888888")))
+    L.push(D("success_fg_color", onSurf))
+    L.push(D("theme_bg_color", bg))
+    L.push(D("theme_fg_color", root.role("on_background", "#ffffff")))
+    L.push(D("theme_base_color", surf))
+    L.push(D("theme_text_color", onSurf))
+    L.push(D("theme_selected_bg_color", prim))
+    L.push(D("theme_selected_fg_color", onPrim))
+    L.push(D("shade_color", shade))
+    L.push(D("scrollbar_outline_color", root.darkMode ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)"))
+    return L.join("\n") + "\n"
+  }
+
+  function qtengineJsonText() {
+    return "{\"theme\": {\"colorScheme\": \"" + root.kdeColorsPath + "\"}}"
+  }
+
+  function settingsIniText(cur) {
+    var t = String(cur || "")
+    if (t.trim() === "") {
+      t = "[Settings]\n"
+        + "gtk-theme-name=MatkosAmoled\n"
+        + "gtk-icon-theme-name=Papirus-Dark\n"
+        + "gtk-font-name=" + Theme.fontFamily + " 10\n"
+        + "gtk-cursor-theme-name=Adwaita\n"
+        + "gtk-cursor-theme-size=24\n"
+        + "gtk-application-prefer-dark-theme=" + (root.darkMode ? "1" : "0") + "\n"
+      return t
+    }
+    var dark = root.darkMode ? "1" : "0"
+    if (/gtk-application-prefer-dark-theme\s*=/.test(t))
+      t = t.replace(/gtk-application-prefer-dark-theme\s*=\s*[01]/, "gtk-application-prefer-dark-theme=" + dark)
+    else
+      t = t.replace(/\s*$/, "") + "\ngtk-application-prefer-dark-theme=" + dark + "\n"
+    return t
+  }
+
+  function pushAppThemes() {
+    if (!root.enabled)
+      return
+    kdeColorsFile.setText(root.kdeColorsText())
+    qtengineFile.setText(root.qtengineJsonText())
+    var css = root.gtkCssText()
+    gtkCssFile3.setText(css)
+    gtkCssFile4.setText(css)
+    gtkIniFile3.setText(root.settingsIniText(root.iniText3))
+    gtkIniFile4.setText(root.settingsIniText(root.iniText4))
+    root.pushColorScheme()
+  }
+
+  function pushColorScheme() {
+    if (!root.enabled)
+      return
+    colorSchemeProc.running = false
+    colorSchemeProc.command = ["dconf", "write", "/org/gnome/desktop/interface/color-scheme", "'prefer-" + (root.darkMode ? "dark" : "light") + "'"]
+    colorSchemeProc.running = true
+  }
+
+  Process {
+    id: colorSchemeProc
+  }
+
+  FileView {
+    id: kdeColorsFile
+    path: root.kdeColorsPath
+    watchChanges: false
+    printErrors: false
+  }
+
+  FileView {
+    id: qtengineFile
+    path: root.qtengineConfigPath
+    watchChanges: false
+    printErrors: false
+  }
+
+  FileView {
+    id: gtkCssFile3
+    path: root.gtk3CssPath
+    watchChanges: false
+    printErrors: false
+  }
+
+  FileView {
+    id: gtkCssFile4
+    path: root.gtk4CssPath
+    watchChanges: false
+    printErrors: false
+  }
+
+  property string iniText3: ""
+  property string iniText4: ""
+
+  FileView {
+    id: gtkIniFile3
+    path: root.gtk3IniPath
+    watchChanges: false
+    printErrors: false
+    onLoaded: root.iniText3 = text()
+  }
+
+  FileView {
+    id: gtkIniFile4
+    path: root.gtk4IniPath
+    watchChanges: false
+    printErrors: false
+    onLoaded: root.iniText4 = text()
   }
 
   Component.onCompleted: {

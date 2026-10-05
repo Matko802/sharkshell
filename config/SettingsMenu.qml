@@ -323,6 +323,59 @@ PanelWindow {
                   }
                 }
 
+                Rectangle {
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: 32
+                  color: root.hoverIdx === -9 ? Theme.bgAlt : "transparent"
+                  border.color: root.hoverIdx === -9 ? Theme.borderStrong : Theme.border
+                  border.width: 1
+                  MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onEntered: root.hoverIdx = -9
+                    onExited: { if (root.hoverIdx === -9) root.hoverIdx = -1 }
+                    onClicked: DynamicTheme.toggleDarkMode()
+                  }
+                  RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 56
+                    spacing: 10
+                    Item {
+                      Layout.preferredWidth: 20
+                      Layout.preferredHeight: 20
+                      QIcon {
+                        anchors.centerIn: parent
+                        name: "wallpaper"
+                        size: 18
+                        color: Theme.fg
+                      }
+                    }
+                    ColumnLayout {
+                      Layout.fillWidth: true
+                      Layout.fillHeight: true
+                      Layout.topMargin: 8
+                      Layout.bottomMargin: 8
+                      spacing: 2
+                      Text {
+                        text: DynamicTheme.darkMode ? "Dark mode" : "Light mode"
+                        color: Theme.fg
+                        font.family: root.fontFamily
+                        font.pixelSize: 12
+                        font.weight: Font.DemiBold
+                      }
+                    }
+                  }
+                  CToggle {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                    checked: DynamicTheme.darkMode
+                    onToggled: v => DynamicTheme.setDarkMode(v)
+                  }
+                }
+
                 SettingSlider {
                   label: "Blur"
                   icon: "opacity"
