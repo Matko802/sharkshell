@@ -108,7 +108,6 @@ Scope {
       implicitHeight: card.implicitHeight
       color: "transparent"
       WlrLayershell.namespace: "quickshell-modal"
-      BackgroundEffect.blurRegion: Region { item: toastWin.blurReady ? card : null }
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
       exclusionMode: ExclusionMode.Ignore
@@ -117,7 +116,6 @@ Scope {
 
       mask: Region { item: card }
 
-      readonly property bool blurReady: card.entered && !card.dismissing && Math.abs(card.x) < 1
       readonly property int cardHeight: card.implicitHeight
       onCardHeightChanged: toastScope.scheduleReposition()
 

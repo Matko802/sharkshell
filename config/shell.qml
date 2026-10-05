@@ -47,7 +47,6 @@ ShellRoot {
         color: "transparent"
         exclusionMode: ExclusionMode.Auto
         WlrLayershell.namespace: "quickshell"
-        BackgroundEffect.blurRegion: Region { item: root.barShown ? barBg : null }
         readonly property bool barVisible: root.barShown || clockMenu.shown || settingsMenu.shown || controlCard.shown
         visible: barVisible
         mask: Region { item: root.barShown ? barBg : null }
