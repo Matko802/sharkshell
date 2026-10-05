@@ -268,6 +268,10 @@ Scope {
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     WlrLayershell.namespace: "quickshell-modal"
+    BackgroundEffect.blurRegion: Region {
+      item: TransparencyState.transparent && card.cardProg >= 1 ? card : null
+      Region { item: TransparencyState.transparent && card.cardProg >= 1 ? tabsPill : null }
+    }
     mask: Region {
       item: card
       Region { item: tabsPill }
