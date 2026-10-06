@@ -122,6 +122,7 @@ Scope {
       root.reloadKitty()
       root.writeThemedNiri()
       root.reloadNiri()
+      root.pushAppThemes()
     } else {
       root.regenerate()
     }
@@ -142,6 +143,7 @@ Scope {
     } else {
       root.appsThemed = false
       root.restoreDefaults()
+      root.resetAppThemes()
     }
   }
 
@@ -189,6 +191,7 @@ Scope {
         root.reloadKitty()
         root.writeThemedNiri()
         root.reloadNiri()
+        root.pushAppThemes()
       }
     }
   }
@@ -646,6 +649,7 @@ Scope {
         root.reloadKitty()
         root.writeThemedNiri()
         root.reloadNiri()
+        root.pushAppThemes()
       }
       root.lastDoneWall = root.pendingWall
       if (root.enabled && WallpaperState.path !== "" && WallpaperState.path !== root.lastDoneWall)
@@ -710,6 +714,14 @@ Scope {
     var active = root.satRole("primary", "#ffffff", 0.5) + "ff"
     var inactive = root.role("surface_container_highest", "#444444") + "ff"
     niriBordersFile.setText(root.niriText(active, inactive))
+  }
+
+  function pushAppThemes() {
+    AppTheme.push()
+  }
+
+  function resetAppThemes() {
+    AppTheme.reset()
   }
 
   FileView {

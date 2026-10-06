@@ -292,7 +292,7 @@ Scope {
     const i = name.toLowerCase().indexOf(q)
     if (i < 0)
       return esc(name)
-    const c = selected ? "#000000" : root.matchColor
+    const c = selected ? Theme.bg : root.matchColor
     return esc(name.slice(0, i)) + "<font color=\"" + c + "\">" + esc(name.slice(i, i + q.length)) + "</font>" + esc(name.slice(i + q.length))
   }
 
@@ -574,7 +574,7 @@ Scope {
               Text {
                 textFormat: Text.RichText
                 text: root.hl(modelData.name, isKeyboardSelected)
-                color: isKeyboardSelected ? Theme.onSelect : Theme.fg
+                color: isKeyboardSelected ? Theme.bg : Theme.fg
                 font.family: root.fontFamily
                 font.pointSize: 12
                 clip: true
@@ -589,7 +589,7 @@ Scope {
                   anchors.centerIn: parent
                   name: "push_pin"
                   size: 14
-                  color: isKeyboardSelected ? "#000000" : "#ffffff"
+                  color: isKeyboardSelected ? Theme.bg : Theme.fg
                 }
               }
             }
@@ -600,7 +600,7 @@ Scope {
               height: 2
               width: holding ? parent.width * root.holdProgress : 0
               visible: holding && root.holdProgress > 0
-              color: isKeyboardSelected ? "#000000" : "#ffffff"
+              color: isKeyboardSelected ? Theme.bg : Theme.fg
             }
 
             MouseArea {

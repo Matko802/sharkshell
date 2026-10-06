@@ -496,7 +496,7 @@ Scope {
                     verticalAlignment: Text.AlignVCenter
                     textFormat: Text.RichText
                     text: root.hl(modelData)
-                    color: isKeyboardSelected ? Theme.onSelect : Theme.fg
+                    color: isKeyboardSelected ? Theme.bg : Theme.fg
                     font.family: root.fontFamily
                     font.pointSize: 12
                     elide: Text.ElideRight
