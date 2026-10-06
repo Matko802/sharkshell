@@ -161,6 +161,18 @@ function ensureContrastOnDark(fg, bg, minRatio) {
   return fg;
 }
 
+function ensureContrastOnLight(fg, bg, minRatio) {
+  var l = lightnessOf(fg);
+  var guard = 0;
+  while (contrastRatio(fg, bg) < minRatio && guard < 20) {
+    l -= 0.05;
+    if (l < 0.05) break;
+    fg = setLightness(fg, l);
+    guard++;
+  }
+  return fg;
+}
+
 function redness(hex) {
   var c = toRgb(hex);
   if (!c) return -1;

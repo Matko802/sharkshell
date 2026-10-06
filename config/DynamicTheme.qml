@@ -121,7 +121,6 @@ Scope {
       root.reloadKitty()
       root.writeThemedNiri()
       root.reloadNiri()
-      root.pushAppThemes()
     }
     root.regenerate()
   }
@@ -141,7 +140,6 @@ Scope {
     } else {
       root.appsThemed = false
       root.restoreDefaults()
-      root.resetAppThemes()
     }
   }
 
@@ -183,9 +181,13 @@ Scope {
     printErrors: false
     onLoaded: {
       var t = text().trim()
-      if (t !== "")
-        if (root.applySchemeText(t))
-          root.pushAppThemes()
+      if (t !== "" && root.applySchemeText(t)) {
+        root.appsThemed = true
+        root.writeThemedKitty()
+        root.reloadKitty()
+        root.writeThemedNiri()
+        root.reloadNiri()
+      }
     }
   }
 
@@ -325,23 +327,39 @@ Scope {
     if (wc.length > 0) blackCands = blackCands.concat(wc)
     var black = DynColor.pickDarkest(blackCands) || "#000000"
 
-    var greyBase = root.pal("neutral", ["50", "60", "40", "35"], "#767872")
-    var whiteBase = root.pal("neutral", ["80", "90", "70"], root.role("on_surface_variant", "#c6c7c1"))
+    var onLight = !root.darkMode
+    function ensureContrast(fg, back, r) {
+      return onLight ? DynColor.ensureContrastOnLight(fg, back, r) : DynColor.ensureContrastOnDark(fg, back, r)
+    }
+    var greyBase = onLight
+      ? root.pal("neutral", ["30", "20", "40", "35"], "#555755")
+      : root.pal("neutral", ["50", "60", "40", "35"], "#767872")
+    var whiteBase = onLight
+      ? root.pal("neutral", ["20", "30", "25", "35"], root.role("on_surface", "#191d17"))
+      : root.pal("neutral", ["80", "90", "70"], root.role("on_surface_variant", "#c6c7c1"))
     if (wc.length > 0) {
       var sortedByLum = wc.slice().sort(function(a, b) {
         return DynColor.luminance(a) - DynColor.luminance(b)
       })
       if (sortedByLum.length >= 6)
         greyBase = sortedByLum[Math.floor(sortedByLum.length * 0.45)]
-      var lightCands = sortedByLum.filter(function(c) {
-        var l = DynColor.lightnessOf(c)
-        return l > 0.55 && l < 0.95
-      })
-      if (lightCands.length > 0) whiteBase = lightCands[lightCands.length - 1]
+      if (onLight) {
+        var darkCands = sortedByLum.filter(function(c) {
+          var l = DynColor.lightnessOf(c)
+          return l > 0.05 && l < 0.45
+        })
+        if (darkCands.length > 0) whiteBase = darkCands[0]
+      } else {
+        var lightCands = sortedByLum.filter(function(c) {
+          var l = DynColor.lightnessOf(c)
+          return l > 0.55 && l < 0.95
+        })
+        if (lightCands.length > 0) whiteBase = lightCands[lightCands.length - 1]
+      }
     }
-    var grey = DynColor.ensureContrastOnDark(greyBase, bg, 3.5)
-    var white = DynColor.ensureContrastOnDark(DynColor.vivid(whiteBase, 0.72, 0.1), bg, 7.0)
-    var brightWhite = "#ffffff"
+    var grey = ensureContrast(greyBase, bg, 3.5)
+    var white = ensureContrast(DynColor.vivid(whiteBase, 0.72, 0.1), bg, 7.0)
+    var brightWhite = onLight ? "#000000" : "#ffffff"
 
     var usedHues = []
     function takeHue(hue, minSat) {
@@ -372,18 +390,18 @@ Scope {
     if (!blueBase) blueBase = "#61afef"
     if (!magentaBase) magentaBase = "#c678dd"
 
-    var red = DynColor.ensureContrastOnDark(DynColor.vivid(redBase, 0.65, 0.8), bg, 4.5)
-    var green = DynColor.ensureContrastOnDark(DynColor.vivid(greenBase, 0.65, 0.8), bg, 4.5)
-    var yellow = DynColor.ensureContrastOnDark(DynColor.vivid(yellowBase, 0.65, 0.6), bg, 4.5)
-    var blue = DynColor.ensureContrastOnDark(DynColor.vivid(blueBase, 0.65, 0.6), bg, 4.5)
-    var magenta = DynColor.ensureContrastOnDark(DynColor.vivid(magentaBase, 0.65, 0.6), bg, 4.5)
-    var cyan = DynColor.ensureContrastOnDark(DynColor.vivid(cyanBase, 0.65, 0.8), bg, 4.5)
-    var redBright = DynColor.ensureContrastOnDark(DynColor.vivid(redBase, 0.75, 0.8), bg, 5.5)
-    var greenBright = DynColor.ensureContrastOnDark(DynColor.vivid(greenBase, 0.75, 0.8), bg, 5.5)
-    var yellowBright = DynColor.ensureContrastOnDark(DynColor.vivid(yellowBase, 0.75, 0.6), bg, 5.5)
-    var blueBright = DynColor.ensureContrastOnDark(DynColor.vivid(blueBase, 0.75, 0.6), bg, 5.5)
-    var magentaBright = DynColor.ensureContrastOnDark(DynColor.vivid(magentaBase, 0.75, 0.6), bg, 5.5)
-    var cyanBright = DynColor.ensureContrastOnDark(DynColor.vivid(cyanBase, 0.75, 0.8), bg, 5.5)
+    var red = ensureContrast(DynColor.vivid(redBase, 0.65, 0.8), bg, 4.5)
+    var green = ensureContrast(DynColor.vivid(greenBase, 0.65, 0.8), bg, 4.5)
+    var yellow = ensureContrast(DynColor.vivid(yellowBase, 0.65, 0.6), bg, 4.5)
+    var blue = ensureContrast(DynColor.vivid(blueBase, 0.65, 0.6), bg, 4.5)
+    var magenta = ensureContrast(DynColor.vivid(magentaBase, 0.65, 0.6), bg, 4.5)
+    var cyan = ensureContrast(DynColor.vivid(cyanBase, 0.65, 0.8), bg, 4.5)
+    var redBright = ensureContrast(DynColor.vivid(redBase, 0.75, 0.8), bg, 5.5)
+    var greenBright = ensureContrast(DynColor.vivid(greenBase, 0.75, 0.8), bg, 5.5)
+    var yellowBright = ensureContrast(DynColor.vivid(yellowBase, 0.75, 0.6), bg, 5.5)
+    var blueBright = ensureContrast(DynColor.vivid(blueBase, 0.75, 0.6), bg, 5.5)
+    var magentaBright = ensureContrast(DynColor.vivid(magentaBase, 0.75, 0.6), bg, 5.5)
+    var cyanBright = ensureContrast(DynColor.vivid(cyanBase, 0.75, 0.8), bg, 5.5)
 
     return {
       source: "pywal-style wallpaper hues + matugen UI",
@@ -618,7 +636,6 @@ Scope {
         root.reloadKitty()
         root.writeThemedNiri()
         root.reloadNiri()
-        root.pushAppThemes()
       }
       root.lastDoneWall = root.pendingWall
       if (root.enabled && WallpaperState.path !== "" && WallpaperState.path !== root.lastDoneWall)
@@ -774,14 +791,6 @@ Scope {
       tabInactiveFg: "#e0e0e0",
       tabInactiveBg: "#000000"
     }
-  }
-
-  function pushAppThemes() {
-    AppTheme.push()
-  }
-
-  function resetAppThemes() {
-    AppTheme.reset()
   }
 
   Component.onCompleted: {
