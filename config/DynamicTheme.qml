@@ -90,6 +90,7 @@ Scope {
   property bool darkMode: true
   property string cachedSchemeMode: ""
   property string appliedMode: ""
+  property string generatingFor: ""
 
   function setDarkMode(v) {
     root.darkMode = !!v
@@ -121,8 +122,9 @@ Scope {
       root.reloadKitty()
       root.writeThemedNiri()
       root.reloadNiri()
+    } else {
+      root.regenerate()
     }
-    root.regenerate()
   }
 
   function regenerate() {
@@ -542,6 +544,7 @@ Scope {
       return
     extractProc.output = ""
     root.generating = true
+    root.generatingFor = root.schemeMode()
     extractProc.running = true
     root.extractWallColors(root.pendingWall)
   }
@@ -603,6 +606,13 @@ Scope {
     }
     onExited: function(exitCode) {
       root.generating = false
+      var stale = (root.generatingFor !== "" && root.generatingFor !== root.schemeMode())
+      root.generatingFor = ""
+      if (stale) {
+        if (exitCode === 0)
+          root.regenerate()
+        return
+      }
       if (!root.enabled) {
         root.appsThemed = false
         root.restoreDefaults()
@@ -640,10 +650,6 @@ Scope {
       root.lastDoneWall = root.pendingWall
       if (root.enabled && WallpaperState.path !== "" && WallpaperState.path !== root.lastDoneWall)
         root.extractFor(WallpaperState.path)
-      else if (root.enabled && root.appliedMode !== "" && root.appliedMode !== root.schemeMode()) {
-        root.lastDoneWall = "@@none@@"
-        root.extractFor(WallpaperState.path)
-      }
     }
   }
 
