@@ -68,12 +68,45 @@ Scope {
     return i >= 0 ? line.slice(i + 1) : line
   }
 
+  function decodeEntities(s) {
+    return s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&#39;|&apos;/g, "'")
+  }
+
+  function isHtmlText(s) {
+    return /<\s*(html|head|body|meta|link|img|div|span|p\b|a\b|table|ul|ol|li|h[1-6]|br|hr|iframe|figure|figcaption|picture|source|video)[\s/>]/i.test(s)
+  }
+
+  function stripHtml(s) {
+    return s.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^<>]+>/g, " ")
+  }
+
+  function viewText(line) {
+    const p = root.preview(line)
+    if (!root.isHtmlText(p))
+      return p
+    const labels = []
+    const re = /\b(?:alt|title)="([^"]*)"/gi
+    let m = null
+    while ((m = re.exec(p)) !== null) {
+      const v = root.decodeEntities(m[1]).replace(/\s+/g, " ").trim()
+      if (v !== "" && !labels.includes(v))
+        labels.push(v)
+    }
+    const body = root.decodeEntities(root.stripHtml(p)).replace(/\s+/g, " ").trim()
+    if (body !== "" && !labels.includes(body))
+      labels.unshift(body)
+    const t = labels.join(" · ")
+    if (t === "")
+      return "[HTML content]"
+    return t.length > 160 ? t.slice(0, 159) + "…" : t
+  }
+
   function esc(s) {
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
   }
 
   function hl(raw) {
-    const p = root.preview(raw)
+    const p = root.viewText(raw)
     const q = root.query.toLowerCase()
     if (q === "")
       return root.esc(p)
@@ -199,7 +232,7 @@ Scope {
     }
   }
 
-  readonly property var lcPreviews: root.allEntries.map(l => root.preview(l).toLowerCase())
+  readonly property var lcPreviews: root.allEntries.map(l => root.viewText(l).toLowerCase())
 
   readonly property var results: {
     const q = root.query.toLowerCase()
