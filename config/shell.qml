@@ -45,10 +45,10 @@ ShellRoot {
         anchors.right: true
         implicitHeight: 30
         color: "transparent"
-        exclusionMode: ExclusionMode.Auto
+        exclusionMode: OverviewState.open ? ExclusionMode.Ignore : ExclusionMode.Auto
         WlrLayershell.namespace: "quickshell"
         BackgroundEffect.blurRegion: Region { item: root.barShown && TransparencyState.transparent ? barBg : null }
-        readonly property bool barVisible: (root.barShown || clockMenu.shown || settingsMenu.shown || controlCard.shown) && !OverviewState.open
+        readonly property bool barVisible: root.barShown || clockMenu.shown || settingsMenu.shown || controlCard.shown
         visible: barVisible
         mask: Region { item: root.barShown ? barBg : null }
         WlrLayershell.layer: WlrLayer.Overlay
