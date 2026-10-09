@@ -59,9 +59,7 @@ ShellRoot {
           id: barBg
           anchors.fill: parent
           color: Theme.bg
-          readonly property real zoneFrac: barWindow.height > 0 ? Math.max(0, Math.min(1, barWindow.exclusiveZone / barWindow.height)) : 1
-          y: -barWindow.height * (1 - zoneFrac)
-          opacity: (root.barShown ? 1 : 0) * zoneFrac
+          opacity: root.barShown ? 1 : 0
           visible: opacity > 0.01
           Bar { anchors.fill: parent }
         }

@@ -37,7 +37,8 @@ PanelWindow {
     { name: "Sound", glyph: "audio-volume-high" },
     { name: "User", glyph: "user-circle" },
     { name: "Visual", glyph: "equalizer" },
-    { name: "Power", glyph: "suspend" }
+    { name: "Power", glyph: "suspend" },
+    { name: "Apps", glyph: "settings" }
   ]
 
   function fmtDur(s) {
@@ -75,7 +76,17 @@ PanelWindow {
   }
 
   readonly property var visualItems: [{ kind: "mode" }, { kind: "bars" }, { kind: "topbar" }]
-  readonly property var currentItems: root.activeTab === 0 ? root.themeItems : (root.activeTab === 3 ? root.visualItems : (root.activeTab === 4 ? [] : root.audioModel))
+  readonly property var currentItems: root.activeTab === 0 ? root.themeItems : (root.activeTab === 5 ? root.appsItems : (root.activeTab === 3 ? root.visualItems : (root.activeTab === 4 ? [] : root.audioModel)))
+
+  property int expandedApp: -1
+  readonly property var appsItems: DefaultApps.rows
+  function toggleApp(i) {
+    root.expandedApp = root.expandedApp === i ? -1 : i
+  }
+  function chooseApp(cat, id) {
+    DefaultApps.setApp(cat, id)
+    root.expandedApp = -1
+  }
 
   function activate(i) {
     const item = root.currentItems[i]
@@ -84,6 +95,8 @@ PanelWindow {
     if (root.activeTab === 0) {
       SettingsState.close()
       root.choose(item.action)
+    } else if (root.activeTab === 5) {
+      root.toggleApp(i)
     } else if (root.activeTab === 3) {
       root.selIdx = i
       if (i === 0) VisualizerState.cycleMode()
@@ -101,6 +114,7 @@ PanelWindow {
   onActiveTabChanged: {
     root.selIdx = 0
     root.hoverIdx = -1
+    root.expandedApp = -1
     root.skipHeader(1)
     pageFlick.contentY = 0
   }
@@ -689,6 +703,125 @@ PanelWindow {
                   text: root.fmtDur(IdleManager.suspendTimeout)
                   onUserSet: v => IdleManager.setSuspendTimeout(v * 3600)
                   onReset: IdleManager.setSuspendTimeout(IdleManager.suspendDef)
+                }
+              }
+
+              ColumnLayout {
+                id: tab5col
+                width: pageFlick.width
+                spacing: 8
+                Repeater {
+                  model: root.appsItems
+                  delegate: ColumnLayout {
+                    required property var modelData
+                    required property int index
+                    property string rowCat: modelData.cat
+                    property int rowIdx: index
+                    Layout.fillWidth: true
+                    spacing: 0
+                    Rectangle {
+                      Layout.fillWidth: true
+                      Layout.preferredHeight: 44
+                      color: Theme.bgAlt
+                      border.color: root.hoverIdx === -30 - rowIdx ? Theme.borderStrong : Theme.border
+                      border.width: 1
+                      RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 12
+                        anchors.rightMargin: 12
+                        spacing: 10
+                        QIcon { name: modelData.icon; size: 18; color: Theme.muted }
+                        ColumnLayout {
+                          Layout.fillWidth: true
+                          Layout.fillHeight: true
+                          Layout.topMargin: 6
+                          Layout.bottomMargin: 6
+                          spacing: 2
+                          Text {
+                            text: modelData.label
+                            color: Theme.fg
+                            font.family: root.fontFamily
+                            font.pixelSize: 11
+                          }
+                          Text {
+                            text: modelData.current
+                            color: Theme.muted2
+                            font.family: root.fontFamily
+                            font.pixelSize: 9
+                            elide: Text.ElideRight
+                          }
+                        }
+                        Text {
+                          text: root.expandedApp === rowIdx ? "Hide" : "Change"
+                          color: root.hoverIdx === -30 - rowIdx ? Theme.bg : Theme.fg
+                          font.family: root.fontFamily
+                          font.pixelSize: 10
+                        }
+                      }
+                      MouseArea {
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onEntered: root.hoverIdx = -30 - rowIdx
+                        onExited: { if (root.hoverIdx === -30 - rowIdx) root.hoverIdx = -1 }
+                        onClicked: root.toggleApp(rowIdx)
+                      }
+                    }
+                    ColumnLayout {
+                      visible: root.expandedApp === rowIdx
+                      Layout.fillWidth: true
+                      Layout.topMargin: 4
+                      spacing: 4
+                      Repeater {
+                        model: DefaultApps.optsFor(rowCat)
+                        delegate: Rectangle {
+                          required property var modelData
+                          required property int index
+                          Layout.fillWidth: true
+                          Layout.preferredHeight: 30
+                          color: DefaultApps.currentIdOf(rowCat) === modelData.id ? Theme.bgAlt : "transparent"
+                          border.color: root.hoverIdx === -40 - index ? Theme.borderStrong : Theme.border
+                          border.width: 1
+                          RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            spacing: 10
+                            QIcon {
+                              name: "check"
+                              size: 14
+                              color: Theme.fg
+                              visible: DefaultApps.currentIdOf(rowCat) === modelData.id
+                            }
+                            Text {
+                              Layout.fillWidth: true
+                              text: modelData.name
+                              color: Theme.fg
+                              font.family: root.fontFamily
+                              font.pixelSize: 11
+                              elide: Text.ElideRight
+                            }
+                          }
+                          MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onEntered: root.hoverIdx = -40 - index
+                            onExited: { if (root.hoverIdx === -40 - index) root.hoverIdx = -1 }
+                            onClicked: root.chooseApp(rowCat, modelData.id)
+                          }
+                        }
+                      }
+                      Text {
+                        visible: DefaultApps.optsFor(rowCat).length === 0
+                        Layout.fillWidth: true
+                        text: "None installed"
+                        color: Theme.muted2
+                        font.family: root.fontFamily
+                        font.pixelSize: 10
+                      }
+                    }
+                  }
                 }
               }
             }

@@ -142,6 +142,14 @@ Scope {
   }
 
   property var terminalCmd: ["kitty", "-e"]
+
+  Connections {
+    target: DefaultApps
+    function onTerminalCmdChanged() {
+      if (DefaultApps.hasTerminalChoice && DefaultApps.terminalCmd.length > 0)
+        root.terminalCmd = DefaultApps.terminalCmd
+    }
+  }
   property int termProbeIdx: 0
   readonly property var termCandidates: [
     { bin: "xdg-terminal-exec", cmd: ["xdg-terminal-exec"] },
@@ -156,6 +164,11 @@ Scope {
     { bin: "xterm", cmd: ["xterm", "-e"] }
   ]
   Component.onCompleted: {
+    if (DefaultApps.hasTerminalChoice && DefaultApps.terminalCmd.length > 0) {
+      root.terminalCmd = DefaultApps.terminalCmd
+      return
+    }
+
     const envTerm = Quickshell.env("TERMINAL")
     if (envTerm && envTerm.length > 0) {
       const t = envTerm.trim().split(/\s+/)[0]
