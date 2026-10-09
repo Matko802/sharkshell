@@ -280,7 +280,7 @@ Singleton {
     dconfProc.running = false
     dconfProc.command = ["bash", "-c",
       "dconf write /org/gnome/desktop/interface/color-scheme \"'prefer-" + scheme + "'\";"
-      + " dconf write /org/gnome/desktop/interface/gtk-theme \"'" + root.gtkTheme(d) + "'\";"
+      + " dconf write /org/gnome/desktop/interface/gtk-theme " + "'" + root.gtkTheme(d) + "'" + ";"
       + " dconf write /org/gnome/desktop/interface/icon-theme \"'" + icon + "'\";"
       + " dconf write /org/gnome/desktop/interface/font-name \"'" + font + "'\";"
       + " dconf write /org/gnome/desktop/interface/monospace-font-name \"'" + font + "'\""]
