@@ -2,7 +2,7 @@
 let
   pkg = pkgs.callPackage ./packaging.nix { };
 in {
-  environment.systemPackages = with pkgs; [ pkg.sharkshell pkg.sharkColorsBin upower wtype matugen adw-gtk3 ];
+  environment.systemPackages = with pkgs; [ pkg.sharkshell pkg.sharkColorsBin upower wtype adw-gtk3 ];
   environment.variables.QUICKSHELL_FONT = config.custom.fontName;
   qt.enable = true;
 
