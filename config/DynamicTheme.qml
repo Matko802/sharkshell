@@ -132,27 +132,89 @@ Scope {
   property string schemeWallDark: ""
   property string schemeWallLight: ""
 
+  property bool startupDone: false
+  property bool startupWrites: false
+  property int startupLoads: 0
+  property bool startupTimedOut: false
+  property bool settleKitty: false
+  property bool settleNiri: false
+  property bool kittyDirty: false
+  property bool niriDirty: false
+  property bool defaultsApplied: false
+  property string appliedKittyText: ""
+  property string appliedFootText: ""
+  property string appliedNiriText: ""
+  property string appliedGtkCss: ""
+  property string appliedKdeText: ""
+
+  function applyCachedNow() {
+    var txt = root.darkMode ? root.schemeTextDark : root.schemeTextLight
+    var wl = root.darkMode ? root.schemeWallDark : root.schemeWallLight
+    if (txt === "" || wl === "" || wl !== WallpaperState.path || !root.applySchemeText(txt))
+      return false
+    root.appliedMode = root.schemeMode()
+    root.appsThemed = true
+    root.writeThemedKitty()
+    root.reloadKitty()
+    root.writeThemedNiri()
+    root.reloadNiri()
+    root.pushAppThemes()
+    root.maybePrewarm()
+    return true
+  }
+
+  function shutdownTheming() {
+    root.appsThemed = false
+    root.defaultsApplied = false
+    root.restoreDefaults()
+    root.resetAppThemes()
+  }
+
+  function noteStartup() {
+    if (root.startupDone)
+      return
+    root.startupLoads++
+    root.maybeStartup()
+  }
+
+  function maybeStartup() {
+    if (root.startupDone)
+      return
+    if (root.startupLoads < 9 && !root.startupTimedOut)
+      return
+    if (WallpaperState.path === "" && !root.startupTimedOut)
+      return
+    root.startupApply()
+  }
+
+  function startupApply() {
+    if (root.startupDone)
+      return
+    root.startupDone = true
+    if (!root.enabled) {
+      root.shutdownTheming()
+      return
+    }
+    if (!root.applyCachedNow()) {
+      if (WallpaperState.path !== "")
+        root.regenerate()
+      else {
+        root.shutdownTheming()
+      }
+    }
+  }
+
   onDarkModeChanged: {
     darkModeFile.setText(root.darkMode ? "1" : "0")
     if (!root.enabled)
       return
-    var txt = root.darkMode ? root.schemeTextDark : root.schemeTextLight
-    var wl = root.darkMode ? root.schemeWallDark : root.schemeWallLight
-    if (txt !== "" && wl !== "" && wl === WallpaperState.path && root.applySchemeText(txt)) {
-      root.appliedMode = root.schemeMode()
-      root.appsThemed = true
-      root.writeThemedKitty()
-      root.reloadKitty()
-      root.writeThemedNiri()
-      root.reloadNiri()
-      root.pushAppThemes()
-      root.maybePrewarm()
-    } else {
+    if (!root.applyCachedNow())
       root.regenerate()
-    }
   }
 
   function regenerate() {
+    if (!root.startupDone)
+      return
     if (!root.enabled || root.generating)
       return
     root.lastDoneWall = "@@none@@"
@@ -174,6 +236,10 @@ Scope {
   Connections {
     target: WallpaperState
     function onPathChanged() {
+      if (!root.startupDone) {
+        root.maybeStartup()
+        return
+      }
       if (root.enabled)
         root.regenerate()
     }
@@ -193,6 +259,7 @@ Scope {
         + " roles=" + Object.keys(root.roles).length
         + " scheme=" + root.scheme + "/" + root.flavour + "/" + root.variant
         + " wall=" + root.schemeWall
+        + " startup=" + root.startupDone + "/" + root.startupLoads
     }
   }
 
@@ -205,6 +272,7 @@ Scope {
       var t = text().trim()
       if (t !== "")
         root.enabled = (t === "1")
+      root.noteStartup()
     }
   }
 
@@ -223,6 +291,7 @@ Scope {
         root.reloadNiri()
         root.pushAppThemes()
       }
+      root.noteStartup()
     }
   }
 
@@ -235,6 +304,7 @@ Scope {
       var t = text().trim()
       if (t !== "")
         root.schemeWall = t
+      root.noteStartup()
     }
   }
 
@@ -247,6 +317,7 @@ Scope {
       var t = text().trim()
       if (t !== "")
         root.darkMode = (t === "1")
+      root.noteStartup()
     }
   }
 
@@ -259,6 +330,7 @@ Scope {
       var t = text().trim()
       if (t === "dark" || t === "light")
         root.cachedSchemeMode = t
+      root.noteStartup()
     }
   }
 
@@ -267,7 +339,10 @@ Scope {
     path: root.cacheDir + "/dynamic-scheme-dark.json"
     watchChanges: false
     printErrors: false
-    onLoaded: root.schemeTextDark = text()
+    onLoaded: {
+      root.schemeTextDark = text()
+      root.noteStartup()
+    }
   }
 
   FileView {
@@ -275,7 +350,10 @@ Scope {
     path: root.cacheDir + "/dynamic-scheme-light.json"
     watchChanges: false
     printErrors: false
-    onLoaded: root.schemeTextLight = text()
+    onLoaded: {
+      root.schemeTextLight = text()
+      root.noteStartup()
+    }
   }
 
   FileView {
@@ -283,7 +361,10 @@ Scope {
     path: root.cacheDir + "/dynamic-scheme-wall-dark"
     watchChanges: false
     printErrors: false
-    onLoaded: root.schemeWallDark = text().trim()
+    onLoaded: {
+      root.schemeWallDark = text().trim()
+      root.noteStartup()
+    }
   }
 
   FileView {
@@ -291,7 +372,10 @@ Scope {
     path: root.cacheDir + "/dynamic-scheme-wall-light"
     watchChanges: false
     printErrors: false
-    onLoaded: root.schemeWallLight = text().trim()
+    onLoaded: {
+      root.schemeWallLight = text().trim()
+      root.noteStartup()
+    }
   }
 
   property string pendingKittyText: ""
@@ -308,18 +392,30 @@ Scope {
       + " > " + Util.shellQuote(root.genDir + "/foot/" + root.footConfName) + ";"
       + "printf '%s' " + Util.shellQuote(root.pendingNiriText)
       + " > " + Util.shellQuote(root.niriBorders) + ";"
-      + " pkill -USR1 kitty >/dev/null 2>&1;"
-      + " rt=\"$XDG_RUNTIME_DIR\"; [ -z \"$rt\" ] && rt=\"/run/user/$(id -u)\";"
-      + " for s in \"$rt\"/niri.*.sock; do"
-      + " [ -S \"$s\" ] || continue;"
-      + " NIRI_SOCKET=\"$s\" niri msg action load-config-file >/dev/null 2>&1;"
-      + " done; exit 0"]
+      + " exit 0"]
   }
 
   function restoreDefaults() {
+    if (!root.startupDone) {
+      root.startupWrites = true
+      return
+    }
+    if (root.defaultsApplied)
+      return
     root.pendingKittyText = root.kittyText(root.defaultKittyColors())
     root.pendingFootText = root.footText(root.defaultKittyColors())
     root.pendingNiriText = root.niriText("#ffffffff", "#444444ff")
+    root.appliedKittyText = root.pendingKittyText
+    root.appliedFootText = root.pendingFootText
+    root.appliedNiriText = root.pendingNiriText
+    root.appliedGtkCss = ""
+    root.appliedKdeText = ""
+    root.defaultsApplied = true
+    root.kittyDirty = true
+    root.niriDirty = true
+    root.settleKitty = true
+    root.settleNiri = true
+    settleTimer.restart()
     if (!defaultsProc.running)
       defaultsProc.running = true
   }
@@ -495,7 +591,7 @@ Scope {
       + " > " + Util.shellQuote(root.genDir + "/kitty/" + root.kittyConfName) + ";"
       + "printf '%s' " + Util.shellQuote(root.pendingFootText)
       + " > " + Util.shellQuote(root.genDir + "/foot/" + root.footConfName) + ";"
-      + " pkill -USR1 kitty >/dev/null 2>&1; exit 0"]
+      + " exit 0"]
   }
 
   Process {
@@ -507,10 +603,23 @@ Scope {
   }
 
   function writeThemedKitty() {
-    root.pendingKittyText = root.kittyText(root.themedKittyColors())
-    root.pendingFootText = root.footText(root.themedKittyColors())
+    if (!root.startupDone) {
+      root.startupWrites = true
+      return false
+    }
+    var kt = root.kittyText(root.themedKittyColors())
+    var ft = root.footText(root.themedKittyColors())
+    if (kt === root.appliedKittyText && ft === root.appliedFootText)
+      return false
+    root.pendingKittyText = kt
+    root.pendingFootText = ft
+    root.appliedKittyText = kt
+    root.appliedFootText = ft
+    root.defaultsApplied = false
+    root.kittyDirty = true
     if (!kittyOnlyProc.running)
       kittyOnlyProc.running = true
+    return true
   }
 
   function writeThemedFoot() {
@@ -836,18 +945,37 @@ Scope {
 
   Timer {
     id: settleTimer
-    interval: 1500
+    interval: 800
     onTriggered: {
-      if (!reloadProc.running)
+      if (root.settleKitty && !reloadProc.running)
         reloadProc.running = true
-      if (!niriReloadProc.running)
+      root.settleKitty = false
+      if (root.settleNiri && !niriReloadProc.running)
         niriReloadProc.running = true
+      root.settleNiri = false
+    }
+  }
+
+  Timer {
+    id: startupTimer
+    interval: 4000
+    running: true
+    repeat: false
+    onTriggered: {
+      root.startupTimedOut = true
+      root.maybeStartup()
     }
   }
 
   function reloadKitty() {
-    if (!reloadProc.running)
-      reloadProc.running = true
+    if (!root.startupDone) {
+      root.startupWrites = true
+      return
+    }
+    if (!root.kittyDirty)
+      return
+    root.kittyDirty = false
+    root.settleKitty = true
     settleTimer.restart()
   }
 
@@ -862,8 +990,14 @@ Scope {
   }
 
   function reloadNiri() {
-    if (!niriReloadProc.running)
-      niriReloadProc.running = true
+    if (!root.startupDone) {
+      root.startupWrites = true
+      return
+    }
+    if (!root.niriDirty)
+      return
+    root.niriDirty = false
+    root.settleNiri = true
     settleTimer.restart()
   }
 
@@ -876,16 +1010,39 @@ Scope {
   }
 
   function writeThemedNiri() {
-    var active = root.satRole("primary", "#ffffff", 0.5) + "ff"
-    var inactive = root.role("surface_container_highest", "#444444") + "ff"
-    niriBordersFile.setText(root.niriText(active, inactive))
+    if (!root.startupDone) {
+      root.startupWrites = true
+      return false
+    }
+    var nt = root.niriText(root.satRole("primary", "#ffffff", 0.5) + "ff", root.role("surface_container_highest", "#444444") + "ff")
+    if (nt === root.appliedNiriText)
+      return false
+    root.appliedNiriText = nt
+    root.defaultsApplied = false
+    root.niriDirty = true
+    niriBordersFile.setText(nt)
+    return true
   }
 
   function pushAppThemes() {
+    if (!root.startupDone) {
+      root.startupWrites = true
+      return
+    }
+    var css = AppTheme.gtkCssText()
+    var kde = AppTheme.kdeColorsText()
+    if (css === root.appliedGtkCss && kde === root.appliedKdeText)
+      return
+    root.appliedGtkCss = css
+    root.appliedKdeText = kde
     AppTheme.push()
   }
 
   function resetAppThemes() {
+    if (!root.startupDone) {
+      root.startupWrites = true
+      return
+    }
     AppTheme.reset()
   }
 
@@ -909,6 +1066,7 @@ Scope {
       root.extractWallColors(WallpaperState.path)
       root.maybePrewarm()
     }
+    root.maybeStartup()
   }
 
   function kittyText(o) {
