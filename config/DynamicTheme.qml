@@ -4,7 +4,6 @@ import Quickshell
 import Quickshell.Io
 import "DynamicColor.js" as DynColor
 import "Util.js" as Util
-import "WallpaperColors.js" as WallpaperColors
 
 Scope {
   id: root
@@ -14,8 +13,16 @@ Scope {
   property bool appsThemed: false
 
   property var roles: ({})
-  property var palettes: ({})
-  property var wallColors: ([])
+
+  readonly property color bg: root.role("background", "#111111")
+  readonly property color bgAlt: root.role("surface_container", "#111111")
+  readonly property color fg: root.role("on_surface", "#ffffff")
+  readonly property color outline: root.role("primary", "#ffffff")
+  readonly property color border: root.role("outline_variant", "#444444")
+  readonly property color borderStrong: root.role("outline", "#888888")
+  readonly property color muted: root.role("on_surface_variant", "#888888")
+  readonly property color muted2: root.role("outline", "#888888")
+  readonly property color muted3: root.role("outline_variant", "#444444")
 
   readonly property string cacheDir: Quickshell.env("HOME") + "/.cache/sharkshell"
   readonly property string genDir: Quickshell.env("HOME") + "/.config/sharkshell"
@@ -47,58 +54,6 @@ Scope {
       return String(root.roles[s])
     return DynColor.validOr(root.roles[name], fallback)
   }
-
-  function satRole(name, fallback, amt) {
-    return DynColor.saturate(root.role(name, fallback), amt)
-  }
-
-  function pal(name, levels, fallback) {
-    var p = root.palettes[name]
-    if (p) {
-      for (var i = 0; i < levels.length; i++) {
-        var c = p[levels[i]]
-        if (c && DynColor.isValid(c)) return String(c)
-      }
-    }
-    return fallback
-  }
-
-  function palAll(name, levels) {
-    var out = []
-    var p = root.palettes[name]
-    if (!p) return out
-    if (levels) {
-      for (var i = 0; i < levels.length; i++) {
-        var c = p[levels[i]]
-        if (c && DynColor.isValid(c)) out.push(String(c))
-      }
-      return out
-    }
-    for (var k in p) {
-      if (p[k] && DynColor.isValid(p[k])) out.push(String(p[k]))
-    }
-    return out
-  }
-
-  readonly property color dynBg: root.role("background", "#111111")
-  readonly property color dynBgAlt: DynColor.saturate(DynColor.mix(root.dynBg, root.role("secondary", "#ffffff"), 0.16), 0.3)
-  readonly property color dynFg: root.role("on_surface", "#ffffff")
-  readonly property color dynOutline: DynColor.saturate(root.role("primary", "#ffffff"), 0.5)
-  readonly property color dynBorder: DynColor.saturate(DynColor.mix(root.dynBg, root.role("secondary", "#ffffff"), 0.30), 0.8)
-  readonly property color dynBorderStrong: DynColor.saturate(DynColor.mix(root.dynBg, root.role("secondary", "#ffffff"), 0.48), 0.8)
-  readonly property color dynMuted: root.role("on_surface_variant", "#888888")
-  readonly property color dynMuted2: DynColor.saturate(DynColor.mix(DynColor.mix(root.role("on_surface_variant", "#888888"), root.role("tertiary", "#888888"), 0.35), root.dynBg, 0.30), 1.0)
-  readonly property color dynMuted3: DynColor.saturate(DynColor.mix(DynColor.mix(root.role("on_surface_variant", "#888888"), root.role("tertiary", "#888888"), 0.35), root.dynBg, 0.60), 1.0)
-
-  readonly property color bg: root.dynBg
-  readonly property color bgAlt: root.dynBgAlt
-  readonly property color fg: root.dynFg
-  readonly property color outline: root.dynOutline
-  readonly property color border: root.dynBorder
-  readonly property color borderStrong: root.dynBorderStrong
-  readonly property color muted: root.dynMuted
-  readonly property color muted2: root.dynMuted2
-  readonly property color muted3: root.dynMuted3
 
   function setEnabled(v) {
   }
@@ -348,7 +303,22 @@ Scope {
   property string pendingNiriText: ""
 
   function themedKittyColors() {
-    return WallpaperColors.buildTerminalTheme(DynColor, root.wallColors, root.roles, root.palettes, root.darkMode)
+    var t = []
+    for (var ti = 0; ti < 16; ti++)
+      t.push(root.role("term" + ti, "#000000"))
+    return {
+      source: "caelestia dynamic scheme (" + root.scheme + "/" + root.flavour + "/" + root.variant + ")",
+      background: root.role("background", "#000000"),
+      foreground: root.role("on_surface", "#ffffff"),
+      cursor: root.role("primary", "#bbbbbb"),
+      selBg: root.role("secondary", "#b5d5ff"),
+      selFg: root.role("surface", "#000000"),
+      ansi: t,
+      tabActiveFg: root.role("inverse_on_surface", "#444444"),
+      tabActiveBg: root.role("primary", "#b5d5ff"),
+      tabInactiveFg: root.role("on_surface_variant", "#ffffff"),
+      tabInactiveBg: root.role("surface", "#000000")
+    }
   }
 
   Process {
@@ -436,7 +406,6 @@ Scope {
       if (!nmap["background"] || !nmap["primary"])
         return false
       root.roles = nmap
-      root.palettes = ({})
       if (typeof obj.name === "string" && obj.name !== "")
         root.scheme = obj.name
       if (typeof obj.flavour === "string" && obj.flavour !== "")
@@ -447,41 +416,7 @@ Scope {
         root.schemeWall = root.pendingWall
       return true
     }
-    if (!obj.colors)
-      return false
-    var want = root.darkMode ? "dark" : "light"
-    var map = {}
-    for (var k in obj.colors) {
-      var entry = obj.colors[k]
-      if (!entry)
-        continue
-      var c = (entry[want] && entry[want].color) || (entry.default && entry.default.color) || entry.color || ""
-      if (DynColor.isValid(c))
-        map[k] = String(c)
-    }
-    if (!map["background"] || !map["primary"])
-      return false
-    root.roles = map
-    var pmap = {}
-    if (obj.palettes) {
-      for (var pname in obj.palettes) {
-        var pentry = obj.palettes[pname]
-        if (!pentry) continue
-        var lmap = {}
-        for (var lvl in pentry) {
-          var lentry = pentry[lvl]
-          if (!lentry) continue
-          var lc = (lentry[want] && lentry[want].color) || (lentry.default && lentry.default.color) || lentry.color || ""
-          if (DynColor.isValid(lc))
-            lmap[String(lvl)] = String(lc)
-        }
-        pmap[pname] = lmap
-      }
-    }
-    root.palettes = pmap
-    if (root.pendingWall !== "")
-      root.schemeWall = root.pendingWall
-    return true
+    return false
   }
 
   property string pendingWall: ""
@@ -501,54 +436,6 @@ Scope {
     root.generating = true
     root.generatingFor = root.schemeMode()
     extractProc.running = true
-    root.extractWallColors(root.pendingWall)
-  }
-
-  property string wallColorsWall: ""
-  property string magickRunningFor: ""
-
-  function extractWallColors(wall) {
-    if (!wall || wall === "")
-      return
-    root.wallColorsWall = String(wall)
-    if (magickProc.running)
-      return
-    magickProc.output = ""
-    root.magickRunningFor = root.wallColorsWall
-    magickProc.running = true
-  }
-
-  Process {
-    id: magickProc
-    property string output: ""
-    command: ["bash", "-c",
-      " wall=" + Util.shellQuote(root.magickRunningFor) + ";"
-      + " [ -f \"$wall\" ] || exit 4;"
-      + " command -v magick >/dev/null 2>&1 || exit 3;"
-      + " magick \"$wall\" -resize 200x200! -colors 16 -depth 8 -format \"%c\" histogram:info: 2>/dev/null"]
-    stdout: SplitParser {
-      onRead: function(data) {
-        magickProc.output += data + "\n"
-      }
-    }
-    onExited: function(exitCode) {
-      var out = magickProc.output
-      magickProc.output = ""
-      if (root.magickRunningFor !== root.wallColorsWall) {
-        root.extractWallColors(root.wallColorsWall)
-        return
-      }
-      if (exitCode !== 0 || out.trim() === "")
-        return
-      var cols = DynColor.parseHistogramColors(out)
-      if (cols.length >= 4) {
-        root.wallColors = cols
-        if (root.appsThemed) {
-          root.writeThemedKitty()
-          root.reloadKitty()
-        }
-      }
-    }
   }
 
   Process {
@@ -787,7 +674,7 @@ Scope {
   }
 
   function writeThemedNiri() {
-    var nt = root.niriText(root.satRole("primary", "#ffffff", 0.5) + "ff", root.role("surface_container_highest", "#444444") + "ff")
+    var nt = root.niriText(root.role("primary", "#ffffff") + "ff", root.role("surface_container_highest", "#444444") + "ff")
     if (nt === root.appliedNiriText)
       return false
     root.appliedNiriText = nt
@@ -817,7 +704,6 @@ Scope {
     if (Object.keys(root.roles).length === 0 && WallpaperState.path !== "") {
       root.regenerate()
     } else if (WallpaperState.path !== "") {
-      root.extractWallColors(WallpaperState.path)
       root.maybePrewarm()
     }
     root.maybeStartup()

@@ -48,7 +48,7 @@ Singleton {
   property color muted3: DynamicTheme.muted3
   Behavior on muted3 { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
   readonly property color hover: "#33ffffff"
-  readonly property color match: DynamicTheme.satRole("tertiary", "#cb4b16", 0.5)
+  readonly property color match: DynamicTheme.role("tertiary", "#cb4b16")
   readonly property color onSelect: "#586e75"
   readonly property color error: "#ff5555"
   property color lockBgBase: TransparencyState.transparent ? DynamicTheme.bg : "#000000"
