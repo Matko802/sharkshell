@@ -598,10 +598,14 @@ Scope {
     command: ["bash", "-c",
       "set -o pipefail;"
       + " mkdir -p " + Util.shellQuote(root.cacheDir) + " " + Util.shellQuote(root.niriDir + "/niri") + " " + Util.shellQuote(root.genDir + "/kitty") + " " + Util.shellQuote(root.genDir + "/foot") + ";"
-      + " command -v matugen >/dev/null 2>&1 || exit 3;"
       + " wall=" + Util.shellQuote(root.pendingWall) + ";"
       + " [ -f \"$wall\" ] || exit 4;"
-      + " matugen image \"$wall\" --mode " + (root.darkMode ? "dark" : "light") + " -j hex --source-color-index 0 2>/dev/null"]
+      + " mode=" + (root.darkMode ? "dark" : "light") + ";"
+      + " SC=\"\";"
+      + " if command -v shark-colors >/dev/null 2>&1; then SC=$(shark-colors \"$wall\" --mode \"$mode\" 2>/dev/null); fi;"
+      + " if [ -n \"$SC\" ]; then printf '%s' \"$SC\";"
+      + " elif command -v matugen >/dev/null 2>&1; then matugen image \"$wall\" --mode \"$mode\" -j hex --source-color-index 0 2>/dev/null;"
+      + " else exit 3; fi"]
     stdout: SplitParser {
       onRead: function(data) {
         extractProc.output += data + "\n"
