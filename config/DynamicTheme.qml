@@ -209,9 +209,7 @@ Scope {
   }
 
   function regenerate() {
-    if (!root.startupDone)
-      return
-    if (root.generating)
+    if (!root.startupDone || root.generating)
       return
     root.lastDoneWall = "@@none@@"
     root.extractFor(WallpaperState.path)
@@ -373,8 +371,9 @@ Scope {
   }
 
   function writeThemedKitty() {
-    var kt = root.kittyText(root.themedKittyColors())
-    var ft = root.footText(root.themedKittyColors())
+    var tc = root.themedKittyColors()
+    var kt = root.kittyText(tc)
+    var ft = root.footText(tc)
     if (kt === root.appliedKittyText && ft === root.appliedFootText)
       return false
     root.pendingKittyText = kt
@@ -487,6 +486,7 @@ Scope {
 
   property string pendingWall: ""
   property string lastDoneWall: "@@none@@"
+  property string retryWall: ""
   property string schemeWall: ""
 
   function extractFor(wall) {
@@ -505,21 +505,24 @@ Scope {
   }
 
   property string wallColorsWall: ""
+  property string magickRunningFor: ""
 
   function extractWallColors(wall) {
     if (!wall || wall === "")
       return
     root.wallColorsWall = String(wall)
+    if (magickProc.running)
+      return
     magickProc.output = ""
-    if (!magickProc.running)
-      magickProc.running = true
+    root.magickRunningFor = root.wallColorsWall
+    magickProc.running = true
   }
 
   Process {
     id: magickProc
     property string output: ""
     command: ["bash", "-c",
-      " wall=" + Util.shellQuote(root.wallColorsWall) + ";"
+      " wall=" + Util.shellQuote(root.magickRunningFor) + ";"
       + " [ -f \"$wall\" ] || exit 4;"
       + " command -v magick >/dev/null 2>&1 || exit 3;"
       + " magick \"$wall\" -resize 200x200! -colors 16 -depth 8 -format \"%c\" histogram:info: 2>/dev/null"]
@@ -531,6 +534,10 @@ Scope {
     onExited: function(exitCode) {
       var out = magickProc.output
       magickProc.output = ""
+      if (root.magickRunningFor !== root.wallColorsWall) {
+        root.extractWallColors(root.wallColorsWall)
+        return
+      }
       if (exitCode !== 0 || out.trim() === "")
         return
       var cols = DynColor.parseHistogramColors(out)
@@ -568,17 +575,27 @@ Scope {
       var stale = (root.generatingFor !== "" && root.generatingFor !== root.schemeMode())
       root.generatingFor = ""
       if (stale) {
-        if (exitCode === 0)
-          root.regenerate()
+        root.regenerate()
         return
       }
-      if (exitCode !== 0)
+      if (exitCode !== 0 || extractProc.output.trim() === "") {
+        if (root.retryWall !== root.pendingWall) {
+          root.retryWall = root.pendingWall
+          retryTimer.restart()
+        }
         return
+      }
+      if (WallpaperState.path !== "" && WallpaperState.path !== root.pendingWall) {
+        root.retryWall = ""
+        root.extractFor(WallpaperState.path)
+        return
+      }
       var out = extractProc.output
       extractProc.output = ""
       if (out.trim() === "")
         return
       if (root.applySchemeText(out)) {
+        root.retryWall = ""
         schemeCache.setText(out)
         schemeWallFile.setText(root.schemeWall)
         schemeModeFile.setText(root.schemeMode())
@@ -722,6 +739,16 @@ Scope {
     onTriggered: {
       root.startupTimedOut = true
       root.maybeStartup()
+    }
+  }
+
+  Timer {
+    id: retryTimer
+    interval: 2500
+    repeat: false
+    onTriggered: {
+      if (root.retryWall !== "" && !root.generating)
+        root.extractFor(root.retryWall)
     }
   }
 
