@@ -23,7 +23,27 @@ Scope {
   readonly property string niriDir: Quickshell.env("HOME") + "/.config/sharkshell"
   readonly property string niriBorders: root.niriDir + "/niri/borders.kdl"
 
+  function toCamel(name) {
+    var parts = String(name).split("_")
+    var out = parts[0]
+    for (var i = 1; i < parts.length; i++)
+      out += parts[i].charAt(0).toUpperCase() + parts[i].slice(1)
+    return out
+  }
+
+  function toSnake(name) {
+    return String(name).replace(/([A-Z])/g, function(m) { return "_" + m.toLowerCase() })
+  }
+
   function role(name, fallback) {
+    if (root.roles[name] && DynColor.isValid(root.roles[name]))
+      return String(root.roles[name])
+    var c = root.toCamel(name)
+    if (root.roles[c] && DynColor.isValid(root.roles[c]))
+      return String(root.roles[c])
+    var s = root.toSnake(name)
+    if (root.roles[s] && DynColor.isValid(root.roles[s]))
+      return String(root.roles[s])
     return DynColor.validOr(root.roles[name], fallback)
   }
 
@@ -91,6 +111,9 @@ Scope {
   property string cachedSchemeMode: ""
   property string appliedMode: ""
   property string generatingFor: ""
+  property string scheme: "dynamic"
+  property string flavour: "default"
+  property string variant: "tonalspot"
 
   function setDarkMode(v) {
     root.darkMode = !!v
@@ -324,6 +347,24 @@ Scope {
   }
 
   function themedKittyColors() {
+    if (root.roles["term0"] && root.roles["term15"]) {
+      var t = []
+      for (var ti = 0; ti < 16; ti++)
+        t.push(root.role("term" + ti, "#000000"))
+      return {
+        source: "caelestia dynamic scheme (" + root.scheme + "/" + root.flavour + "/" + root.variant + ")",
+        background: root.role("surface", "#000000"),
+        foreground: root.role("onSurface", root.role("on_surface", "#ffffff")),
+        cursor: root.role("secondary", "#bbbbbb"),
+        selBg: root.role("secondary", "#b5d5ff"),
+        selFg: root.role("surface", "#000000"),
+        ansi: t,
+        tabActiveFg: root.role("inverseOnSurface", root.role("inverse_on_surface", "#444444")),
+        tabActiveBg: root.role("primary", "#b5d5ff"),
+        tabInactiveFg: root.role("onSurfaceVariant", root.role("on_surface_variant", "#ffffff")),
+        tabInactiveBg: root.role("surface", "#000000")
+      }
+    }
     var bg = root.role("background", "#000000")
     var wc = root.wallColors.length > 0 ? root.wallColors : []
 
@@ -409,7 +450,7 @@ Scope {
     var cyanBright = ensureContrast(DynColor.vivid(cyanBase, 0.75, 0.8), bg, 5.5)
 
     return {
-      source: "pywal-style wallpaper hues + matugen UI",
+      source: "legacy matugen fallback (no term colors)",
       background: bg,
       foreground: root.dimBright(root.role("on_surface", "#ffffff")),
       cursor: root.role("primary", "#bbbbbb"),
@@ -496,7 +537,38 @@ Scope {
     } catch (e) {
       return false
     }
-    if (!obj || !obj.colors)
+    if (!obj)
+      return false
+    if (obj.colours) {
+      var cmap = obj.colours
+      var cmapCheck = cmap["background"] && cmap["primary"]
+      if (!cmapCheck)
+        return false
+      var nmap = {}
+      for (var ck in cmap) {
+        var cv = cmap[ck]
+        if (typeof cv === "string" && /^[0-9a-fA-F]{6}$/.test(cv))
+          nmap[ck] = "#" + String(cv).toLowerCase()
+        else if (DynColor.isValid(cv))
+          nmap[ck] = String(cv)
+      }
+      if (!nmap["background"] || !nmap["primary"])
+        return false
+      root.roles = nmap
+      root.palettes = ({})
+      if (typeof obj.name === "string" && obj.name !== "")
+        root.scheme = obj.name
+      if (typeof obj.flavour === "string" && obj.flavour !== "")
+        root.flavour = obj.flavour
+      if (typeof obj.variant === "string" && obj.variant !== "")
+        root.variant = obj.variant
+      if (typeof obj.mode === "string" && (obj.mode === "dark" || obj.mode === "light"))
+        root.darkMode = (obj.mode === "dark")
+      if (root.pendingWall !== "")
+        root.schemeWall = root.pendingWall
+      return true
+    }
+    if (!obj.colors)
       return false
     var want = root.darkMode ? "dark" : "light"
     var map = {}
@@ -603,6 +675,7 @@ Scope {
       + " mode=" + (root.darkMode ? "dark" : "light") + ";"
       + " SC=\"\";"
       + " if command -v shark-colors >/dev/null 2>&1; then SC=$(shark-colors \"$wall\" --mode \"$mode\" 2>/dev/null); fi;"
+      + " if [ -z \"$SC\" ] && command -v caelestia >/dev/null 2>&1; then SC=$(caelestia wallpaper -p \"$wall\" --no-smart 2>/dev/null); fi;"
       + " if [ -n \"$SC\" ]; then printf '%s' \"$SC\";"
       + " elif command -v matugen >/dev/null 2>&1; then matugen image \"$wall\" --mode \"$mode\" -j hex --source-color-index 0 2>/dev/null;"
       + " else exit 3; fi"]

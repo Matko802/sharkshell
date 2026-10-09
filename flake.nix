@@ -30,6 +30,7 @@
         default = sharkshell { inherit pkgs; };
         sharkshell = sharkshell { inherit pkgs; };
         sharkshell-config = (sharkshellPkgs pkgs).qsConfig;
+        shark-colors = (sharkshellPkgs pkgs).sharkColorsBin;
         output-power = pkgs.callPackage ./output-power.nix { };
       });
 

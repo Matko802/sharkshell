@@ -1,0 +1,410 @@
+#!/usr/bin/env python3
+import argparse
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+
+def compute_hash(path):
+    sha = hashlib.sha256()
+    with open(path, "rb") as f:
+        while chunk := f.read(8192):
+            sha.update(chunk)
+    return sha.hexdigest()
+
+
+def get_cache_dirs():
+    import os
+
+    cache_home = Path(os.getenv("XDG_CACHE_HOME", Path.home() / ".cache"))
+    return cache_home / "sharkshell" / "schemes", cache_home / "sharkshell" / "wallpapers"
+
+
+def mean(values):
+    return sum(values) / len(values) if values else 0
+
+
+def stddev(values, mean_val):
+    import math
+
+    return math.sqrt(sum((x - mean_val) ** 2 for x in values) / len(values)) if values else 0
+
+
+def calc_colourfulness(image):
+    import math
+
+    pixels = list(image.getdata())
+    rg_diffs = []
+    yb_diffs = []
+    for r, g, b in pixels:
+        rg_diffs.append(abs(r - g))
+        yb_diffs.append(abs(0.5 * (r + g) - b))
+    mean_rg = mean(rg_diffs)
+    mean_yb = mean(yb_diffs)
+    std_rg = stddev(rg_diffs, mean_rg)
+    std_yb = stddev(yb_diffs, mean_yb)
+    return math.sqrt(std_rg**2 + std_yb**2) + 0.3 * math.sqrt(mean_rg**2 + mean_yb**2)
+
+
+def get_variant(image):
+    colourfulness = calc_colourfulness(image)
+    if colourfulness < 10:
+        return "neutral"
+    if colourfulness < 20:
+        return "content"
+    return "tonalspot"
+
+
+def get_thumb(wall, cache):
+    from PIL import Image
+
+    thumb = cache / "thumbnail.jpg"
+    if not thumb.exists():
+        with Image.open(wall) as img:
+            img = img.convert("RGB")
+            img.thumbnail((128, 128), Image.Resampling.NEAREST)
+            thumb.parent.mkdir(parents=True, exist_ok=True)
+            img.save(thumb, "JPEG")
+    return thumb
+
+
+def get_smart_opts(wall, cache):
+    from materialyoucolor.hct import Hct
+    from materialyoucolor.utils.color_utils import argb_from_rgb
+    from PIL import Image
+
+    opts_cache = cache / "smart.json"
+    try:
+        return json.loads(opts_cache.read_text())
+    except (IOError, json.JSONDecodeError):
+        pass
+    opts = {}
+    with Image.open(get_thumb(wall, cache)) as img:
+        opts["variant"] = get_variant(img)
+        img.thumbnail((1, 1), Image.Resampling.LANCZOS)
+        pixel = img.getpixel((0, 0))
+        hct = Hct.from_int(argb_from_rgb(*pixel))
+        opts["mode"] = "light" if hct.tone > 60 else "dark"
+    opts_cache.parent.mkdir(parents=True, exist_ok=True)
+    with opts_cache.open("w") as f:
+        json.dump(opts, f)
+    return opts
+
+
+def score_image(image):
+    from materialyoucolor.dislike.dislike_analyzer import DislikeAnalyzer
+    from materialyoucolor.hct import Hct
+    from materialyoucolor.quantize import ImageQuantizeCelebi
+    from materialyoucolor.utils.math_utils import sanitize_degrees_int
+
+    TARGET_CHROMA = 48.0
+    WEIGHT_PROPORTION = 0.7
+    WEIGHT_CHROMA_ABOVE = 0.3
+    WEIGHT_CHROMA_BELOW = 0.1
+    CUTOFF_CHROMA = 5.0
+    CUTOFF_EXCITED_PROPORTION = 0.01
+
+    def score_colors(colors_to_population, filter_enabled=False):
+        colors_hct = []
+        hue_population = [0] * 360
+        population_sum = 0
+        for rgb, population in colors_to_population.items():
+            hct = Hct.from_int(rgb)
+            colors_hct.append(hct)
+            hue = int(hct.hue)
+            hue_population[hue] += population
+            population_sum += population
+        hue_excited_proportions = [0.0] * 360
+        for hue in range(360):
+            proportion = hue_population[hue] / population_sum
+            for i in range(hue - 14, hue + 16):
+                neighbor_hue = int(sanitize_degrees_int(i))
+                hue_excited_proportions[neighbor_hue] += proportion
+        scored_hct = []
+        for hct in colors_hct:
+            hue = int(sanitize_degrees_int(round(hct.hue)))
+            proportion = hue_excited_proportions[hue]
+            if filter_enabled and (hct.chroma < CUTOFF_CHROMA or proportion <= CUTOFF_EXCITED_PROPORTION):
+                continue
+            proportion_score = proportion * 100.0 * WEIGHT_PROPORTION
+            chroma_weight = WEIGHT_CHROMA_BELOW if hct.chroma < TARGET_CHROMA else WEIGHT_CHROMA_ABOVE
+            chroma_score = (hct.chroma - TARGET_CHROMA) * chroma_weight
+            scored_hct.append({"hct": hct, "score": proportion_score + chroma_score})
+        scored_hct.sort(key=lambda x: x["score"], reverse=True)
+        primary = None
+        for cutoff in range(20, -1, -1):
+            for item in scored_hct:
+                if item["hct"].chroma > cutoff and item["hct"].tone > cutoff * 3:
+                    primary = item["hct"]
+                    break
+            if primary:
+                break
+        return DislikeAnalyzer.fix_if_disliked(primary) if primary else score_colors(colors_to_population, False)
+
+    return score_colors(ImageQuantizeCelebi(image, 1, 128))
+
+
+def get_score_for_image(image, cache_base):
+    from materialyoucolor.hct import Hct
+
+    cache = cache_base / "score.json"
+    try:
+        return Hct.from_int(int(cache.read_text()))
+    except (IOError, TypeError, ValueError):
+        pass
+    s = score_image(str(image))
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_text(str(s.to_int()))
+    return s
+
+
+def hex_to_hct(hex):
+    from materialyoucolor.hct import Hct
+
+    return Hct.from_int(int(f"0xFF{hex}", 16))
+
+
+light_gruvbox = [
+    "FDF9F3", "FF6188", "A9DC76", "FC9867", "FFD866", "F47FD4", "78DCE8", "333034",
+    "121212", "FF6188", "A9DC76", "FC9867", "FFD866", "F47FD4", "78DCE8", "333034",
+]
+
+dark_gruvbox = [
+    "282828", "CC241D", "98971A", "D79921", "458588", "B16286", "689D6A", "A89984",
+    "928374", "FB4934", "B8BB26", "FABD2F", "83A598", "D3869B", "8EC07C", "EBDBB2",
+]
+
+light_catppuccin = [
+    "dc8a78", "dd7878", "ea76cb", "8839ef", "d20f39", "e64553", "fe640b", "df8e1d",
+    "40a02b", "179299", "04a5e5", "209fb5", "1e66f5", "7287fd",
+]
+
+dark_catppuccin = [
+    "f5e0dc", "f2cdcd", "f5c2e7", "cba6f7", "f38ba8", "eba0ac", "fab387", "f9e2af",
+    "a6e3a1", "94e2d5", "89dceb", "74c7ec", "89b4fa", "b4befe",
+]
+
+kcolours = [
+    ("klink", "2980b9"),
+    ("kvisited", "9b59b6"),
+    ("knegative", "da4453"),
+    ("kneutral", "f67400"),
+    ("kpositive", "27ae60"),
+]
+
+colour_names = [
+    "rosewater", "flamingo", "pink", "mauve", "red", "maroon", "peach", "yellow",
+    "green", "teal", "sky", "sapphire", "blue", "lavender",
+]
+
+
+def grayscale(colour, light):
+    colour = darken(colour, 0.35) if light else lighten(colour, 0.65)
+    colour.chroma = 0
+    return colour
+
+
+def mix(a, b, w):
+    from materialyoucolor.blend import Blend
+    from materialyoucolor.hct import Hct
+
+    return Hct.from_int(Blend.cam16_ucs(a.to_int(), b.to_int(), w))
+
+
+def harmonize(from_hct, to_hct, tone_boost):
+    from materialyoucolor.hct import Hct
+    from materialyoucolor.utils.math_utils import difference_degrees, rotation_direction, sanitize_degrees_double
+
+    diff = difference_degrees(from_hct.hue, to_hct.hue)
+    rotation = min(diff * 0.8, 100)
+    out_hue = sanitize_degrees_double(from_hct.hue + rotation * rotation_direction(from_hct.hue, to_hct.hue))
+    return Hct.from_hct(out_hue, from_hct.chroma, from_hct.tone * (1 + tone_boost))
+
+
+def lighten(colour, amount):
+    from materialyoucolor.hct import Hct
+
+    diff = (100 - colour.tone) * amount
+    return Hct.from_hct(colour.hue, colour.chroma + diff / 5, colour.tone + diff)
+
+
+def darken(colour, amount):
+    from materialyoucolor.hct import Hct
+
+    diff = colour.tone * amount
+    return Hct.from_hct(colour.hue, colour.chroma - diff / 5, colour.tone - diff)
+
+
+def get_scheme_cls(variant):
+    from materialyoucolor.scheme.scheme_content import SchemeContent
+    from materialyoucolor.scheme.scheme_expressive import SchemeExpressive
+    from materialyoucolor.scheme.scheme_fidelity import SchemeFidelity
+    from materialyoucolor.scheme.scheme_fruit_salad import SchemeFruitSalad
+    from materialyoucolor.scheme.scheme_monochrome import SchemeMonochrome
+    from materialyoucolor.scheme.scheme_neutral import SchemeNeutral
+    from materialyoucolor.scheme.scheme_rainbow import SchemeRainbow
+    from materialyoucolor.scheme.scheme_tonal_spot import SchemeTonalSpot
+    from materialyoucolor.scheme.scheme_vibrant import SchemeVibrant
+
+    return {
+        "content": SchemeContent,
+        "expressive": SchemeExpressive,
+        "fidelity": SchemeFidelity,
+        "fruitsalad": SchemeFruitSalad,
+        "monochrome": SchemeMonochrome,
+        "neutral": SchemeNeutral,
+        "rainbow": SchemeRainbow,
+        "tonalspot": SchemeTonalSpot,
+    }.get(variant, SchemeVibrant)
+
+
+def gen_scheme(mode, variant, flavour, primary):
+    from materialyoucolor.dynamiccolor.material_dynamic_colors import MaterialDynamicColors
+
+    is_light = mode == "light"
+    colours = {}
+    cls = get_scheme_cls(variant)
+    primary_scheme = cls(source_color_hct=primary, is_dark=not is_light, contrast_level=0.0)
+    if hasattr(MaterialDynamicColors, "all_colors"):
+        dyn_colours = MaterialDynamicColors()
+        for colour in dyn_colours.all_colors:
+            colours[colour.name] = colour.get_hct(primary_scheme)
+    else:
+        for name in vars(MaterialDynamicColors).keys():
+            colour_obj = getattr(MaterialDynamicColors, name)
+            if hasattr(colour_obj, "get_hct"):
+                colours[name] = colour_obj.get_hct(primary_scheme)
+    if "primaryPaletteKeyColor" in colours:
+        for colour in ("primary", "secondary", "tertiary", "neutral"):
+            colours[f"{colour}_paletteKeyColor"] = colours[f"{colour}PaletteKeyColor"]
+        colours["neutral_variant_paletteKeyColor"] = colours["neutralVariantPaletteKeyColor"]
+    base_gruv = light_gruvbox if is_light else dark_gruvbox
+    for i, hx in enumerate(base_gruv):
+        hct = hex_to_hct(hx)
+        if variant == "monochrome":
+            colours[f"term{i}"] = grayscale(hct, is_light)
+        else:
+            colours[f"term{i}"] = harmonize(
+                hct, colours["primary_paletteKeyColor"], (0.35 if i < 8 else 0.2) * (-1 if is_light else 1)
+            )
+    base_cat = light_catppuccin if is_light else dark_catppuccin
+    for i, hx in enumerate(base_cat):
+        hct = hex_to_hct(hx)
+        if variant == "monochrome":
+            colours[colour_names[i]] = grayscale(hct, is_light)
+        else:
+            colours[colour_names[i]] = harmonize(hct, colours["primary_paletteKeyColor"], (-0.2 if is_light else 0.05))
+    for kname, khx in kcolours:
+        khct = hex_to_hct(khx)
+        colours[kname] = harmonize(khct, colours["primary"], 0.1)
+        colours[f"{kname}Selection"] = harmonize(khct, colours["onPrimaryFixedVariant"], 0.1)
+        if variant == "monochrome":
+            colours[kname] = grayscale(colours[kname], is_light)
+            colours[f"{kname}Selection"] = grayscale(colours[f"{kname}Selection"], is_light)
+    if variant == "neutral":
+        for hct in colours.values():
+            hct.chroma -= 15
+    if flavour == "hard":
+        for colour in ("background", *(k for k in list(colours.keys()) if k.startswith("surface"))):
+            colours[colour] = lighten(colours[colour], 0.4) if is_light else darken(colours[colour], 0.8)
+        colours["term0"] = lighten(colours["term0"], 0.4) if is_light else darken(colours["term0"], 0.9)
+    colours["text"] = colours["onBackground"]
+    colours["subtext1"] = colours["onSurfaceVariant"]
+    colours["subtext0"] = colours["outline"]
+    colours["overlay2"] = mix(colours["surface"], colours["outline"], 0.86)
+    colours["overlay1"] = mix(colours["surface"], colours["outline"], 0.71)
+    colours["overlay0"] = mix(colours["surface"], colours["outline"], 0.57)
+    colours["surface2"] = mix(colours["surface"], colours["outline"], 0.43)
+    colours["surface1"] = mix(colours["surface"], colours["outline"], 0.29)
+    colours["surface0"] = mix(colours["surface"], colours["outline"], 0.14)
+    colours["base"] = colours["surface"]
+    colours["mantle"] = darken(colours["surface"], 0.03)
+    colours["crust"] = darken(colours["surface"], 0.05)
+    if flavour == "hard":
+        for colour in ("base", "mantle", "crust"):
+            colours[colour] = lighten(colours[colour], 0.4) if is_light else darken(colours[colour], 0.9)
+        for i in range(3):
+            colours[f"overlay{i}"] = lighten(colours[f"overlay{i}"], 0.4) if is_light else darken(colours[f"overlay{i}"], 0.8)
+            colours[f"surface{i}"] = lighten(colours[f"surface{i}"], 0.4) if is_light else darken(colours[f"surface{i}"], 0.8)
+    out = {k: hex(v.to_int())[4:] for k, v in colours.items()}
+    if is_light:
+        out["success"] = "4F6354"
+        out["onSuccess"] = "FFFFFF"
+        out["successContainer"] = "D1E8D5"
+        out["onSuccessContainer"] = "0C1F13"
+    else:
+        out["success"] = "B5CCBA"
+        out["onSuccess"] = "213528"
+        out["successContainer"] = "374B3E"
+        out["onSuccessContainer"] = "D1E9D6"
+    return out
+
+
+def get_colours_for_wall(wall, mode, variant, flavour, no_smart):
+    scheme_cache_dir, wallpapers_cache_dir = get_cache_dirs()
+    wall = Path(wall)
+    cache = wallpapers_cache_dir / compute_hash(wall)
+    if not no_smart:
+        smart_opts = get_smart_opts(wall, cache)
+        if mode == "auto":
+            mode = smart_opts["mode"]
+        if variant == "auto":
+            variant = smart_opts["variant"]
+    if mode == "auto":
+        mode = "dark"
+    if variant == "auto":
+        variant = "tonalspot"
+    if flavour not in ("default", "hard"):
+        flavour = "default"
+    from PIL import Image
+
+    if wall.suffix.lower() == ".gif":
+        out_png = cache / "first_frame.png"
+        if not out_png.exists():
+            out_png.parent.mkdir(parents=True, exist_ok=True)
+            with Image.open(wall) as img:
+                try:
+                    img.seek(0)
+                except EOFError:
+                    pass
+                img.convert("RGB").save(out_png, "PNG")
+        thumb_src = out_png
+    else:
+        thumb_src = wall
+    thumb = get_thumb(thumb_src, cache)
+    cache_base = scheme_cache_dir / compute_hash(thumb)
+    cache_file = (cache_base / variant / flavour / mode).with_suffix(".json")
+    try:
+        with cache_file.open("r") as f:
+            colours = json.load(f)
+        return {"name": "dynamic", "flavour": flavour, "mode": mode, "variant": variant, "colours": colours}
+    except (IOError, json.JSONDecodeError):
+        pass
+    primary = get_score_for_image(thumb, cache_base)
+    colours = gen_scheme(mode, variant, flavour, primary)
+    cache_file.parent.mkdir(parents=True, exist_ok=True)
+    with cache_file.open("w") as f:
+        json.dump(colours, f)
+    return {"name": "dynamic", "flavour": flavour, "mode": mode, "variant": variant, "colours": colours}
+
+
+def main():
+    p = argparse.ArgumentParser(description="Generate a Caelestia-compatible dynamic scheme from a wallpaper")
+    p.add_argument("wallpaper", help="wallpaper image path")
+    p.add_argument("--mode", default="auto", help="dark, light or auto (smart)")
+    p.add_argument("--variant", default="auto", help="tonalspot, vibrant, expressive, fidelity, fruitsalad, monochrome, neutral, rainbow, content or auto (smart)")
+    p.add_argument("--flavour", default="default", help="default or hard")
+    p.add_argument("--no-smart", action="store_true", help="disable smart mode/variant detection")
+    args = p.parse_args()
+    wall = Path(args.wallpaper)
+    if not wall.is_file():
+        print(f"wallpaper not found: {wall}", file=sys.stderr)
+        return 4
+    mode = args.mode if args.mode in ("dark", "light", "auto") else "auto"
+    result = get_colours_for_wall(wall, mode, args.variant, args.flavour, args.no_smart)
+    json.dump(result, sys.stdout)
+
+
+if __name__ == "__main__":
+    main()

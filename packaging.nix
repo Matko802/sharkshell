@@ -13,6 +13,10 @@ let
 
   outputPower = pkgs.callPackage ./output-power.nix { };
 
+  sharkColors = pkgs.python3.withPackages (ps: [ ps.materialyoucolor ps.pillow ]);
+  sharkColorsBin = pkgs.writeShellScriptBin "shark-colors"
+    "exec ${sharkColors}/bin/python3 ${./scripts/shark-colors} \"$@\"";
+
   # Named shortcuts matching the QML file names (clockmenu, powermenu, ...)
   # so keybinds show meaningful names instead of identical quickshell calls.
   ipcCmd = name: target: action: pkgs.writeShellScriptBin name
@@ -30,7 +34,7 @@ let
 
   sharkshell = pkgs.symlinkJoin {
     name = "sharkshell";
-    paths = [ pkgs.quickshell ] ++ ipcCmds;
+    paths = [ pkgs.quickshell sharkColorsBin ] ++ ipcCmds;
     buildInputs = [ pkgs.makeWrapper ];
     postBuild = ''
       mkdir -p "$out/lib/qt-6/qml/Quickshell"
@@ -47,5 +51,5 @@ let
     '';
   };
 in {
-  inherit qsConfig sharkshell matugenConfig;
+  inherit qsConfig sharkshell matugenConfig sharkColorsBin;
 }

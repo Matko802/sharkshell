@@ -20,13 +20,7 @@ Singleton {
   property string iniText3: ""
   property string iniText4: ""
 
-  readonly property string gtkDarkTheme: "MatkosAmoled"
-  readonly property string gtkLightTheme: "MatkosAmoledLight"
-
-  function gtkTheme(dark) {
-    var d = (dark === undefined ? DynamicTheme.darkMode : !!dark)
-    return d ? root.gtkDarkTheme : root.gtkLightTheme
-  }
+  readonly property string gtkTheme: "adw-gtk3-dark"
 
   function iconTheme(dark) {
     var d = (dark === undefined ? DynamicTheme.darkMode : !!dark)
@@ -112,7 +106,6 @@ Singleton {
   }
 
   function gtkCssText() {
-    var dark = DynamicTheme.darkMode
     var surf = DynamicTheme.role("surface", "#111111")
     var onSurf = DynamicTheme.role("on_surface", "#ffffff")
     var cont = DynamicTheme.role("surface_container", "#111111")
@@ -121,6 +114,7 @@ Singleton {
     var bg = DynamicTheme.role("background", "#111111")
     var prim = DynamicTheme.role("primary", "#bbbbbb")
     var onPrim = DynamicTheme.role("on_primary", "#000000")
+    var dark = DynamicTheme.darkMode
     var shade = dark ? "rgba(0,0,0,0.36)" : "rgba(0,0,0,0.12)"
     var vars = [
       ["window_bg_color", surf],
@@ -188,18 +182,6 @@ Singleton {
     L.push("}")
     L.push("")
     L.push("* { border-radius: 0px; }")
-    var alpha = TransparencyState.transparent ? 1 - TransparencyState.amount : 1
-    function A(hex) {
-      var m = /^#?([0-9a-fA-F]{6})/.exec(String(hex || ""))
-      if (!m)
-        return "#000000"
-      return "rgba(" + parseInt(m[1].substr(0, 2), 16) + "," + parseInt(m[1].substr(2, 2), 16) + "," + parseInt(m[1].substr(4, 2), 16) + "," + alpha.toFixed(2) + ")"
-    }
-    L.push("")
-    L.push("window, .background { background-color: " + A(surf) + "; }")
-    L.push("view, textview { background-color: " + A(surf) + "; }")
-    L.push("headerbar { background-color: " + A(cont) + "; }")
-    L.push("sidebar { background-color: " + A(contLow) + "; }")
     return L.join("\n") + "\n"
   }
 
@@ -226,7 +208,7 @@ Singleton {
     var darkFlag = d ? "1" : "0"
     var icon = d ? "Papirus-Dark" : "Papirus"
     var pairs = [
-      ["gtk-theme-name", root.gtkTheme(d)],
+      ["gtk-theme-name", root.gtkTheme],
       ["gtk-icon-theme-name", icon],
       ["gtk-font-name", Theme.fontFamily + " 10"],
       ["gtk-cursor-theme-name", "Adwaita"],
@@ -266,7 +248,7 @@ Singleton {
     L.push("filesystems=xdg-config/gtk-3.0:ro;xdg-config/gtk-4.0:ro;xdg-config/kdeglobals:ro;xdg-data/color-schemes:ro;xdg-data/themes:ro;xdg-data/icons:ro;/nix/store:ro;")
     L.push("")
     L.push("[Environment]")
-    L.push("GTK_THEME=" + root.gtkTheme(d))
+    L.push("GTK_THEME=" + root.gtkTheme)
     L.push("ICON_THEME=" + (d ? "Papirus-Dark" : "Papirus"))
     L.push("QT_QPA_PLATFORMTHEME=kde")
     return L.join("\n") + "\n"
@@ -280,7 +262,7 @@ Singleton {
     dconfProc.running = false
     dconfProc.command = ["bash", "-c",
       "dconf write /org/gnome/desktop/interface/color-scheme \"'prefer-" + scheme + "'\";"
-      + " dconf write /org/gnome/desktop/interface/gtk-theme " + "'" + root.gtkTheme(d) + "'" + ";"
+      + " dconf write /org/gnome/desktop/interface/gtk-theme " + "'" + root.gtkTheme + "'" + ";"
       + " dconf write /org/gnome/desktop/interface/icon-theme \"'" + icon + "'\";"
       + " dconf write /org/gnome/desktop/interface/font-name \"'" + font + "'\";"
       + " dconf write /org/gnome/desktop/interface/monospace-font-name \"'" + font + "'\""]
@@ -373,23 +355,6 @@ Singleton {
     path: root.flatpakOverridesPath
     watchChanges: false
     printErrors: false
-  }
-
-  Timer {
-    id: pushDebounce
-    interval: 250
-    onTriggered: root.push()
-  }
-
-  Connections {
-    target: TransparencyState
-    function onTransparentChanged() {
-      pushDebounce.restart()
-    }
-    function onAmountChanged() {
-      if (TransparencyState.transparent)
-        pushDebounce.restart()
-    }
   }
 
   Component.onCompleted: {
