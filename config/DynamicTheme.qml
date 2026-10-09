@@ -146,6 +146,7 @@ Scope {
       root.writeThemedNiri()
       root.reloadNiri()
       root.pushAppThemes()
+      root.maybePrewarm()
     } else {
       root.regenerate()
     }
@@ -198,14 +199,13 @@ Scope {
   FileView {
     id: enabledFile
     path: root.cacheDir + "/dynamic-theme-enabled"
-    watchChanges: true
+    watchChanges: false
     printErrors: false
     onLoaded: {
       var t = text().trim()
       if (t !== "")
         root.enabled = (t === "1")
     }
-    onFileChanged: reload()
   }
 
   FileView {
@@ -241,14 +241,13 @@ Scope {
   FileView {
     id: darkModeFile
     path: root.cacheDir + "/dynamic-theme-dark"
-    watchChanges: true
+    watchChanges: false
     printErrors: false
     onLoaded: {
       var t = text().trim()
       if (t !== "")
         root.darkMode = (t === "1")
     }
-    onFileChanged: reload()
   }
 
   FileView {
@@ -547,6 +546,8 @@ Scope {
     if (!obj)
       return false
     if (obj.colours) {
+      if (typeof obj.mode === "string" && (obj.mode === "dark" || obj.mode === "light") && obj.mode !== root.schemeMode())
+        return false
       var cmap = obj.colours
       var cmapCheck = cmap["background"] && cmap["primary"]
       if (!cmapCheck)
@@ -569,8 +570,6 @@ Scope {
         root.flavour = obj.flavour
       if (typeof obj.variant === "string" && obj.variant !== "")
         root.variant = obj.variant
-      if (typeof obj.mode === "string" && (obj.mode === "dark" || obj.mode === "light"))
-        root.darkMode = (obj.mode === "dark")
       if (root.pendingWall !== "")
         root.schemeWall = root.pendingWall
       return true
@@ -734,9 +733,92 @@ Scope {
         root.reloadNiri()
         root.pushAppThemes()
       }
+      root.maybePrewarm()
       root.lastDoneWall = root.pendingWall
       if (root.enabled && WallpaperState.path !== "" && WallpaperState.path !== root.lastDoneWall)
         root.extractFor(WallpaperState.path)
+      root.maybePrewarm()
+    }
+  }
+
+  function storePrewarmText(text, mode, wall) {
+    var obj = null
+    try {
+      var start = text.indexOf("{")
+      var end = text.lastIndexOf("}")
+      if (start < 0 || end <= start)
+        return false
+      obj = JSON.parse(text.slice(start, end + 1))
+    } catch (e) {
+      return false
+    }
+    if (!obj || !obj.colours || obj.mode !== mode)
+      return false
+    if (!obj.colours["background"] || !obj.colours["primary"])
+      return false
+    if (wall === "" || wall !== WallpaperState.path)
+      return false
+    if (mode === "dark") {
+      root.schemeTextDark = text
+      root.schemeWallDark = wall
+      schemeCacheDark.setText(text)
+      schemeWallDarkFile.setText(wall)
+    } else if (mode === "light") {
+      root.schemeTextLight = text
+      root.schemeWallLight = wall
+      schemeCacheLight.setText(text)
+      schemeWallLightFile.setText(wall)
+    } else {
+      return false
+    }
+    return true
+  }
+
+  function maybePrewarm() {
+    if (!root.enabled || root.generating || prewarmProc.running)
+      return
+    if (root.schemeWall === "" || WallpaperState.path === "" || WallpaperState.path !== root.schemeWall)
+      return
+    var other = root.darkMode ? "light" : "dark"
+    var otxt = root.darkMode ? root.schemeTextLight : root.schemeTextDark
+    var ow = root.darkMode ? root.schemeWallLight : root.schemeWallDark
+    if (otxt !== "" && ow === root.schemeWall)
+      return
+    prewarmProc.wall = root.schemeWall
+    prewarmProc.mode = other
+    prewarmProc.output = ""
+    prewarmProc.running = true
+  }
+
+  Process {
+    id: prewarmProc
+    property string output: ""
+    property string wall: ""
+    property string mode: ""
+    command: ["bash", "-c",
+      "set -o pipefail;"
+      + " wall=" + Util.shellQuote(prewarmProc.wall) + ";"
+      + " [ -f \"$wall\" ] || exit 4;"
+      + " SC=\"\";"
+      + " if command -v shark-colors >/dev/null 2>&1; then SC=$(shark-colors \"$wall\" --mode " + Util.shellQuote(prewarmProc.mode) + " 2>/dev/null); fi;"
+      + " if [ -z \"$SC\" ] && command -v caelestia >/dev/null 2>&1; then SC=$(caelestia wallpaper -p \"$wall\" --no-smart 2>/dev/null); fi;"
+      + " if [ -n \"$SC\" ]; then printf '%s' \"$SC\";"
+      + " else exit 3; fi"]
+    stdout: SplitParser {
+      onRead: function(data) {
+        prewarmProc.output += data + "\n"
+      }
+    }
+    onExited: function(exitCode) {
+      var out = prewarmProc.output
+      var md = prewarmProc.mode
+      var wl = prewarmProc.wall
+      prewarmProc.output = ""
+      if (exitCode !== 0 || out.trim() === "")
+        return
+      if (!root.enabled)
+        return
+      root.storePrewarmText(out, md, wl)
     }
   }
 
@@ -825,6 +907,7 @@ Scope {
       root.restoreDefaults()
     } else if (WallpaperState.path !== "") {
       root.extractWallColors(WallpaperState.path)
+      root.maybePrewarm()
     }
   }
 
