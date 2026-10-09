@@ -29,6 +29,10 @@ Item {
       Layout.preferredWidth: 220
       Behavior on Layout.preferredWidth { NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut } }
     }
+    TopbarVisualizer {
+      id: leftVisualizer
+      visible: VisualizerState.topbar && leftVisualizer.hasAudio
+    }
   }
 
   Rectangle {
@@ -83,9 +87,6 @@ Item {
 
     Tray {
       visible: !root.rightOnly
-    }
-    TopbarVisualizer {
-      visible: VisualizerState.topbar && !root.rightOnly
     }
     Item {
       Layout.preferredWidth: langLabel.implicitWidth

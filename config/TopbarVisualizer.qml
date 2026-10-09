@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.Mpris
 import "Util.js" as Util
 
 Item {
@@ -12,20 +13,61 @@ Item {
 
   property var levels: []
   readonly property int topBars: 16
+  readonly property int idleMs: 20000
+
+  property bool hasAudio: false
+  property double lastActive: 0
+
+  function noteSignal() {
+    root.lastActive = Date.now()
+    if (!root.hasAudio)
+      root.hasAudio = true
+  }
+
+  Timer {
+    id: idleCheck
+    interval: 1000
+    repeat: true
+    running: VisualizerState.topbar
+    triggeredOnStart: true
+    onTriggered: {
+      var sig = false
+      var pls = Mpris.players.values || []
+      for (var i = 0; i < pls.length; i++) {
+        if (pls[i] && pls[i].isPlaying) {
+          sig = true
+          break
+        }
+      }
+      if (sig) {
+        root.noteSignal()
+      } else if (root.hasAudio && Date.now() - root.lastActive > root.idleMs) {
+        root.hasAudio = false
+      }
+    }
+  }
 
   Process {
     id: visProc
-    running: root.visible && VisualizerState.topbar
+    running: VisualizerState.topbar
     command: ["sh", "-c", "V=\"$HOME/.cache/sharkshell/cava.conf\"; L=/mnt/ssd/My-Files/Projects/sharkvis/target/release/sharkvis; M=" + VisualizerState.mode + "; B=" + root.topBars + "; if [ -x \"$L\" ]; then exec \"$L\" --raw --raw-mode \"$M\" --bars \"$B\" --fps 30; elif command -v sharkvis >/dev/null 2>&1; then exec sharkvis --raw --raw-mode \"$M\" --bars \"$B\" --fps 30; elif command -v cava >/dev/null 2>&1; then exec cava -p \"$V\"; else exit 0; fi"]
     stdout: SplitParser {
       onRead: data => {
         const parts = String(data).split(";")
         const arr = []
+        let peak = 0
         for (let i = 0; i < parts.length; i++) {
           const v = parseInt(parts[i], 10)
-          if (!isNaN(v)) arr.push(Util.clampPct(v))
+          if (!isNaN(v)) {
+            const c = Util.clampPct(v)
+            arr.push(c)
+            if (c > peak) peak = c
+          }
         }
-        if (arr.length > 0) root.levels = arr
+        if (arr.length > 0) {
+          root.levels = arr
+          if (peak > 4) root.noteSignal()
+        }
       }
     }
   }
