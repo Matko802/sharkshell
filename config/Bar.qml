@@ -84,6 +84,9 @@ Item {
     Tray {
       visible: !root.rightOnly
     }
+    TopbarVisualizer {
+      visible: VisualizerState.topbar && !root.rightOnly
+    }
     Item {
       Layout.preferredWidth: langLabel.implicitWidth
       Layout.preferredHeight: 18

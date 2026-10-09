@@ -74,7 +74,7 @@ PanelWindow {
     return arr
   }
 
-  readonly property var visualItems: [{ kind: "mode" }, { kind: "bars" }]
+  readonly property var visualItems: [{ kind: "mode" }, { kind: "bars" }, { kind: "topbar" }]
   readonly property var currentItems: root.activeTab === 0 ? root.themeItems : (root.activeTab === 3 ? root.visualItems : (root.activeTab === 4 ? [] : root.audioModel))
 
   function activate(i) {
@@ -87,7 +87,8 @@ PanelWindow {
     } else if (root.activeTab === 3) {
       root.selIdx = i
       if (i === 0) VisualizerState.cycleMode()
-      else VisualizerState.cycleBars()
+      else if (i === 1) VisualizerState.cycleBars()
+      else VisualizerState.toggleTopbar()
     } else {
       root.selIdx = i
       if (item.type === "source")
@@ -658,6 +659,55 @@ PanelWindow {
                       font.family: root.fontFamily
                       font.pixelSize: 11
                     }
+                  }
+                }
+
+                Rectangle {
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: 32
+                  color: root.selIdx === 2 ? Theme.fg
+                       : (root.hoverIdx === -12 ? Theme.bgAlt : "transparent")
+                  border.color: root.selIdx === 2 ? Theme.outline
+                       : (root.hoverIdx === -12 ? Theme.borderStrong : Theme.border)
+                  border.width: 1
+                  MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onEntered: root.hoverIdx = -12
+                    onExited: { if (root.hoverIdx === -12) root.hoverIdx = -1 }
+                    onClicked: { root.selIdx = 2; VisualizerState.toggleTopbar() }
+                  }
+                  RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 56
+                    spacing: 10
+                    Item {
+                      Layout.preferredWidth: 20
+                      Layout.preferredHeight: 20
+                      QIcon {
+                        anchors.centerIn: parent
+                        name: "music"
+                        size: 18
+                        color: root.selIdx === 2 ? Theme.bg : Theme.fg
+                      }
+                    }
+                    Text {
+                      Layout.fillWidth: true
+                      text: "Show in top bar"
+                      color: root.selIdx === 2 ? Theme.bg : Theme.fg
+                      font.family: root.fontFamily
+                      font.pixelSize: 12
+                      font.weight: Font.DemiBold
+                    }
+                  }
+                  CToggle {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                    checked: VisualizerState.topbar
+                    onToggled: v => VisualizerState.setTopbar(v)
                   }
                 }
               }
