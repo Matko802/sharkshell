@@ -196,7 +196,7 @@ Item {
 
     Process {
         id: gameCheck
-        command: ["sh", "-c", "command -v gamemode_query >/dev/null 2>&1 && gamemode_query 2>/dev/null | grep -qi 'is active'"]
+        command: ["sh", "-c", "command -v gamemoded >/dev/null 2>&1 && gamemoded -s 2>/dev/null | grep -qi 'is active'"]
         onExited: (exitCode) => {
             const active = exitCode === 0
             root.gameMode = active

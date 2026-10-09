@@ -29,10 +29,6 @@ Item {
       Layout.preferredWidth: 220
       Behavior on Layout.preferredWidth { NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut } }
     }
-    TopbarVisualizer {
-      id: leftVisualizer
-      visible: VisualizerState.topbar && leftVisualizer.hasAudio
-    }
   }
 
   Rectangle {
@@ -85,6 +81,10 @@ Item {
     anchors.bottom: parent.bottom
     spacing: Theme.spacingS
 
+    TopbarVisualizer {
+      id: rightVisualizer
+      visible: !root.rightOnly && VisualizerState.topbar && rightVisualizer.hasAudio
+    }
     Tray {
       visible: !root.rightOnly
     }

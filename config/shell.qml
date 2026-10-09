@@ -45,9 +45,12 @@ ShellRoot {
         anchors.right: true
         implicitHeight: 30
         color: "transparent"
-        exclusionMode: OverviewState.open ? ExclusionMode.Ignore : ExclusionMode.Auto
+        exclusionMode: ExclusionMode.Auto
+        property int targetZone: OverviewState.open ? 0 : 30
+        exclusiveZone: targetZone
+        Behavior on exclusiveZone { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
         WlrLayershell.namespace: "quickshell"
-        BackgroundEffect.blurRegion: Region { item: root.barShown && TransparencyState.transparent ? barBg : null }
+        BackgroundEffect.blurRegion: Region { item: root.barShown && TransparencyState.transparent && !IdleManager.gaming ? barBg : null }
         readonly property bool barVisible: root.barShown || clockMenu.shown || settingsMenu.shown || controlCard.shown
         visible: barVisible
         mask: Region { item: root.barShown ? barBg : null }
@@ -56,7 +59,9 @@ ShellRoot {
           id: barBg
           anchors.fill: parent
           color: Theme.bg
-          opacity: root.barShown ? 1 : 0
+          readonly property real zoneFrac: barWindow.height > 0 ? Math.max(0, Math.min(1, barWindow.exclusiveZone / barWindow.height)) : 1
+          y: -barWindow.height * (1 - zoneFrac)
+          opacity: (root.barShown ? 1 : 0) * zoneFrac
           visible: opacity > 0.01
           Bar { anchors.fill: parent }
         }
