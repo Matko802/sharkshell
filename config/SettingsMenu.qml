@@ -274,59 +274,6 @@ PanelWindow {
                 Rectangle {
                   Layout.fillWidth: true
                   Layout.preferredHeight: 32
-                  color: root.hoverIdx === -8 ? Theme.bgAlt : "transparent"
-                  border.color: root.hoverIdx === -8 ? Theme.borderStrong : Theme.border
-                  border.width: 1
-                  MouseArea {
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onEntered: root.hoverIdx = -8
-                    onExited: { if (root.hoverIdx === -8) root.hoverIdx = -1 }
-                    onClicked: DynamicTheme.toggle()
-                  }
-                  RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 56
-                    spacing: 10
-                    Item {
-                      Layout.preferredWidth: 20
-                      Layout.preferredHeight: 20
-                      QIcon {
-                        anchors.centerIn: parent
-                        name: "preferences-desktop-theme"
-                        size: 18
-                        color: Theme.fg
-                      }
-                    }
-                    ColumnLayout {
-                      Layout.fillWidth: true
-                      Layout.fillHeight: true
-                      Layout.topMargin: 8
-                      Layout.bottomMargin: 8
-                      spacing: 2
-                      Text {
-                        text: "Dynamic theme"
-                        color: Theme.fg
-                        font.family: root.fontFamily
-                        font.pixelSize: 12
-                        font.weight: Font.DemiBold
-                      }
-                    }
-                  }
-                  CToggle {
-                    anchors.right: parent.right
-                    anchors.rightMargin: 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    checked: DynamicTheme.enabled
-                    onToggled: v => DynamicTheme.setEnabled(v)
-                  }
-                }
-
-                Rectangle {
-                  Layout.fillWidth: true
-                  Layout.preferredHeight: 32
                   color: root.hoverIdx === -9 ? Theme.bgAlt : "transparent"
                   border.color: root.hoverIdx === -9 ? Theme.borderStrong : Theme.border
                   border.width: 1

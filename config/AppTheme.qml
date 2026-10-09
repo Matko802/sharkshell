@@ -270,8 +270,6 @@ Singleton {
   }
 
   function push() {
-    if (!DynamicTheme.enabled)
-      return
     kdeColorsFile.setText(root.kdeColorsText())
     qtengineFile.setText(root.qtengineJsonText())
     var css = root.gtkCssText()

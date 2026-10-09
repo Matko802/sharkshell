@@ -27,31 +27,31 @@ Singleton {
   readonly property int easingIn: Easing.InCubic
   readonly property int easingDefault: Easing.OutCubic
 
-  property color bgBase: DynamicTheme.enabled ? DynamicTheme.bg : "#000000"
+  property color bgBase: DynamicTheme.bg
   property color bg: Qt.rgba(bgBase.r, bgBase.g, bgBase.b, root.surfaceAlpha)
   Behavior on bg { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
-  property color bgAltBase: DynamicTheme.enabled ? DynamicTheme.bgAlt : "#0a0a0a"
+  property color bgAltBase: DynamicTheme.bgAlt
   property color bgAlt: Qt.rgba(bgAltBase.r, bgAltBase.g, bgAltBase.b, root.surfaceAlpha)
   Behavior on bgAlt { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
-  property color fg: DynamicTheme.enabled ? DynamicTheme.fg : "#ffffff"
+  property color fg: DynamicTheme.fg
   Behavior on fg { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
-  property color outline: DynamicTheme.enabled ? DynamicTheme.outline : "#ffffff"
+  property color outline: DynamicTheme.outline
   Behavior on outline { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
-  property color border: DynamicTheme.enabled ? DynamicTheme.border : "#222222"
+  property color border: DynamicTheme.border
   Behavior on border { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
-  property color borderStrong: DynamicTheme.enabled ? DynamicTheme.borderStrong : "#333333"
+  property color borderStrong: DynamicTheme.borderStrong
   Behavior on borderStrong { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
-  property color muted: DynamicTheme.enabled ? DynamicTheme.muted : "#888888"
+  property color muted: DynamicTheme.muted
   Behavior on muted { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
-  property color muted2: DynamicTheme.enabled ? DynamicTheme.muted2 : "#555555"
+  property color muted2: DynamicTheme.muted2
   Behavior on muted2 { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
-  property color muted3: DynamicTheme.enabled ? DynamicTheme.muted3 : "#333333"
+  property color muted3: DynamicTheme.muted3
   Behavior on muted3 { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
   readonly property color hover: "#33ffffff"
-  readonly property color match: DynamicTheme.enabled ? DynamicTheme.satRole("tertiary", "#cb4b16", 0.5) : "#cb4b16"
+  readonly property color match: DynamicTheme.satRole("tertiary", "#cb4b16", 0.5)
   readonly property color onSelect: "#586e75"
   readonly property color error: "#ff5555"
-  property color lockBgBase: (TransparencyState.transparent && DynamicTheme.enabled) ? DynamicTheme.bg : "#000000"
+  property color lockBgBase: TransparencyState.transparent ? DynamicTheme.bg : "#000000"
   property color lockBg: Qt.rgba(lockBgBase.r, lockBgBase.g, lockBgBase.b, root.surfaceAlpha)
   Behavior on lockBg { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
   FontLoader {
