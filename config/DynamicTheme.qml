@@ -186,6 +186,13 @@ Scope {
     function regenerate(): void { root.regenerate() }
     function setDark(v: bool): void { root.setDarkMode(v) }
     function toggleDark(): void { root.toggleDarkMode() }
+    function state(): string {
+      return "enabled=" + root.enabled + " darkMode=" + root.darkMode
+        + " generating=" + root.generating + " appsThemed=" + root.appsThemed
+        + " roles=" + Object.keys(root.roles).length
+        + " scheme=" + root.scheme + "/" + root.flavour + "/" + root.variant
+        + " wall=" + root.schemeWall
+    }
   }
 
   FileView {
