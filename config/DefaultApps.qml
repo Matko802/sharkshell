@@ -49,7 +49,7 @@ Scope {
     })
   }
 
-  readonly property var browsers: Apps.matchEntries(root.plainEntries(), Apps.BROWSER_RES, Apps.BROWSER_NAME_RES)
+  readonly property var browsers: Apps.matchEntries(root.plainEntries(), Apps.BROWSER_RES, Apps.BROWSER_NAME_RES, [/^chrome-.+\.desktop$/i])
   readonly property var fileManagers: Apps.matchEntries(root.plainEntries(), Apps.FILES_RES, Apps.FILES_NAME_RES)
   readonly property var mailClients: Apps.matchEntries(root.plainEntries(), Apps.MAIL_RES, Apps.MAIL_NAME_RES)
   readonly property var terminals: Apps.matchEntries(root.plainEntries(), Apps.TERM_RES, Apps.TERM_NAME_RES)
@@ -100,28 +100,27 @@ Scope {
     }
   }
 
-  function setBrowser(id) {
+  function setMimeDefault(id, mimes) {
     id = root.fullId(id)
-    var t = Apps.serializeMimeapps(root.mimeText, {
-      "x-scheme-handler/http": id,
-      "x-scheme-handler/https": id
-    })
-    root.mimeText = t
-    mimeFile.setText(t)
+    if (id === "" || mimes.length === 0) return
+    var updates = {}
+    for (var i = 0; i < mimes.length; i++) updates[mimes[i]] = id
+    root.mimeText = Apps.serializeMimeapps(root.mimeText, updates)
+    mimeProc.running = false
+    mimeProc.command = ["xdg-mime", "default", id].concat(mimes)
+    mimeProc.running = true
+  }
+
+  function setBrowser(id) {
+    root.setMimeDefault(id, ["x-scheme-handler/http", "x-scheme-handler/https"])
   }
 
   function setFiles(id) {
-    id = root.fullId(id)
-    var t = Apps.serializeMimeapps(root.mimeText, { "inode/directory": id })
-    root.mimeText = t
-    mimeFile.setText(t)
+    root.setMimeDefault(id, ["inode/directory"])
   }
 
   function setMail(id) {
-    id = root.fullId(id)
-    var t = Apps.serializeMimeapps(root.mimeText, { "x-scheme-handler/mailto": id })
-    root.mimeText = t
-    mimeFile.setText(t)
+    root.setMimeDefault(id, ["x-scheme-handler/mailto"])
   }
 
   function setTerminal(id) {
@@ -173,6 +172,10 @@ Scope {
       root.healIds()
     }
     onFileChanged: reload()
+  }
+
+  Process {
+    id: mimeProc
   }
 
   FileView {

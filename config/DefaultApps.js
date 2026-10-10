@@ -27,7 +27,7 @@ var TERM_RES = [
 ];
 var TERM_NAME_RES = [/terminal/i, /console/i];
 
-function matchEntries(entries, res, nameRes) {
+function matchEntries(entries, res, nameRes, excludeRes) {
   var out = [];
   var seen = {};
   for (var i = 0; i < (entries || []).length; i++) {
@@ -36,6 +36,14 @@ function matchEntries(entries, res, nameRes) {
     var id = String(e.id || "");
     var nm = String(e.name || "");
     if (id === "") continue;
+    var excluded = false;
+    for (var x = 0; x < (excludeRes || []).length; x++) {
+      if (excludeRes[x].test(id)) {
+        excluded = true;
+        break;
+      }
+    }
+    if (excluded) continue;
     var hit = false;
     for (var r = 0; r < res.length; r++) {
       if (res[r].test(id)) {
