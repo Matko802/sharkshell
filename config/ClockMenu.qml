@@ -245,9 +245,6 @@ PanelWindow {
     SettingsState.openFromClock({ screen: root.targetScreen })
     handoverOut.restart()
   }
-  onActiveTabChanged: {
-    if (root.activeTab === 2 && root.shown) mediaSingle.fetchWebArt()
-  }
   Timer {
     running: root.shown && !root.handingOver
     repeat: true
@@ -706,65 +703,8 @@ PanelWindow {
                    }
                    return u
                  }
-                 property string artUrl: (artFallback || hiResArt === "") ? rawArt : hiResArt
-                 property string trackKey: (cur ? (cur.trackTitle || "") : "") + "\n" + (cur ? (cur.trackArtist || "") : "")
-                 onTrackKeyChanged: fetchWebArt()
-                 property string webKey: ""
-                 property string webArt: ""
-                 property string webFailedKey: ""
-                 function normName(s) {
-                   return String(s || "").toLowerCase().replace(/\(.*?\)|\[.*?\]/g, "").replace(/\s+/g, " ").trim()
-                 }
-                 function artMatches(rTitle, rArtist, qTitle, qArtist) {
-                   const rt = normName(rTitle)
-                   const qt = normName(qTitle)
-                   if (rt === "" || qt === "") return false
-                   if (rt.indexOf(qt) === -1 && qt.indexOf(rt) === -1) return false
-                   const ra = normName(rArtist)
-                   const qa = normName(qArtist)
-                   if (qa === "" || ra === "") return true
-                   return ra.indexOf(qa) !== -1 || qa.indexOf(ra) !== -1
-                 }
-                  function fetchWebArt() {
-                    if (root.activeTab !== 2) return
-                    const title = cur ? (cur.trackTitle || "") : ""
-                   const artist = cur ? (cur.trackArtist || "") : ""
-                   const key = artist + " - " + title
-                   if (key !== "" && key === webKey && webArt !== "") return
-                   webKey = key
-                   webArt = ""
-                   if (title === "" && artist === "") return
-                   requestArt(key, (artist + " " + title).trim(), artist, title)
-                 }
-                 function requestArt(key, query, qArtist, qTitle) {
-                   const xhr = new XMLHttpRequest()
-                   xhr.open("GET", "https://api.deezer.com/search?q=" + encodeURIComponent(query))
-                   xhr.timeout = 8000
-                   xhr.onreadystatechange = function() {
-                     if (xhr.readyState !== XMLHttpRequest.DONE) return
-                     if (webKey !== key) return
-                     let u = ""
-                     try {
-                       const j = JSON.parse(xhr.responseText)
-                       const list = j && j.data ? j.data : []
-                       for (let i = 0; i < list.length && i < 5; i++) {
-                         const r = list[i]
-                         const al = r ? r.album : null
-                         if (!r || !al) continue
-                         if (!artMatches(r.title || "", (r.artist && r.artist.name) || "", qTitle, qArtist)) continue
-                         u = al.cover_xl || al.cover_big || al.cover_medium || al.cover || ""
-                         if (u !== "") break
-                       }
-                     } catch (e) {}
-                     if (u !== "") {
-                       if (webKey === key) webArt = String(u)
-                     } else if (qArtist !== "" && query !== qTitle) {
-                       requestArt(key, qTitle, "", qTitle)
-                     }
-                   }
-                   xhr.send()
-                 }
-                 property string displayArt: (webArt !== "" && webFailedKey !== webKey) ? webArt : artUrl
+                  property string artUrl: (artFallback || hiResArt === "") ? rawArt : hiResArt
+                  property string displayArt: artUrl
                  ColumnLayout {
                     id: msRoot
                     anchors.fill: parent
@@ -1127,9 +1067,7 @@ PanelWindow {
                           source: mediaSingle.displayArt
                           onStatusChanged: {
                             if (status !== Image.Error) return
-                            if (mediaSingle.displayArt === mediaSingle.webArt && mediaSingle.webArt !== "") {
-                              mediaSingle.webFailedKey = mediaSingle.webKey
-                            } else if (!mediaSingle.artFallback && mediaSingle.hiResArt !== "" && mediaSingle.hiResArt !== mediaSingle.rawArt) {
+                            if (!mediaSingle.artFallback && mediaSingle.hiResArt !== "" && mediaSingle.hiResArt !== mediaSingle.rawArt) {
                               mediaSingle.artFallback = true
                             }
                           }
