@@ -156,7 +156,9 @@ Scope {
     if (root.transparent)
       txt += "layer-rule {\n"
         + "  match namespace=\"^quickshell-modal$\"\n"
-        + "  background-effect { blur true }\n"
+        + "  background-effect {\n"
+        + "    blur true\n"
+        + "  }\n"
         + "}\n"
     niriBlurFile.setText(txt)
   }
