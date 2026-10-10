@@ -612,7 +612,7 @@ Scope {
               anchors.bottom: parent.bottom
               height: 2
               width: holding ? parent.width * root.holdProgress : 0
-              visible: holding && root.holdProgress > 0
+              visible: holding && (Date.now() - root.holdStartMs) > 150 && root.holdProgress > 0
               color: isKeyboardSelected ? Theme.bg : Theme.fg
             }
 
