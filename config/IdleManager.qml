@@ -47,7 +47,8 @@ Item {
     property bool fullscreenActive: false
     readonly property bool gaming: gameMode || fullscreenActive
     property bool stayAwake: false
-    readonly property bool _inhibited: mediaPlaying || gameMode || stayAwake || (audioActive && !mediaPaused)
+    property bool taskRunning: false
+    readonly property bool _inhibited: mediaPlaying || gameMode || stayAwake || taskRunning || (audioActive && !mediaPaused)
 
     function _setScreen(off) {
         if (off === root.screenIsOff)
@@ -183,6 +184,7 @@ Item {
         onTriggered: {
             gameCheck.running = true
             audioCheck.running = true
+            taskCheck.running = true
             if (root.mediaPlaying)
                 root.markActive()
         }
@@ -210,6 +212,16 @@ Item {
         command: ["sh", "-c", "pw-dump 2>/dev/null | awk '/^  \\{$/ { b=\"\"; f=1; next } /^  \\},?$/ { if (f && b ~ /\"media.class\"[[:space:]]*:[[:space:]]*\"Stream\\/Output\\/Audio\"/ && b ~ /\"state\"[[:space:]]*:[[:space:]]*\"running\"/ && b !~ /\"pulse.corked\"[[:space:]]*:[[:space:]]*true/ && b !~ /\"node.name\"[[:space:]]*:[[:space:]]*\"alsa_(playback|capture)\\./) { print \"P\"; exit } f=0; next } f { b = b \"\\n\" $0 }' | grep -q P"]
         onExited: (exitCode) => {
             root.audioActive = (exitCode === 0)
+            if (exitCode === 0)
+                root.markActive()
+        }
+    }
+
+    Process {
+        id: taskCheck
+        command: ["sh", "-c", "command -v pgrep >/dev/null 2>&1 && pgrep -f '(^|/)(nh|nixos-rebuild)([ /]|$)|nix +(build|develop|shell|run|flake)([ /]|$)|opencode([-.]|[ /]|$)' >/dev/null"]
+        onExited: (exitCode) => {
+            root.taskRunning = (exitCode === 0)
             if (exitCode === 0)
                 root.markActive()
         }
