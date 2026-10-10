@@ -25,6 +25,24 @@ Scope {
     return null
   }
 
+  function fullId(id) {
+    var s = String(id || "")
+    if (s === "" || s.endsWith(".desktop")) return s
+    if (root.findEntry(s + ".desktop")) return s + ".desktop"
+    return s
+  }
+
+  function healIds() {
+    var b = root.fullId(root.mimeDefaults["x-scheme-handler/http"] || "")
+    if (b !== "" && b !== (root.mimeDefaults["x-scheme-handler/http"] || "")) root.setBrowser(b)
+    var f = root.fullId(root.mimeDefaults["inode/directory"] || "")
+    if (f !== "" && f !== (root.mimeDefaults["inode/directory"] || "")) root.setFiles(f)
+    var m = root.fullId(root.mimeDefaults["x-scheme-handler/mailto"] || "")
+    if (m !== "" && m !== (root.mimeDefaults["x-scheme-handler/mailto"] || "")) root.setMail(m)
+    var t = root.fullId(root.termChoice)
+    if (t !== "" && t !== root.termChoice) root.setTerminal(t)
+  }
+
   function plainEntries() {
     return root.allEntries.map(function(e) {
       return { id: String(e.id || ""), name: String(e.name || ""), noDisplay: !!e.noDisplay }
@@ -38,13 +56,13 @@ Scope {
 
   readonly property var mimeDefaults: Apps.parseMimeapps(root.mimeText)
 
-  readonly property string browserId: root.mimeDefaults["x-scheme-handler/http"] || ""
-  readonly property string filesId: root.mimeDefaults["inode/directory"] || ""
-  readonly property string mailId: root.mimeDefaults["x-scheme-handler/mailto"] || ""
+  readonly property string browserId: root.fullId(root.mimeDefaults["x-scheme-handler/http"] || "")
+  readonly property string filesId: root.fullId(root.mimeDefaults["inode/directory"] || "")
+  readonly property string mailId: root.fullId(root.mimeDefaults["x-scheme-handler/mailto"] || "")
 
   function displayName(id) {
     if (!id) return ""
-    var e = root.findEntry(id)
+    var e = root.findEntry(id) || root.findEntry(root.fullId(id))
     if (e && e.name) return String(e.name)
     return String(id).replace(/\.desktop$/, "")
   }
@@ -83,6 +101,7 @@ Scope {
   }
 
   function setBrowser(id) {
+    id = root.fullId(id)
     var t = Apps.serializeMimeapps(root.mimeText, {
       "x-scheme-handler/http": id,
       "x-scheme-handler/https": id
@@ -92,18 +111,21 @@ Scope {
   }
 
   function setFiles(id) {
+    id = root.fullId(id)
     var t = Apps.serializeMimeapps(root.mimeText, { "inode/directory": id })
     root.mimeText = t
     mimeFile.setText(t)
   }
 
   function setMail(id) {
+    id = root.fullId(id)
     var t = Apps.serializeMimeapps(root.mimeText, { "x-scheme-handler/mailto": id })
     root.mimeText = t
     mimeFile.setText(t)
   }
 
   function setTerminal(id) {
+    id = root.fullId(id)
     root.termChoice = id
     termFile.setText(id + "\n")
     termListFile.setText(id + "\n")
@@ -134,7 +156,7 @@ Scope {
 
   readonly property var terminalCmd: {
     if (root.termChoice === "") return []
-    var e = root.findEntry(root.termChoice)
+    var e = root.findEntry(root.termChoice) || root.findEntry(root.fullId(root.termChoice))
     var bin = e && e.execString ? Apps.binFromExec(String(e.execString)) : root.termChoice.replace(/\.desktop$/, "")
     if (bin === "") return []
     return Apps.termCmdForBin(bin)
@@ -146,7 +168,10 @@ Scope {
     path: root.mimeappsPath
     watchChanges: true
     printErrors: false
-    onLoaded: root.mimeText = text()
+    onLoaded: {
+      root.mimeText = text()
+      root.healIds()
+    }
     onFileChanged: reload()
   }
 
@@ -155,7 +180,10 @@ Scope {
     path: root.termChoicePath
     watchChanges: true
     printErrors: false
-    onLoaded: root.termChoice = text().trim()
+    onLoaded: {
+      root.termChoice = text().trim()
+      root.healIds()
+    }
     onFileChanged: reload()
   }
 
