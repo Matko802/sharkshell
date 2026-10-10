@@ -46,9 +46,7 @@ ShellRoot {
         implicitHeight: 30
         color: "transparent"
         exclusionMode: ExclusionMode.Auto
-        property int targetZone: OverviewState.open ? 0 : 30
-        exclusiveZone: targetZone
-        Behavior on exclusiveZone { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
+        exclusiveZone: OverviewState.open ? 0 : 30
         WlrLayershell.namespace: "quickshell"
         BackgroundEffect.blurRegion: Region { item: root.barShown && TransparencyState.transparent && !IdleManager.gaming ? barBg : null }
         readonly property bool barVisible: root.barShown || clockMenu.shown || settingsMenu.shown || controlCard.shown

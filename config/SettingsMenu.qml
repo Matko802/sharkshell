@@ -152,10 +152,22 @@ PanelWindow {
     }
   }
   onShownChanged: {
-    if (shown) { card.y = -card.height - 8; slideIn.restart() }
+    if (shown) {
+      if (SettingsState.enterFromRight) {
+        SettingsState.enterFromRight = false
+        card.y = 0
+        card.x = card.width + 8
+        handoverIn.restart()
+      } else {
+        card.x = 0
+        card.y = -card.height - 8
+        slideIn.restart()
+      }
+    }
   }
   NumberAnimation { id: slideIn; target: card; property: "y"; to: 0; duration: 250; easing.type: Easing.OutCubic }
   NumberAnimation { id: slideOut; target: card; property: "y"; to: -card.height - 12; duration: 250; easing.type: Easing.InCubic; onFinished: root.shown = false }
+  NumberAnimation { id: handoverIn; target: card; property: "x"; to: 0; duration: 130; easing.type: Easing.OutCubic }
   Timer {
     running: root.shown
     repeat: true

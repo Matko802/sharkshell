@@ -28,6 +28,16 @@ Scope {
     }
   }
 
+  property bool enterFromRight: false
+
+  function openFromClock(win) {
+    const s = win ? win.screen : null
+    root.screen = s
+    root.enterFromRight = true
+    root.open = true
+    ControlState.close()
+  }
+
   function close() {
     root.open = false
   }

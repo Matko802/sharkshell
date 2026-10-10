@@ -27,6 +27,7 @@ PanelWindow {
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
   property bool shown: false
+  property bool handingOver: false
   property int activeTab: 0
   property date calDate: new Date()
   property int mediaIdx: 0
@@ -214,7 +215,7 @@ PanelWindow {
     function onOpenChanged() {
       if (ClockState.open && (!ClockState.screen || ClockState.screen === root.targetScreen))
         root.shown = true
-      else if (!ClockState.open && root.shown && !slideOut.running)
+      else if (!ClockState.open && root.shown && !root.handingOver && !slideOut.running)
         slideOut.restart()
     }
   }
@@ -223,11 +224,32 @@ PanelWindow {
   }
   NumberAnimation { id: slideIn; target: card; property: "y"; to: 0; duration: 250; easing.type: Easing.OutCubic }
   NumberAnimation { id: slideOut; target: card; property: "y"; to: -card.height - 12; duration: 250; easing.type: Easing.InCubic; onFinished: root.shown = false }
+  NumberAnimation {
+    id: handoverOut
+    target: card
+    property: "x"
+    to: -card.width
+    duration: 130
+    easing.type: Easing.OutCubic
+    onFinished: {
+      ClockState.open = false
+      root.shown = false
+      root.handingOver = false
+      card.x = 0
+    }
+  }
+  function startHandover() {
+    if (root.handingOver || !root.shown)
+      return
+    root.handingOver = true
+    SettingsState.openFromClock({ screen: root.targetScreen })
+    handoverOut.restart()
+  }
   onActiveTabChanged: {
     if (root.activeTab === 2 && root.shown) mediaSingle.fetchWebArt()
   }
   Timer {
-    running: root.shown
+    running: root.shown && !root.handingOver
     repeat: true
     interval: 500
     onTriggered: {
@@ -311,7 +333,7 @@ PanelWindow {
             Layout.preferredHeight: 28
             icon: "settings"
             iconSize: 16
-            onClicked: { ClockState.close(); SettingsState.toggle({ screen: root.targetScreen }) }
+            onClicked: root.startHandover()
           }
       }
 
