@@ -26,6 +26,7 @@ let
     { name = "settingsmenu"; target = "settings"; action = "toggle"; }
     { name = "clipboard"; target = "clipboard"; action = "toggle"; }
     { name = "clockmenu"; target = "clock"; action = "toggle"; }
+    { name = "perfprofile"; target = "perf"; action = "cycle"; }
   ];
 
   ipcCmdsPkg = pkgs.runCommand "sharkshell-ipc-cmds" { } ''
