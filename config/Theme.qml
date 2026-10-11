@@ -18,9 +18,9 @@ Singleton {
   readonly property int paddingL: 16
   readonly property int rounding: 0
   readonly property int radius: 0
-  readonly property int animFast: Math.round(90 * PerfMode.animScale)
-  readonly property int animDefault: Math.round(140 * PerfMode.animScale)
-  readonly property int animSlow: Math.round(200 * PerfMode.animScale)
+  readonly property int animFast: 90
+  readonly property int animDefault: 140
+  readonly property int animSlow: 200
   readonly property int themeTransition: 600
   readonly property real surfaceAlpha: TransparencyState.transparent ? 1.0 - TransparencyState.amount : 1.0
   readonly property int easingOut: Easing.OutCubic
@@ -29,11 +29,11 @@ Singleton {
 
   property color bgBase: DynamicTheme.bg
   property color bg: Qt.rgba(bgBase.r, bgBase.g, bgBase.b, root.surfaceAlpha)
-  Behavior on bg { ColorAnimation { duration: Math.round(150 * PerfMode.animScale); easing.type: Easing.OutCubic } }
+  Behavior on bg { ColorAnimation { duration: 150; easing.type: Easing.OutCubic } }
   property color bgAltBase: DynamicTheme.bgAlt
   property color bgAlt: Qt.rgba(bgAltBase.r, bgAltBase.g, bgAltBase.b, root.surfaceAlpha)
   property color fg: DynamicTheme.fg
-  Behavior on fg { ColorAnimation { duration: Math.round(150 * PerfMode.animScale); easing.type: Easing.OutCubic } }
+  Behavior on fg { ColorAnimation { duration: 150; easing.type: Easing.OutCubic } }
   property color outline: DynamicTheme.outline
   property color border: DynamicTheme.border
   property color borderStrong: DynamicTheme.borderStrong

@@ -197,7 +197,7 @@ Scope {
   Process {
     id: watcher
     running: true
-    command: ["stdbuf", "-oL", "sh", "-c", "I=${1:-2}; L=\"\"; PR=-1; PT=-1; while :; do R=$(nmcli radio wifi 2>/dev/null); K=off; S=0; N=\"\"; IF=\"\"; if nmcli -t -f TYPE,STATE device status 2>/dev/null | grep -q '^ethernet:connected'; then K=eth; IF=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | awk -F: '$2==\"ethernet\"&&$3==\"connected\"{print $1; exit}'); else L2=$(nmcli -t -f in-use,signal,ssid dev wifi 2>/dev/null | grep '^\\*' | head -n1); if [ -n \"$L2\" ]; then K=wifi; S=$(printf '%s' \"$L2\" | cut -d: -f2); N=$(printf '%s' \"$L2\" | cut -d: -f3-); IF=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | awk -F: '$2==\"wifi\"&&$3==\"connected\"{print $1; exit}'); fi; fi; AC=$(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | awk -F: '$NF==\"wifi\"{sub(/:wifi$/,\"\");print;exit}'); RX=$(cat /sys/class/net/$IF/statistics/rx_bytes 2>/dev/null || echo 0); TX=$(cat /sys/class/net/$IF/statistics/tx_bytes 2>/dev/null || echo 0); DN=0; UP=0; if [ -n \"$IF\" ] && [ \"$PR\" -ge 0 ]; then DN=$(((RX-PR)/I)); UP=$(((TX-PT)/I)); fi; [ $DN -lt 0 ] && DN=0; [ $UP -lt 0 ] && UP=0; PR=$RX; PT=$TX; V=\"kind:$K|sig:$S|ssid:$N|radio:$R|if:$IF|dn:$DN|up:$UP|ac:$AC\"; if [ \"$V\" != \"$L\" ]; then printf '%s\\n' \"$V\"; L=\"$V\"; fi; sleep $I; done", "sh", String(PerfMode.netInterval)]
+    command: ["stdbuf", "-oL", "sh", "-c", "L=\"\"; PR=-1; PT=-1; while :; do R=$(nmcli radio wifi 2>/dev/null); K=off; S=0; N=\"\"; IF=\"\"; if nmcli -t -f TYPE,STATE device status 2>/dev/null | grep -q '^ethernet:connected'; then K=eth; IF=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | awk -F: '$2==\"ethernet\"&&$3==\"connected\"{print $1; exit}'); else L2=$(nmcli -t -f in-use,signal,ssid dev wifi 2>/dev/null | grep '^\\*' | head -n1); if [ -n \"$L2\" ]; then K=wifi; S=$(printf '%s' \"$L2\" | cut -d: -f2); N=$(printf '%s' \"$L2\" | cut -d: -f3-); IF=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | awk -F: '$2==\"wifi\"&&$3==\"connected\"{print $1; exit}'); fi; fi; AC=$(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | awk -F: '$NF==\"wifi\"{sub(/:wifi$/,\"\");print;exit}'); RX=$(cat /sys/class/net/$IF/statistics/rx_bytes 2>/dev/null || echo 0); TX=$(cat /sys/class/net/$IF/statistics/tx_bytes 2>/dev/null || echo 0); DN=0; UP=0; if [ -n \"$IF\" ] && [ \"$PR\" -ge 0 ]; then DN=$(((RX-PR)/2)); UP=$(((TX-PT)/2)); fi; [ $DN -lt 0 ] && DN=0; [ $UP -lt 0 ] && UP=0; PR=$RX; PT=$TX; V=\"kind:$K|sig:$S|ssid:$N|radio:$R|if:$IF|dn:$DN|up:$UP|ac:$AC\"; if [ \"$V\" != \"$L\" ]; then printf '%s\\n' \"$V\"; L=\"$V\"; fi; sleep 2; done"]
     stdout: SplitParser {
       onRead: data => {
         let k = "off", s = 0, n = "", r = "", ifn = "", dn = 0, up = 0
@@ -224,15 +224,6 @@ Scope {
         root.downRate = dn
         root.upRate = up
       }
-    }
-  }
-
-  Connections {
-    target: PerfMode
-    function onNetIntervalChanged() {
-      if (watcher.running)
-        watcher.running = false
-      watcher.running = true
     }
   }
 }

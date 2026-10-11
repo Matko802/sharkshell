@@ -143,7 +143,7 @@ Scope {
           property bool frontIsA: true
           property var pending: null
 
-          layer.enabled: root.blurEnabled && surf.contentShown && PerfMode.lockBlurAllowed
+          layer.enabled: root.blurEnabled && surf.contentShown
           layer.smooth: true
           layer.textureSize: Qt.size(Math.max(1, Math.round(lockBg.width / 2)), Math.max(1, Math.round(lockBg.height / 2)))
           layer.effect: GaussianBlur {

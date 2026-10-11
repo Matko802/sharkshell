@@ -50,8 +50,8 @@ Item {
 
   Process {
     id: visProc
-    running: VisualizerState.topbar && !IdleManager.gaming && PerfMode.visualizerAllowed
-    command: ["sh", "-c", "V=\"$HOME/.cache/sharkshell/cava.conf\"; L=/mnt/ssd/My-Files/Projects/sharkvis/target/release/sharkvis; M=" + VisualizerState.mode + "; B=" + root.topBars + "; F=" + PerfMode.fps + "; if [ -x \"$L\" ]; then exec \"$L\" --raw --raw-mode \"$M\" --bars \"$B\" --fps \"$F\"; elif command -v sharkvis >/dev/null 2>&1; then exec sharkvis --raw --raw-mode \"$M\" --bars \"$B\" --fps \"$F\"; elif command -v cava >/dev/null 2>&1; then exec cava -p \"$V\"; else exit 0; fi"]
+    running: VisualizerState.topbar && !IdleManager.gaming
+    command: ["sh", "-c", "V=\"$HOME/.cache/sharkshell/cava.conf\"; L=/mnt/ssd/My-Files/Projects/sharkvis/target/release/sharkvis; M=" + VisualizerState.mode + "; B=" + root.topBars + "; if [ -x \"$L\" ]; then exec \"$L\" --raw --raw-mode \"$M\" --bars \"$B\" --fps 15; elif command -v sharkvis >/dev/null 2>&1; then exec sharkvis --raw --raw-mode \"$M\" --bars \"$B\" --fps 15; elif command -v cava >/dev/null 2>&1; then exec cava -p \"$V\"; else exit 0; fi"]
     stdout: SplitParser {
       onRead: data => {
         const parts = String(data).split(";")
@@ -83,20 +83,6 @@ Item {
     }
   }
 
-  Connections {
-    target: PerfMode
-    function onFpsChanged() {
-      if (visProc.running) {
-        visProc.running = false
-        visProc.running = true
-      }
-    }
-    function onVisualizerAllowedChanged() {
-      if (!PerfMode.visualizerAllowed)
-        root.levels = []
-    }
-  }
-
   Row {
     id: barRow
     anchors.fill: parent
@@ -115,7 +101,6 @@ Item {
           height: Math.max(2, parent.height * ((root.levels[index] || 0) / 100))
           color: Theme.fg
           Behavior on height {
-            enabled: !PerfMode.isSaver
             NumberAnimation {
               duration: 90
               easing.type: Easing.OutCubic

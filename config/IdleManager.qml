@@ -177,7 +177,7 @@ Item {
     }
 
     Timer {
-        interval: Math.round((root.gameMode ? 10000 : 6000) * PerfMode.pollScale)
+        interval: root.gameMode ? 10000 : 6000
         running: root.enabled
         repeat: true
         triggeredOnStart: true

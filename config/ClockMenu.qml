@@ -158,7 +158,7 @@ PanelWindow {
     }
   }
   Timer {
-    interval: Math.round(4000 * PerfMode.pollScale)
+    interval: 4000
     running: root.visible && root.activeTab === 1
     repeat: true
     triggeredOnStart: true
@@ -773,8 +773,8 @@ PanelWindow {
                           clip: true
                           Process {
                             id: visProc
-                            running: root.shown && root.activeTab === 2 && PerfMode.visualizerAllowed
-                            command: ["sh", "-c", "V=\"$HOME/.cache/sharkshell/cava.conf\"; L=/mnt/ssd/My-Files/Projects/sharkvis/target/release/sharkvis; M=" + VisualizerState.mode + "; B=" + VisualizerState.bars + "; F=" + PerfMode.fps + "; if [ -x \"$L\" ]; then exec \"$L\" --raw --raw-mode \"$M\" --bars \"$B\" --fps \"$F\"; elif command -v sharkvis >/dev/null 2>&1; then exec sharkvis --raw --raw-mode \"$M\" --bars \"$B\" --fps \"$F\"; elif command -v cava >/dev/null 2>&1; then exec cava -p \"$V\"; else exit 0; fi"]
+                            running: root.shown && root.activeTab === 2
+                            command: ["sh", "-c", "V=\"$HOME/.cache/sharkshell/cava.conf\"; L=/mnt/ssd/My-Files/Projects/sharkvis/target/release/sharkvis; M=" + VisualizerState.mode + "; B=" + VisualizerState.bars + "; if [ -x \"$L\" ]; then exec \"$L\" --raw --raw-mode \"$M\" --bars \"$B\" --fps 15; elif command -v sharkvis >/dev/null 2>&1; then exec sharkvis --raw --raw-mode \"$M\" --bars \"$B\" --fps 15; elif command -v cava >/dev/null 2>&1; then exec cava -p \"$V\"; else exit 0; fi"]
                             stdout: SplitParser {
                               onRead: data => {
                                 const parts = String(data).split(";")
@@ -805,10 +805,7 @@ PanelWindow {
                                   anchors.right: parent.right
                                   height: Math.max(2, parent.height * ((mediaSingle.levels[index] || 0) / 100))
                                   color: Theme.fg
-                                  Behavior on height {
-                                    enabled: !PerfMode.isSaver
-                                    NumberAnimation { duration: 90; easing.type: Easing.OutCubic }
-                                  }
+                                  Behavior on height { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
                                 }
                               }
                             }

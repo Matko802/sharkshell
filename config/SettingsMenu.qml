@@ -704,10 +704,12 @@ PanelWindow {
                   delegate: Rectangle {
                     required property var modelData
                     required property int index
+                    readonly property bool available: modelData !== "performance" || PerfMode.hasPerformance
                     Layout.fillWidth: true
                     Layout.preferredHeight: 44
-                    color: PerfMode.mode === modelData ? Theme.fg : (perfMa.containsMouse ? Theme.bgAlt : "transparent")
-                    border.color: PerfMode.mode === modelData ? Theme.outline : (perfMa.containsMouse ? Theme.borderStrong : Theme.border)
+                    opacity: available ? 1 : 0.4
+                    color: PerfMode.mode === modelData ? Theme.fg : (perfMa.containsMouse && available ? Theme.bgAlt : "transparent")
+                    border.color: PerfMode.mode === modelData ? Theme.outline : (perfMa.containsMouse && available ? Theme.borderStrong : Theme.border)
                     border.width: 1
                     RowLayout {
                       anchors.fill: parent
@@ -730,7 +732,7 @@ PanelWindow {
                           font.weight: Font.DemiBold
                         }
                         Text {
-                          text: PerfMode.modeHints[index] + (PerfMode.autoSaver && PerfMode.onBattery && PerfMode.mode === modelData ? " (on battery: saving)" : "")
+                          text: !available ? "Not offered by this system" : PerfMode.modeHints[index] + (PerfMode.autoSaver && PerfMode.onBattery && PerfMode.mode === modelData ? " (on battery: saving)" : "")
                           color: PerfMode.mode === modelData ? Theme.bg : Theme.muted
                           font.family: root.fontFamily
                           font.pixelSize: 10
@@ -744,6 +746,22 @@ PanelWindow {
                       cursorShape: Qt.PointingHandCursor
                       onClicked: PerfMode.setMode(modelData)
                     }
+                  }
+                }
+
+                Rectangle {
+                  visible: PerfMode.degraded
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: 32
+                  color: Theme.error
+                  border.color: Theme.error
+                  border.width: 1
+                  Text {
+                    anchors.centerIn: parent
+                    text: "System reports degraded performance"
+                    color: Theme.bg
+                    font.family: root.fontFamily
+                    font.pixelSize: 11
                   }
                 }
 

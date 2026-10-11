@@ -11,14 +11,14 @@ Scope {
   readonly property var modeNames: ["Performance", "Balanced", "Power Saver"]
   readonly property var modeIcons: ["cpu", "tune", "hibernate"]
   readonly property var modeHints: [
-    "Full effects, 30 fps visualizer",
-    "Reduced effects, 15 fps visualizer",
-    "Minimal effects, no visualizer"
+    "Full system performance",
+    "Balanced power and performance",
+    "Lower power use, quieter fans"
   ]
 
   property string mode: "balanced"
   property bool autoSaver: false
-  property bool _cacheHit: false
+  property bool _syncing: false
 
   readonly property bool onBattery: {
     try {
@@ -32,15 +32,24 @@ Scope {
   }
 
   readonly property string effectiveMode: (root.autoSaver && root.onBattery) ? "power-saver" : root.mode
-  readonly property bool isSaver: root.effectiveMode === "power-saver"
-  readonly property bool isPerformance: root.effectiveMode === "performance"
+  readonly property bool hasPerformance: PowerProfiles.hasPerformanceProfile
+  readonly property bool degraded: PowerProfiles.degradationReason !== PerformanceDegradationReason.None
 
-  readonly property int fps: root.isSaver ? 0 : (root.isPerformance ? 30 : 15)
-  readonly property bool visualizerAllowed: root.fps > 0
-  readonly property bool lockBlurAllowed: !root.isSaver
-  readonly property real animScale: root.isSaver ? 0 : 1
-  readonly property real pollScale: root.isSaver ? 2 : (root.isPerformance ? 0.75 : 1)
-  readonly property int netInterval: root.isSaver ? 4 : 2
+  function enumFor(m) {
+    if (m === "performance")
+      return PowerProfile.Performance
+    if (m === "power-saver")
+      return PowerProfile.PowerSaver
+    return PowerProfile.Balanced
+  }
+
+  function stringFor(p) {
+    if (p === PowerProfile.Performance)
+      return "performance"
+    if (p === PowerProfile.PowerSaver)
+      return "power-saver"
+    return "balanced"
+  }
 
   function modeLabel(m) {
     const i = root.modes.indexOf(m || root.effectiveMode)
@@ -53,12 +62,15 @@ Scope {
       m = "power-saver"
     if (root.modes.indexOf(m) < 0)
       return
+    if (m === "performance" && !root.hasPerformance)
+      m = "balanced"
     root.mode = m
   }
 
   function cycle() {
-    const i = root.modes.indexOf(root.mode)
-    root.setMode(root.modes[(i + 1) % root.modes.length])
+    const order = root.hasPerformance ? root.modes : ["balanced", "power-saver"]
+    const i = order.indexOf(root.mode)
+    root.setMode(order[(i + 1) % order.length])
   }
 
   function setAutoSaver(v) {
@@ -67,6 +79,29 @@ Scope {
 
   function toggleAutoSaver() {
     root.autoSaver = !root.autoSaver
+  }
+
+  function applySystemProfile() {
+    if (root.effectiveMode === "performance" && !root.hasPerformance)
+      return
+    const target = root.enumFor(root.effectiveMode)
+    if (PowerProfiles.profile === target)
+      return
+    root._syncing = true
+    PowerProfiles.profile = target
+  }
+
+  Connections {
+    target: PowerProfiles
+    function onProfileChanged() {
+      if (root._syncing) {
+        root._syncing = false
+        return
+      }
+      const s = root.stringFor(PowerProfiles.profile)
+      if (s !== root.mode)
+        root.mode = s
+    }
   }
 
   IpcHandler {
@@ -81,18 +116,8 @@ Scope {
     modeFile.setText(root.mode)
     root.applySystemProfile()
   }
+  onEffectiveModeChanged: root.applySystemProfile()
   onAutoSaverChanged: autoFile.setText(root.autoSaver ? "1" : "0")
-
-  function applySystemProfile() {
-    if (sysProfile.running)
-      sysProfile.running = false
-    sysProfile.command = ["sh", "-c", "command -v powerprofilesctl >/dev/null 2>&1 && powerprofilesctl set " + root.mode + " >/dev/null 2>&1; exit 0"]
-    sysProfile.running = true
-  }
-
-  Process {
-    id: sysProfile
-  }
 
   FileView {
     id: modeFile
@@ -101,10 +126,8 @@ Scope {
     printErrors: false
     onLoaded: {
       const t = text().trim().toLowerCase()
-      if (t !== "" && root.modes.indexOf(t) >= 0) {
-        root._cacheHit = true
+      if (t !== "" && root.modes.indexOf(t) >= 0)
         root.mode = t
-      }
     }
     onFileChanged: reload()
   }
@@ -125,20 +148,5 @@ Scope {
     id: mkdirProc
     running: true
     command: ["bash", "-c", "mkdir -p \"$HOME/.cache/sharkshell\""]
-    onExited: sysProbe.running = true
-  }
-
-  Process {
-    id: sysProbe
-    command: ["sh", "-c", "command -v powerprofilesctl >/dev/null 2>&1 && powerprofilesctl get 2>/dev/null || echo \"" + root.mode + "\""]
-    stdout: StdioCollector {
-      onStreamFinished: {
-        if (root._cacheHit)
-          return
-        const t = String(text).trim().toLowerCase()
-        if (root.modes.indexOf(t) >= 0 && t !== root.mode)
-          root.mode = t
-      }
-    }
   }
 }
