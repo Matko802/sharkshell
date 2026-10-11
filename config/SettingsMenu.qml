@@ -721,22 +721,14 @@ PanelWindow {
                         size: 18
                         color: PerfMode.mode === modelData ? Theme.bg : Theme.fg
                       }
-                      ColumnLayout {
+                      Text {
                         Layout.fillWidth: true
-                        spacing: 2
-                        Text {
-                          text: PerfMode.modeNames[index]
-                          color: PerfMode.mode === modelData ? Theme.bg : Theme.fg
-                          font.family: root.fontFamily
-                          font.pixelSize: 12
-                          font.weight: Font.DemiBold
-                        }
-                        Text {
-                          text: !available ? "Not offered by this system" : PerfMode.modeHints[index]
-                          color: PerfMode.mode === modelData ? Theme.bg : Theme.muted
-                          font.family: root.fontFamily
-                          font.pixelSize: 10
-                        }
+                        Layout.alignment: Qt.AlignVCenter
+                        text: PerfMode.modeNames[index]
+                        color: PerfMode.mode === modelData ? Theme.bg : Theme.fg
+                        font.family: root.fontFamily
+                        font.pixelSize: 12
+                        font.weight: Font.DemiBold
                       }
                     }
                     MouseArea {

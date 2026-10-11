@@ -10,11 +10,6 @@ Scope {
   readonly property var modes: ["performance", "balanced", "power-saver"]
   readonly property var modeNames: ["Performance", "Balanced", "Power Saver"]
   readonly property var modeIcons: ["cpu", "tune", "hibernate"]
-  readonly property var modeHints: [
-    "Full system performance",
-    "Balanced power and performance",
-    "Lower power use, quieter fans"
-  ]
 
   property string mode: "balanced"
   property bool _syncing: false
