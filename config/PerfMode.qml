@@ -18,6 +18,7 @@ Scope {
 
   property string mode: "balanced"
   property bool autoSaver: false
+  property bool _cacheHit: false
 
   readonly property bool onBattery: {
     try {
@@ -100,8 +101,10 @@ Scope {
     printErrors: false
     onLoaded: {
       const t = text().trim().toLowerCase()
-      if (t !== "" && root.modes.indexOf(t) >= 0)
+      if (t !== "" && root.modes.indexOf(t) >= 0) {
+        root._cacheHit = true
         root.mode = t
+      }
     }
     onFileChanged: reload()
   }
@@ -122,5 +125,20 @@ Scope {
     id: mkdirProc
     running: true
     command: ["bash", "-c", "mkdir -p \"$HOME/.cache/sharkshell\""]
+    onExited: sysProbe.running = true
+  }
+
+  Process {
+    id: sysProbe
+    command: ["sh", "-c", "command -v powerprofilesctl >/dev/null 2>&1 && powerprofilesctl get 2>/dev/null || echo \"" + root.mode + "\""]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        if (root._cacheHit)
+          return
+        const t = String(text).trim().toLowerCase()
+        if (root.modes.indexOf(t) >= 0 && t !== root.mode)
+          root.mode = t
+      }
+    }
   }
 }

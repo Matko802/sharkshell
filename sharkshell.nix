@@ -22,8 +22,13 @@ in {
     };
     extraPackages = lib.mkOption {
       type = lib.types.listOf lib.types.package;
-      default = [ pkgs.upower pkgs.wtype pkgs.adw-gtk3 ];
+      default = [ pkgs.upower pkgs.wtype pkgs.adw-gtk3 pkgs.power-profiles-daemon ];
       description = "Optional companion packages for sharkshell.";
+    };
+    powerProfiles = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Enable power-profiles-daemon so the PerfMode power profiles actually change system behavior.";
     };
   };
 
@@ -31,6 +36,8 @@ in {
     environment.systemPackages = [ pkg.sharkshell pkg.sharkColorsBin ] ++ config.services.sharkshell.extraPackages;
     environment.variables.QUICKSHELL_FONT = config.custom.fontName;
     qt.enable = true;
+
+    services.power-profiles-daemon.enable = lib.mkIf config.services.sharkshell.powerProfiles (lib.mkDefault true);
 
     systemd.tmpfiles.rules =
       let
