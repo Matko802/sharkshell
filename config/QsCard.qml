@@ -8,8 +8,11 @@ Rectangle {
   property bool swallowClicks: false
   property bool open: false
   readonly property real contentHeight: qs.implicitHeight
-  property real slideProg: root.open ? 1 : 0
+  property real slideProg: 0
   Behavior on slideProg { NumberAnimation { duration: 180; easing.type: Easing.OutExpo } }
+  Component.onCompleted: {
+    slideProg = Qt.binding(() => root.open ? 1 : 0)
+  }
 
   signal activity()
 
