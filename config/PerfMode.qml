@@ -20,16 +20,7 @@ Scope {
   property bool autoSaver: false
   property bool _syncing: false
 
-  readonly property bool onBattery: {
-    try {
-      const dev = UPower.displayDevice
-      if (!dev || !dev.ready)
-        return false
-      return dev.state === UPowerDeviceState.Discharging
-    } catch (e) {
-      return false
-    }
-  }
+  readonly property bool onBattery: UPower.onBattery
 
   readonly property string effectiveMode: (root.autoSaver && root.onBattery) ? "power-saver" : root.mode
   readonly property bool hasPerformance: PowerProfiles.hasPerformanceProfile

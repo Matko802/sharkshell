@@ -732,7 +732,7 @@ PanelWindow {
                           font.weight: Font.DemiBold
                         }
                         Text {
-                          text: !available ? "Not offered by this system" : PerfMode.modeHints[index] + (PerfMode.autoSaver && PerfMode.onBattery && PerfMode.mode === modelData ? " (on battery: saving)" : "")
+                          text: !available ? "Not offered by this system" : PerfMode.modeHints[index] + (PerfMode.autoSaver && PerfMode.onBattery && PerfMode.mode === modelData ? " (on battery: saving, timeouts halved)" : "")
                           color: PerfMode.mode === modelData ? Theme.bg : Theme.muted
                           font.family: root.fontFamily
                           font.pixelSize: 10

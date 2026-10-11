@@ -38,6 +38,7 @@ in {
     qt.enable = true;
 
     services.power-profiles-daemon.enable = lib.mkIf config.services.sharkshell.powerProfiles (lib.mkDefault true);
+    services.upower.enable = lib.mkDefault true;
 
     systemd.tmpfiles.rules =
       let

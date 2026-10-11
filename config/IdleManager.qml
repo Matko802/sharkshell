@@ -49,6 +49,10 @@ Item {
     property bool stayAwake: false
     property bool taskRunning: false
     readonly property bool _inhibited: mediaPlaying || gameMode || stayAwake || taskRunning || (audioActive && !mediaPaused)
+    readonly property real batteryScale: (PerfMode.autoSaver && PerfMode.onBattery) ? 0.5 : 1
+    readonly property int effLockTimeout: root.lockTimeout <= 0 ? 0 : Math.max(1, Math.round(root.lockTimeout * root.batteryScale))
+    readonly property int effScreenOffDelay: root.screenOffDelay <= 0 ? 0 : Math.max(1, Math.round(root.screenOffDelay * root.batteryScale))
+    readonly property int effSuspendTimeout: root.suspendTimeout <= 0 ? 0 : Math.max(1, Math.round(root.suspendTimeout * root.batteryScale))
 
     function _setScreen(off) {
         if (off === root.screenIsOff)
@@ -240,15 +244,15 @@ Item {
             }
             root._idleSeconds += 1
             const locked = LockState.locked
-            if (!locked && root.lockStageArmed && root.lockTimeout > 0 && root._idleSeconds >= root.lockTimeout) {
+            if (!locked && root.lockStageArmed && root.effLockTimeout > 0 && root._idleSeconds >= root.effLockTimeout) {
                 LockState.locked = true
                 root.lockStageArmed = false
             }
-            if (locked && root.screenOffStageArmed && root.screenOffDelay > 0 && root._idleSeconds >= root.screenOffDelay) {
+            if (locked && root.screenOffStageArmed && root.effScreenOffDelay > 0 && root._idleSeconds >= root.effScreenOffDelay) {
                 root._setScreen(true)
                 root.screenOffStageArmed = false
             }
-            if (root.suspendStageArmed && root.suspendTimeout > 0 && root._idleSeconds >= root.suspendTimeout) {
+            if (root.suspendStageArmed && root.effSuspendTimeout > 0 && root._idleSeconds >= root.effSuspendTimeout) {
                 suspendProc.running = true
                 root.suspendStageArmed = false
             }
