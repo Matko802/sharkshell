@@ -54,7 +54,8 @@ let
         --prefix QML2_IMPORT_PATH : "${pkgs.qt6Packages.qt5compat}/${pkgs.qt6.qtbase.qtQmlPrefix}" \
         --prefix QML_IMPORT_PATH : "$out/lib/qt-6/qml" \
         --suffix QML2_IMPORT_PATH : "''${SHARKSHELL_EXTRA_QML_PATH-}" \
-        --suffix QML_IMPORT_PATH : "''${SHARKSHELL_EXTRA_QML_PATH-}"
+        --suffix QML_IMPORT_PATH : "''${SHARKSHELL_EXTRA_QML_PATH-}" \
+        --run 'mkdir -p "''${XDG_CACHE_HOME:-$HOME/.cache}/sharkshell/qmlcache"; export QML_DISK_CACHE_PATH="''${XDG_CACHE_HOME:-$HOME/.cache}/sharkshell/qmlcache"'
     '';
     meta = {
       mainProgram = "quickshell";

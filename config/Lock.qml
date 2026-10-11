@@ -395,18 +395,11 @@ Scope {
           visible: opacity > 0.01
           Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
 
-          Loader {
-            id: lockBarLoader
-            anchors.fill: parent
-            active: LockState.locked
-            asynchronous: true
-            sourceComponent: Component {
-              Bar {
-                rightOnly: true
-                menuOpen: surf.menuOpen
-                onMenuRequested: section => surf.openMenu(section)
-              }
-            }
+          Bar {
+            id: lockBar
+            rightOnly: true
+            menuOpen: surf.menuOpen
+            onMenuRequested: section => surf.openMenu(section)
           }
         }
 
@@ -418,7 +411,7 @@ Scope {
               LockState.locked = false
             } else {
               if (surf.menuOpen) {
-                const onBtn = mouse.y <= 30 && mouse.x >= surf.width - (lockBarLoader.item?.qsBtnWidth ?? 120)
+                const onBtn = mouse.y <= 30 && mouse.x >= surf.width - lockBar.qsBtnWidth
                 if (!onBtn) {
                   const my = menuClip.y + lockMenu.y
                   if (mouse.x < lockMenu.x || mouse.y < my || mouse.y > my + lockMenu.height)
