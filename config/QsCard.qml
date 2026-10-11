@@ -9,7 +9,7 @@ Rectangle {
   property bool open: false
   readonly property real contentHeight: qs.implicitHeight
   property real slideProg: 0
-  Behavior on slideProg { NumberAnimation { duration: 180; easing.type: Easing.OutExpo } }
+  Behavior on slideProg { NumberAnimation { duration: 250; easing.type: root.open ? Easing.OutCubic : Easing.InCubic } }
   Component.onCompleted: {
     slideProg = Qt.binding(() => root.open ? 1 : 0)
   }
@@ -19,7 +19,6 @@ Rectangle {
   color: Theme.bg
   border.color: Theme.outline
   border.width: 1
-  opacity: root.slideProg
 
   transform: Translate { y: -(1 - root.slideProg) * (root.height + 8) }
 
