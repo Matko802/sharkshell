@@ -177,13 +177,14 @@ Item {
     }
 
     Timer {
-        interval: root.gameMode ? 10000 : 3000
+        interval: Math.round((root.gameMode ? 10000 : 6000) * PerfMode.pollScale)
         running: root.enabled
         repeat: true
         triggeredOnStart: true
         onTriggered: {
             gameCheck.running = true
-            audioCheck.running = true
+            if (!root.mediaPlaying)
+                audioCheck.running = true
             taskCheck.running = true
             if (root.mediaPlaying)
                 root.markActive()

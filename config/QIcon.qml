@@ -11,11 +11,13 @@ Item {
   implicitWidth: size
   implicitHeight: size
 
+  property string glyph: Material.resolve(root.name)
+  onNameChanged: root.glyph = Material.resolve(root.name)
   readonly property bool useMaterialOutlined: Material.isOutlined(root.name)
 
   Text {
     anchors.centerIn: parent
-    text: Material.resolve(root.name)
+    text: root.glyph
     color: root.color
     font.family: root.useMaterialOutlined ? Theme.outlinedFontFamily : Theme.materialFontFamily
     font.pixelSize: root.size

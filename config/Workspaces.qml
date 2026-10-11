@@ -162,18 +162,10 @@ Row {
     interval: 120
     repeat: false
     onTriggered: {
-      if (!niriPoll.running) niriPoll.running = true
-      else refreshDebounce.restart()
-    }
-  }
-  Timer {
-    interval: 2000
-    running: niriCheck.isNiri && !IdleManager.gaming
-    repeat: true
-    triggeredOnStart: true
-    onTriggered: {
-      if (!niriWatch.running) niriWatch.running = true
-      else if (!niriPoll.running) niriPoll.running = true
+      if (!niriPoll.running)
+        niriPoll.running = true
+      else
+        refreshDebounce.restart()
     }
   }
   Process {

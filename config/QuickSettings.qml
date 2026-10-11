@@ -13,10 +13,10 @@ ColumnLayout {
 
   signal activity()
 
-  readonly property var sinkInputs: (Pipewire.nodes.values || []).filter(n => n && n.isStream && n.audio && n.isSink)
+  readonly property var sinkInputs: !root.active ? [] : (Pipewire.nodes.values || []).filter(n => n && n.isStream && n.audio && n.isSink)
 
   PwObjectTracker {
-    objects: root.sinkInputs
+    objects: root.active ? root.sinkInputs : []
   }
 
   function submitPw() {

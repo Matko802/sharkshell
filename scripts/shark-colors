@@ -2,21 +2,55 @@
 import argparse
 import hashlib
 import json
+import math
+import os
 import sys
 from pathlib import Path
+
+from materialyoucolor.blend import Blend
+from materialyoucolor.dislike.dislike_analyzer import DislikeAnalyzer
+from materialyoucolor.dynamiccolor.material_dynamic_colors import MaterialDynamicColors
+from materialyoucolor.hct import Hct
+from materialyoucolor.quantize import ImageQuantizeCelebi
+from materialyoucolor.scheme.scheme_content import SchemeContent
+from materialyoucolor.scheme.scheme_expressive import SchemeExpressive
+from materialyoucolor.scheme.scheme_fidelity import SchemeFidelity
+from materialyoucolor.scheme.scheme_fruit_salad import SchemeFruitSalad
+from materialyoucolor.scheme.scheme_monochrome import SchemeMonochrome
+from materialyoucolor.scheme.scheme_neutral import SchemeNeutral
+from materialyoucolor.scheme.scheme_rainbow import SchemeRainbow
+from materialyoucolor.scheme.scheme_tonal_spot import SchemeTonalSpot
+from materialyoucolor.scheme.scheme_vibrant import SchemeVibrant
+from materialyoucolor.utils.color_utils import argb_from_rgb
+from materialyoucolor.utils.math_utils import (
+    difference_degrees,
+    rotation_direction,
+    sanitize_degrees_double,
+    sanitize_degrees_int,
+)
+from PIL import Image, ImageOps, ImageStat
 
 
 def compute_hash(path):
     sha = hashlib.sha256()
     with open(path, "rb") as f:
-        while chunk := f.read(8192):
+        while chunk := f.read(1048576):
             sha.update(chunk)
     return sha.hexdigest()
 
 
-def get_cache_dirs():
-    import os
+def stable_source_key(path):
+    st = Path(path).stat()
+    h = hashlib.sha256()
+    h.update(str(path).encode())
+    h.update(str(st.st_size).encode())
+    h.update(str(int(st.st_mtime)).encode())
+    with open(path, "rb") as f:
+        h.update(f.read(1048576))
+    return h.hexdigest()
 
+
+def get_cache_dirs():
     cache_home = Path(os.getenv("XDG_CACHE_HOME", Path.home() / ".cache"))
     return cache_home / "sharkshell" / "schemes", cache_home / "sharkshell" / "wallpapers"
 
@@ -26,15 +60,16 @@ def mean(values):
 
 
 def stddev(values, mean_val):
-    import math
-
     return math.sqrt(sum((x - mean_val) ** 2 for x in values) / len(values)) if values else 0
 
 
 def calc_colourfulness(image):
-    import math
-
-    pixels = list(image.getdata())
+    probe = image.copy()
+    probe.thumbnail((128, 128), Image.Resampling.BILINEAR)
+    try:
+        pixels = list(probe.get_flattened_data())
+    except AttributeError:
+        pixels = list(probe.getdata())
     rg_diffs = []
     yb_diffs = []
     for r, g, b in pixels:
@@ -57,23 +92,21 @@ def get_variant(image):
 
 
 def get_thumb(wall, cache):
-    from PIL import Image
-
     thumb = cache / "thumbnail.jpg"
     if not thumb.exists():
         with Image.open(wall) as img:
-            img = img.convert("RGB")
-            img.thumbnail((128, 128), Image.Resampling.NEAREST)
+            try:
+                img.draft("RGB", (256, 256))
+            except Exception:
+                pass
+            img = ImageOps.exif_transpose(img).convert("RGB")
+            img.thumbnail((128, 128), Image.Resampling.BILINEAR)
             thumb.parent.mkdir(parents=True, exist_ok=True)
             img.save(thumb, "JPEG")
     return thumb
 
 
 def get_smart_opts(wall, cache):
-    from materialyoucolor.hct import Hct
-    from materialyoucolor.utils.color_utils import argb_from_rgb
-    from PIL import Image
-
     opts_cache = cache / "smart.json"
     try:
         return json.loads(opts_cache.read_text())
@@ -82,8 +115,8 @@ def get_smart_opts(wall, cache):
     opts = {}
     with Image.open(get_thumb(wall, cache)) as img:
         opts["variant"] = get_variant(img)
-        img.thumbnail((1, 1), Image.Resampling.LANCZOS)
-        pixel = img.getpixel((0, 0))
+        stat = ImageStat.Stat(ImageOps.exif_transpose(img).convert("RGB"))
+        pixel = tuple(int(v) for v in stat.median[:3])
         hct = Hct.from_int(argb_from_rgb(*pixel))
         opts["mode"] = "light" if hct.tone > 60 else "dark"
     opts_cache.parent.mkdir(parents=True, exist_ok=True)
@@ -93,11 +126,6 @@ def get_smart_opts(wall, cache):
 
 
 def score_image(image):
-    from materialyoucolor.dislike.dislike_analyzer import DislikeAnalyzer
-    from materialyoucolor.hct import Hct
-    from materialyoucolor.quantize import ImageQuantizeCelebi
-    from materialyoucolor.utils.math_utils import sanitize_degrees_int
-
     TARGET_CHROMA = 48.0
     WEIGHT_PROPORTION = 0.7
     WEIGHT_CHROMA_ABOVE = 0.3
@@ -146,8 +174,6 @@ def score_image(image):
 
 
 def get_score_for_image(image, cache_base):
-    from materialyoucolor.hct import Hct
-
     cache = cache_base / "score.json"
     try:
         return Hct.from_int(int(cache.read_text()))
@@ -160,8 +186,6 @@ def get_score_for_image(image, cache_base):
 
 
 def hex_to_hct(hex):
-    from materialyoucolor.hct import Hct
-
     return Hct.from_int(int(f"0xFF{hex}", 16))
 
 
@@ -206,16 +230,10 @@ def grayscale(colour, light):
 
 
 def mix(a, b, w):
-    from materialyoucolor.blend import Blend
-    from materialyoucolor.hct import Hct
-
     return Hct.from_int(Blend.cam16_ucs(a.to_int(), b.to_int(), w))
 
 
 def harmonize(from_hct, to_hct, tone_boost):
-    from materialyoucolor.hct import Hct
-    from materialyoucolor.utils.math_utils import difference_degrees, rotation_direction, sanitize_degrees_double
-
     diff = difference_degrees(from_hct.hue, to_hct.hue)
     rotation = min(diff * 0.8, 100)
     out_hue = sanitize_degrees_double(from_hct.hue + rotation * rotation_direction(from_hct.hue, to_hct.hue))
@@ -223,30 +241,16 @@ def harmonize(from_hct, to_hct, tone_boost):
 
 
 def lighten(colour, amount):
-    from materialyoucolor.hct import Hct
-
     diff = (100 - colour.tone) * amount
     return Hct.from_hct(colour.hue, colour.chroma + diff / 5, colour.tone + diff)
 
 
 def darken(colour, amount):
-    from materialyoucolor.hct import Hct
-
     diff = colour.tone * amount
     return Hct.from_hct(colour.hue, colour.chroma - diff / 5, colour.tone - diff)
 
 
 def get_scheme_cls(variant):
-    from materialyoucolor.scheme.scheme_content import SchemeContent
-    from materialyoucolor.scheme.scheme_expressive import SchemeExpressive
-    from materialyoucolor.scheme.scheme_fidelity import SchemeFidelity
-    from materialyoucolor.scheme.scheme_fruit_salad import SchemeFruitSalad
-    from materialyoucolor.scheme.scheme_monochrome import SchemeMonochrome
-    from materialyoucolor.scheme.scheme_neutral import SchemeNeutral
-    from materialyoucolor.scheme.scheme_rainbow import SchemeRainbow
-    from materialyoucolor.scheme.scheme_tonal_spot import SchemeTonalSpot
-    from materialyoucolor.scheme.scheme_vibrant import SchemeVibrant
-
     return {
         "content": SchemeContent,
         "expressive": SchemeExpressive,
@@ -260,8 +264,6 @@ def get_scheme_cls(variant):
 
 
 def gen_scheme(mode, variant, flavour, primary):
-    from materialyoucolor.dynamiccolor.material_dynamic_colors import MaterialDynamicColors
-
     is_light = mode == "light"
     colours = {}
     cls = get_scheme_cls(variant)
@@ -303,8 +305,8 @@ def gen_scheme(mode, variant, flavour, primary):
             colours[kname] = grayscale(colours[kname], is_light)
             colours[f"{kname}Selection"] = grayscale(colours[f"{kname}Selection"], is_light)
     if variant == "neutral":
-        for hct in colours.values():
-            hct.chroma -= 15
+        for key, hct in list(colours.items()):
+            colours[key] = Hct.from_hct(hct.hue, max(0.0, hct.chroma - 15), hct.tone)
     if flavour == "hard":
         for colour in ("background", *(k for k in list(colours.keys()) if k.startswith("surface"))):
             colours[colour] = lighten(colours[colour], 0.4) if is_light else darken(colours[colour], 0.8)
@@ -344,7 +346,8 @@ def gen_scheme(mode, variant, flavour, primary):
 def get_colours_for_wall(wall, mode, variant, flavour, no_smart):
     scheme_cache_dir, wallpapers_cache_dir = get_cache_dirs()
     wall = Path(wall)
-    cache = wallpapers_cache_dir / compute_hash(wall)
+    wall_key = stable_source_key(wall)
+    cache = wallpapers_cache_dir / wall_key
     if not no_smart:
         smart_opts = get_smart_opts(wall, cache)
         if mode == "auto":
@@ -357,23 +360,24 @@ def get_colours_for_wall(wall, mode, variant, flavour, no_smart):
         variant = "tonalspot"
     if flavour not in ("default", "hard"):
         flavour = "default"
-    from PIL import Image
-
     if wall.suffix.lower() == ".gif":
         out_png = cache / "first_frame.png"
         if not out_png.exists():
             out_png.parent.mkdir(parents=True, exist_ok=True)
             with Image.open(wall) as img:
-                try:
-                    img.seek(0)
-                except EOFError:
-                    pass
-                img.convert("RGB").save(out_png, "PNG")
+                frames = getattr(img, "n_frames", 1)
+                if frames > 1:
+                    try:
+                        img.seek(0)
+                    except EOFError:
+                        pass
+                img = ImageOps.exif_transpose(img).convert("RGB")
+                img.save(out_png, "PNG")
         thumb_src = out_png
     else:
         thumb_src = wall
     thumb = get_thumb(thumb_src, cache)
-    cache_base = scheme_cache_dir / compute_hash(thumb)
+    cache_base = scheme_cache_dir / wall_key
     cache_file = (cache_base / variant / flavour / mode).with_suffix(".json")
     try:
         with cache_file.open("r") as f:

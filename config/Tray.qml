@@ -55,15 +55,21 @@ Row {
         onWheel: wheel => trayItem.modelData.scroll(wheel.angleDelta.y > 0 ? 1 : -1, false)
       }
 
-      TrayMenu {
-        trayData: trayItem.modelData
-        anchorItem: trayItem
-        anchorWindow: trayItem.QsWindow.window
-        open: trayItem.wantMenu && trayRoot.menuOwner === trayItem.modelData
-        onRequestClose: {
-          trayItem.wantMenu = false
-          if (trayRoot.menuOwner === trayItem.modelData)
-            trayRoot.menuOwner = null
+      Loader {
+        active: trayItem.wantMenu && trayRoot.menuOwner === trayItem.modelData
+        asynchronous: true
+        sourceComponent: Component {
+          TrayMenu {
+            trayData: trayItem.modelData
+            anchorItem: trayItem
+            anchorWindow: trayItem.QsWindow.window
+            open: trayItem.wantMenu && trayRoot.menuOwner === trayItem.modelData
+            onRequestClose: {
+              trayItem.wantMenu = false
+              if (trayRoot.menuOwner === trayItem.modelData)
+                trayRoot.menuOwner = null
+            }
+          }
         }
       }
     }

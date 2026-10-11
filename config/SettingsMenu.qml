@@ -52,10 +52,10 @@ PanelWindow {
     { name: "Wallpaper", glyph: "wallpaper", action: "wallpaper", hint: "Set desktop wallpaper" }
   ]
 
-  readonly property var sources: Pipewire.nodes.values
+  readonly property var sources: !root.shown ? [] : Pipewire.nodes.values
     .filter(n => n && n.audio && !n.isStream && !n.isSink)
     .map(n => ({ id: n.id, name: String(n.name), desc: String(n.description || n.name) }))
-  readonly property var sinks: Pipewire.nodes.values
+  readonly property var sinks: !root.shown ? [] : Pipewire.nodes.values
     .filter(n => n && n.audio && !n.isStream && n.isSink)
     .map(n => ({ id: n.id, name: String(n.name), desc: String(n.description || n.name) }))
 
@@ -163,15 +163,16 @@ PanelWindow {
         card.y = -card.height - 8
         slideIn.restart()
       }
+      focusTimer.restart()
     }
   }
   NumberAnimation { id: slideIn; target: card; property: "y"; to: 0; duration: 250; easing.type: Easing.OutCubic }
   NumberAnimation { id: slideOut; target: card; property: "y"; to: -card.height - 12; duration: 250; easing.type: Easing.InCubic; onFinished: root.shown = false }
   NumberAnimation { id: handoverIn; target: card; property: "x"; to: 0; duration: 130; easing.type: Easing.OutCubic }
   Timer {
-    running: root.shown
-    repeat: true
-    interval: 500
+    id: focusTimer
+    interval: 50
+    repeat: false
     onTriggered: {
       if (root.shown && !kbFocus.activeFocus)
         kbFocus.forceActiveFocus()
@@ -689,6 +690,108 @@ PanelWindow {
                 id: tab4col
                 width: pageFlick.width
                 spacing: 8
+
+                Text {
+                  text: "PERFORMANCE"
+                  color: Theme.muted2
+                  font.family: root.fontFamily
+                  font.pixelSize: 9
+                  font.letterSpacing: 2
+                }
+
+                Repeater {
+                  model: PerfMode.modes
+                  delegate: Rectangle {
+                    required property var modelData
+                    required property int index
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 44
+                    color: PerfMode.mode === modelData ? Theme.fg : (perfMa.containsMouse ? Theme.bgAlt : "transparent")
+                    border.color: PerfMode.mode === modelData ? Theme.outline : (perfMa.containsMouse ? Theme.borderStrong : Theme.border)
+                    border.width: 1
+                    RowLayout {
+                      anchors.fill: parent
+                      anchors.leftMargin: 12
+                      anchors.rightMargin: 12
+                      spacing: 10
+                      QIcon {
+                        name: PerfMode.modeIcons[index]
+                        size: 18
+                        color: PerfMode.mode === modelData ? Theme.bg : Theme.fg
+                      }
+                      ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+                        Text {
+                          text: PerfMode.modeNames[index]
+                          color: PerfMode.mode === modelData ? Theme.bg : Theme.fg
+                          font.family: root.fontFamily
+                          font.pixelSize: 12
+                          font.weight: Font.DemiBold
+                        }
+                        Text {
+                          text: PerfMode.modeHints[index] + (PerfMode.autoSaver && PerfMode.onBattery && PerfMode.mode === modelData ? " (on battery: saving)" : "")
+                          color: PerfMode.mode === modelData ? Theme.bg : Theme.muted
+                          font.family: root.fontFamily
+                          font.pixelSize: 10
+                        }
+                      }
+                    }
+                    MouseArea {
+                      id: perfMa
+                      anchors.fill: parent
+                      hoverEnabled: true
+                      cursorShape: Qt.PointingHandCursor
+                      onClicked: PerfMode.setMode(modelData)
+                    }
+                  }
+                }
+
+                Rectangle {
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: 32
+                  color: perfAutoMa.containsMouse ? Theme.bgAlt : "transparent"
+                  border.color: perfAutoMa.containsMouse ? Theme.borderStrong : Theme.border
+                  border.width: 1
+                  MouseArea {
+                    id: perfAutoMa
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: PerfMode.toggleAutoSaver()
+                  }
+                  RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 56
+                    spacing: 10
+                    Item {
+                      Layout.preferredWidth: 20
+                      Layout.preferredHeight: 20
+                      QIcon {
+                        anchors.centerIn: parent
+                        name: "bat-50"
+                        size: 18
+                        color: Theme.fg
+                      }
+                    }
+                    Text {
+                      Layout.fillWidth: true
+                      text: "Save power on battery"
+                      color: Theme.fg
+                      font.family: root.fontFamily
+                      font.pixelSize: 12
+                      font.weight: Font.DemiBold
+                    }
+                  }
+                  CToggle {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                    checked: PerfMode.autoSaver
+                    onToggled: v => PerfMode.setAutoSaver(v)
+                  }
+                }
 
                 SettingSlider {
                   label: "Lock"

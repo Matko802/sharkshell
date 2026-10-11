@@ -236,7 +236,15 @@ Scope {
 
   readonly property var results: {
     const q = root.query.toLowerCase()
-    return root.allEntries.filter((l, i) => q === "" || root.lcPreviews[i].includes(q))
+    if (q === "") {
+      return root.allEntries.length > 200 ? root.allEntries.slice(0, 200) : root.allEntries
+    }
+    const out = []
+    for (let i = 0; i < root.allEntries.length && out.length < 200; i++) {
+      if (root.lcPreviews[i].includes(q))
+        out.push(root.allEntries[i])
+    }
+    return out
   }
   readonly property var textEntries: root.results.filter(l => !root.isImage(l))
   readonly property var imageEntries: root.results.filter(l => root.isImage(l))
@@ -313,12 +321,12 @@ Scope {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     visible: root.open || root.closePending
 
-    onVisibleChanged: { if (visible && root.open) search.forceActiveFocus() }
+    onVisibleChanged: { if (visible && root.open) focusTimer.restart() }
 
     Timer {
-      running: root.open && !root.closePending
-      repeat: true
-      interval: 500
+      id: focusTimer
+      interval: 50
+      repeat: false
       onTriggered: { if (root.open && !search.activeFocus) search.forceActiveFocus() }
     }
 

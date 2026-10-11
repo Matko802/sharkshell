@@ -143,9 +143,9 @@ Scope {
           property bool frontIsA: true
           property var pending: null
 
-          layer.enabled: root.blurEnabled
+          layer.enabled: root.blurEnabled && surf.contentShown && PerfMode.lockBlurAllowed
           layer.smooth: true
-          layer.textureSize: Qt.size(Math.max(1, Math.round(lockBg.width)), Math.max(1, Math.round(lockBg.height)))
+          layer.textureSize: Qt.size(Math.max(1, Math.round(lockBg.width / 2)), Math.max(1, Math.round(lockBg.height / 2)))
           layer.effect: GaussianBlur {
             radius: surf.contentShown ? BlurState.radius : 0
             transparentBorder: true
@@ -161,8 +161,8 @@ Scope {
             id: lockImgA
             fillMode: Image.Stretch
             asynchronous: true
-            cache: false
-            sourceSize: Qt.size(3840, 2160)
+            cache: true
+            sourceSize: Qt.size(Math.max(1, Math.round(lockBg.width || 1920)), Math.max(1, Math.round(lockBg.height || 1080)))
             opacity: 0
             Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
             onStatusChanged: {
@@ -178,16 +178,14 @@ Scope {
                 lockBg.pending = null
               }
             }
-            onImplicitWidthChanged: surf.layoutLockImage(lockImgA)
-            onImplicitHeightChanged: surf.layoutLockImage(lockImgA)
           }
 
           Image {
             id: lockImgB
             fillMode: Image.Stretch
             asynchronous: true
-            cache: false
-            sourceSize: Qt.size(3840, 2160)
+            cache: true
+            sourceSize: Qt.size(Math.max(1, Math.round(lockBg.width || 1920)), Math.max(1, Math.round(lockBg.height || 1080)))
             opacity: 0
             Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
             onStatusChanged: {
@@ -203,8 +201,6 @@ Scope {
                 lockBg.pending = null
               }
             }
-            onImplicitWidthChanged: surf.layoutLockImage(lockImgB)
-            onImplicitHeightChanged: surf.layoutLockImage(lockImgB)
           }
         }
 
@@ -218,6 +214,7 @@ Scope {
         ShaderEffect {
           anchors.fill: parent
           opacity: 0.09
+          visible: LockState.locked && surf.contentShown
           fragmentShader: "varying highp vec2 qt_TexCoord0; float hash(highp vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); } void main() { float g = hash(qt_TexCoord0 * vec2(1920.0, 1080.0)); gl_FragColor = vec4(vec3(g), 1.0); }"
         }
 
@@ -398,11 +395,18 @@ Scope {
           visible: opacity > 0.01
           Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
 
-          Bar {
-            id: lockBar
-            rightOnly: true
-            menuOpen: surf.menuOpen
-            onMenuRequested: section => surf.openMenu(section)
+          Loader {
+            id: lockBarLoader
+            anchors.fill: parent
+            active: LockState.locked
+            asynchronous: true
+            sourceComponent: Component {
+              Bar {
+                rightOnly: true
+                menuOpen: surf.menuOpen
+                onMenuRequested: section => surf.openMenu(section)
+              }
+            }
           }
         }
 
@@ -414,7 +418,7 @@ Scope {
               LockState.locked = false
             } else {
               if (surf.menuOpen) {
-                const onBtn = mouse.y <= 30 && mouse.x >= surf.width - lockBar.qsBtnWidth
+                const onBtn = mouse.y <= 30 && mouse.x >= surf.width - (lockBarLoader.item?.qsBtnWidth ?? 120)
                 if (!onBtn) {
                   const my = menuClip.y + lockMenu.y
                   if (mouse.x < lockMenu.x || mouse.y < my || mouse.y > my + lockMenu.height)

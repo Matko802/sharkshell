@@ -11,7 +11,7 @@ Scope {
   property var notifications: []
   property var hiddenToasts: []
 
-  property int meaningfulCount: root.notifications.filter(n => n && isMeaningful(n)).length
+  property int meaningfulCount: 0
 
   function isMeaningful(n) {
     if (!n) return false
@@ -63,9 +63,11 @@ Scope {
 
     onNotification: notif => {
       notif.tracked = true
-      if (!root.isMeaningful(notif)) return
+      if (!root.isMeaningful(notif))
+        return
       root.notifications = root.notifications.filter(n => n && n.id !== notif.id)
       root.notifications = [notif, ...root.notifications]
+      root.meaningfulCount = root.notifications.length
       root.centerInsert(notif)
       console.log("QS notif", notif.id, notif.summary, "popup before", popupModel.count)
       if ((root.dnd && notif.urgency !== NotificationUrgency.Critical) || ControlState.open || ClockState.open || SettingsState.open) {
@@ -127,9 +129,11 @@ Scope {
   }
 
   function dismiss(notif) {
-    if (!notif) return
+    if (!notif)
+      return
     try { notif.dismiss() } catch (e) {}
     root.notifications = root.notifications.filter(n => n && n.id !== notif.id)
+    root.meaningfulCount = root.notifications.length
     root.centerRemove(notif.id)
     root.hiddenToasts = root.hiddenToasts.filter(x => x !== notif.id)
     const i = findPopupIndex(notif.id)
@@ -150,6 +154,7 @@ Scope {
   function clearAll() {
     root.notifications.forEach(n => { try { n.dismiss() } catch (e) {} })
     root.notifications = []
+    root.meaningfulCount = 0
     root.centerModel.clear()
     root.hiddenToasts = []
     popupModel.clear()

@@ -161,7 +161,7 @@ Scope {
   readonly property var results: {
     const q = query.toLowerCase().trim()
     const idxs = []
-    for (let i = 0; i < rows.length; i++)
+    for (let i = 0; i < rows.length && idxs.length < 200; i++)
       if (q === "" || searchMatch(root.lcSearch[i], q))
         idxs.push(i)
     return idxs
@@ -205,12 +205,12 @@ Scope {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     visible: root.open || root.closePending
 
-    onVisibleChanged: { if (visible && root.open) search.forceActiveFocus() }
+    onVisibleChanged: { if (visible && root.open) focusTimer.restart() }
 
     Timer {
-      running: root.open && !root.closePending
-      repeat: true
-      interval: 500
+      id: focusTimer
+      interval: 50
+      repeat: false
       onTriggered: { if (root.open && !search.activeFocus) search.forceActiveFocus() }
     }
 

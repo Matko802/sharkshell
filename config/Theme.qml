@@ -18,9 +18,9 @@ Singleton {
   readonly property int paddingL: 16
   readonly property int rounding: 0
   readonly property int radius: 0
-  readonly property int animFast: 90
-  readonly property int animDefault: 140
-  readonly property int animSlow: 200
+  readonly property int animFast: Math.round(90 * PerfMode.animScale)
+  readonly property int animDefault: Math.round(140 * PerfMode.animScale)
+  readonly property int animSlow: Math.round(200 * PerfMode.animScale)
   readonly property int themeTransition: 600
   readonly property real surfaceAlpha: TransparencyState.transparent ? 1.0 - TransparencyState.amount : 1.0
   readonly property int easingOut: Easing.OutCubic
@@ -29,31 +29,23 @@ Singleton {
 
   property color bgBase: DynamicTheme.bg
   property color bg: Qt.rgba(bgBase.r, bgBase.g, bgBase.b, root.surfaceAlpha)
-  Behavior on bg { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
+  Behavior on bg { ColorAnimation { duration: Math.round(150 * PerfMode.animScale); easing.type: Easing.OutCubic } }
   property color bgAltBase: DynamicTheme.bgAlt
   property color bgAlt: Qt.rgba(bgAltBase.r, bgAltBase.g, bgAltBase.b, root.surfaceAlpha)
-  Behavior on bgAlt { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
   property color fg: DynamicTheme.fg
-  Behavior on fg { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
+  Behavior on fg { ColorAnimation { duration: Math.round(150 * PerfMode.animScale); easing.type: Easing.OutCubic } }
   property color outline: DynamicTheme.outline
-  Behavior on outline { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
   property color border: DynamicTheme.border
-  Behavior on border { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
   property color borderStrong: DynamicTheme.borderStrong
-  Behavior on borderStrong { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
   property color muted: DynamicTheme.muted
-  Behavior on muted { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
   property color muted2: DynamicTheme.muted2
-  Behavior on muted2 { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
   property color muted3: DynamicTheme.muted3
-  Behavior on muted3 { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
   readonly property color hover: "#33ffffff"
   readonly property color match: DynamicTheme.role("tertiary", "#cb4b16")
   readonly property color onSelect: "#586e75"
   readonly property color error: "#ff5555"
   property color lockBgBase: TransparencyState.transparent ? DynamicTheme.bg : "#000000"
   property color lockBg: Qt.rgba(lockBgBase.r, lockBgBase.g, lockBgBase.b, root.surfaceAlpha)
-  Behavior on lockBg { ColorAnimation { duration: 600; easing.type: Easing.OutCubic } }
   FontLoader {
     id: materialLoader
     source: "fonts/material-icons.ttf"

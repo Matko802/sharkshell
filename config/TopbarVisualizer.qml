@@ -26,31 +26,32 @@ Item {
 
   Timer {
     id: idleCheck
-    interval: 1000
+    interval: 5000
     repeat: true
-    running: VisualizerState.topbar && !IdleManager.gaming
-    triggeredOnStart: true
+    running: root.hasAudio
     onTriggered: {
-      var sig = false
-      var pls = Mpris.players.values || []
-      for (var i = 0; i < pls.length; i++) {
-        if (pls[i] && pls[i].isPlaying) {
-          sig = true
-          break
-        }
-      }
-      if (sig) {
-        root.noteSignal()
-      } else if (root.hasAudio && Date.now() - root.lastActive > root.idleMs) {
+      if (Date.now() - root.lastActive > root.idleMs)
         root.hasAudio = false
+    }
+  }
+
+  Connections {
+    target: Mpris.players
+    function onValuesChanged() {
+      const pls = Mpris.players.values || []
+      for (let i = 0; i < pls.length; i++) {
+        if (pls[i] && pls[i].isPlaying) {
+          root.noteSignal()
+          return
+        }
       }
     }
   }
 
   Process {
     id: visProc
-    running: VisualizerState.topbar && !IdleManager.gaming
-    command: ["sh", "-c", "V=\"$HOME/.cache/sharkshell/cava.conf\"; L=/mnt/ssd/My-Files/Projects/sharkvis/target/release/sharkvis; M=" + VisualizerState.mode + "; B=" + root.topBars + "; if [ -x \"$L\" ]; then exec \"$L\" --raw --raw-mode \"$M\" --bars \"$B\" --fps 30; elif command -v sharkvis >/dev/null 2>&1; then exec sharkvis --raw --raw-mode \"$M\" --bars \"$B\" --fps 30; elif command -v cava >/dev/null 2>&1; then exec cava -p \"$V\"; else exit 0; fi"]
+    running: VisualizerState.topbar && !IdleManager.gaming && PerfMode.visualizerAllowed
+    command: ["sh", "-c", "V=\"$HOME/.cache/sharkshell/cava.conf\"; L=/mnt/ssd/My-Files/Projects/sharkvis/target/release/sharkvis; M=" + VisualizerState.mode + "; B=" + root.topBars + "; F=" + PerfMode.fps + "; if [ -x \"$L\" ]; then exec \"$L\" --raw --raw-mode \"$M\" --bars \"$B\" --fps \"$F\"; elif command -v sharkvis >/dev/null 2>&1; then exec sharkvis --raw --raw-mode \"$M\" --bars \"$B\" --fps \"$F\"; elif command -v cava >/dev/null 2>&1; then exec cava -p \"$V\"; else exit 0; fi"]
     stdout: SplitParser {
       onRead: data => {
         const parts = String(data).split(";")
@@ -82,6 +83,20 @@ Item {
     }
   }
 
+  Connections {
+    target: PerfMode
+    function onFpsChanged() {
+      if (visProc.running) {
+        visProc.running = false
+        visProc.running = true
+      }
+    }
+    function onVisualizerAllowedChanged() {
+      if (!PerfMode.visualizerAllowed)
+        root.levels = []
+    }
+  }
+
   Row {
     id: barRow
     anchors.fill: parent
@@ -99,12 +114,6 @@ Item {
           anchors.right: parent.right
           height: Math.max(2, parent.height * ((root.levels[index] || 0) / 100))
           color: Theme.fg
-          Behavior on height {
-            NumberAnimation {
-              duration: 90
-              easing.type: Easing.OutCubic
-            }
-          }
         }
       }
     }
@@ -115,7 +124,7 @@ Item {
     anchors.fill: parent
     visible: VisualizerState.mode !== "bars"
     property var pts: root.levels
-    onPtsChanged: requestPaint()
+    onPtsChanged: if (visible) requestPaint()
     onVisibleChanged: if (visible) requestPaint()
     onWidthChanged: if (visible) requestPaint()
     onHeightChanged: if (visible) requestPaint()

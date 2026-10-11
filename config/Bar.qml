@@ -38,7 +38,6 @@ Item {
     implicitWidth: clockCenterRow.implicitWidth + 14
     implicitHeight: 22
     color: clockCenterMa.containsMouse ? Theme.fg : "transparent"
-    Behavior on implicitWidth { NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut } }
     RowLayout {
       id: clockCenterRow
       anchors.centerIn: parent
@@ -50,11 +49,16 @@ Item {
         font.pixelSize: 12
         property int notifCount: NotificationServer.meaningfulCount
         Timer {
-          interval: 1000; running: !IdleManager.gaming; repeat: true; triggeredOnStart: true
+          interval: 1000
+          running: (root.QsWindow?.window?.visible ?? true) && !IdleManager.gaming
+          repeat: true
+          triggeredOnStart: true
           onTriggered: {
             const d = new Date()
             const pad = n => String(n).padStart(2, "0")
-            clockCenterLabel.text = pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds())
+            const t = pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds())
+            if (clockCenterLabel.text !== t)
+              clockCenterLabel.text = t
           }
         }
       }

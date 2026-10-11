@@ -147,26 +147,22 @@ PanelWindow {
       id: imgA
       fillMode: Image.Stretch
       asynchronous: true
-      cache: false
-      sourceSize: Qt.size(3840, 2160)
+      cache: true
+      sourceSize: Qt.size(Math.max(1, Math.round(bg.width || window.screen?.width || 1920)), Math.max(1, Math.round(bg.height || window.screen?.height || 1080)))
       opacity: 0
       Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
       onStatusChanged: bg.onImageStatus(imgA)
-      onImplicitWidthChanged: bg.layoutImage(imgA)
-      onImplicitHeightChanged: bg.layoutImage(imgA)
     }
 
     Image {
       id: imgB
       fillMode: Image.Stretch
       asynchronous: true
-      cache: false
-      sourceSize: Qt.size(3840, 2160)
+      cache: true
+      sourceSize: Qt.size(Math.max(1, Math.round(bg.width || window.screen?.width || 1920)), Math.max(1, Math.round(bg.height || window.screen?.height || 1080)))
       opacity: 0
       Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
       onStatusChanged: bg.onImageStatus(imgB)
-      onImplicitWidthChanged: bg.layoutImage(imgB)
-      onImplicitHeightChanged: bg.layoutImage(imgB)
     }
   }
 }

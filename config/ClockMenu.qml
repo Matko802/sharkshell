@@ -50,7 +50,7 @@ PanelWindow {
   property var _wasPlaying: []
   Timer {
     interval: 1000
-    running: root.shown
+    running: root.shown && root.activeTab === 2
     repeat: true
     triggeredOnStart: true
     onTriggered: {
@@ -58,10 +58,12 @@ PanelWindow {
       const prev = root._wasPlaying
       let latest = -1
       for (let i = 0; i < vals.length; i++) {
-        if (vals[i] && vals[i].isPlaying && prev[i] !== true) latest = i
+        if (vals[i] && vals[i].isPlaying && prev[i] !== true)
+          latest = i
       }
       root._wasPlaying = vals.map(v => !!(v && v.isPlaying))
-      if (latest >= 0) root.mediaIdx = latest
+      if (latest >= 0)
+        root.mediaIdx = latest
     }
   }
 
@@ -108,7 +110,7 @@ PanelWindow {
     if (Object.keys(root._iconCache).length < 200) root._iconCache[key] = s
     return s
   }
-  readonly property string cavaConf: "[general]\nbars = 48\nframerate = 30\n[input]\nmethod = pulse\nsource = auto\n[output]\nmethod = raw\nraw_target = /dev/stdout\ndata_format = ascii\nascii_max_range = 100\nbar_delimiter = 59\nframe_delimiter = 10\n"
+  readonly property string cavaConf: "[general]\nbars = 48\nframerate = 15\n[input]\nmethod = pulse\nsource = auto\n[output]\nmethod = raw\nraw_target = /dev/stdout\ndata_format = ascii\nascii_max_range = 100\nbar_delimiter = 59\nframe_delimiter = 10\n"
   FileView {
     id: cavaConfFile
     path: Quickshell.env("HOME") + "/.cache/sharkshell/cava.conf"
@@ -156,7 +158,10 @@ PanelWindow {
     }
   }
   Timer {
-    interval: 2000; running: root.visible; repeat: true; triggeredOnStart: true
+    interval: Math.round(4000 * PerfMode.pollScale)
+    running: root.visible && root.activeTab === 1
+    repeat: true
+    triggeredOnStart: true
     onTriggered: { statFile.reload(); memFile.reload(); diskProc.running = true; gpuProc.running = true }
   }
   Connections {
@@ -220,7 +225,11 @@ PanelWindow {
     }
   }
   onShownChanged: {
-    if (shown) { card.y = -card.height - 8; slideIn.restart() }
+    if (shown) {
+      card.y = -card.height - 8
+      slideIn.restart()
+      focusTimer.restart()
+    }
   }
   NumberAnimation { id: slideIn; target: card; property: "y"; to: 0; duration: 250; easing.type: Easing.OutCubic }
   NumberAnimation { id: slideOut; target: card; property: "y"; to: -card.height - 12; duration: 250; easing.type: Easing.InCubic; onFinished: root.shown = false }
@@ -246,9 +255,9 @@ PanelWindow {
     handoverOut.restart()
   }
   Timer {
-    running: root.shown && !root.handingOver
-    repeat: true
-    interval: 500
+    id: focusTimer
+    interval: 50
+    repeat: false
     onTriggered: {
       if (root.shown && !card.activeFocus)
         card.forceActiveFocus()
@@ -498,21 +507,30 @@ PanelWindow {
                   spacing: 4
                   interactive: true
                   boundsBehavior: Flickable.StopAtBounds
-                  model: NotificationServer.centerModel
+                  model: (root.shown && root.activeTab === 0) ? NotificationServer.centerModel : null
 
-                  add: Transition {
+                  add: (root.shown && root.activeTab === 0) ? addTrans : null
+                  populate: (root.shown && root.activeTab === 0) ? popTrans : null
+                  remove: removeTrans
+                  displaced: (root.shown && root.activeTab === 0) ? dispTrans : null
+
+                  Transition {
+                    id: addTrans
                     NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Theme.easingOut }
                     NumberAnimation { property: "x"; from: 60; to: 0; duration: 200; easing.type: Theme.easingOut }
                   }
-                  populate: Transition {
+                  Transition {
+                    id: popTrans
                     NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Theme.easingOut }
                     NumberAnimation { property: "x"; from: 60; to: 0; duration: 200; easing.type: Theme.easingOut }
                   }
-                  remove: Transition {
+                  Transition {
+                    id: removeTrans
                     NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 150; easing.type: Theme.easingIn }
                     NumberAnimation { property: "x"; from: 0; to: 60; duration: 150; easing.type: Theme.easingIn }
                   }
-                  displaced: Transition {
+                  Transition {
+                    id: dispTrans
                     NumberAnimation { property: "y"; duration: 200; easing.type: Theme.easingOut }
                   }
                   delegate: Rectangle {
@@ -764,8 +782,8 @@ PanelWindow {
                           clip: true
                           Process {
                             id: visProc
-                            running: root.shown && root.activeTab === 2
-                            command: ["sh", "-c", "V=\"$HOME/.cache/sharkshell/cava.conf\"; L=/mnt/ssd/My-Files/Projects/sharkvis/target/release/sharkvis; M=" + VisualizerState.mode + "; B=" + VisualizerState.bars + "; if [ -x \"$L\" ]; then exec \"$L\" --raw --raw-mode \"$M\" --bars \"$B\" --fps 30; elif command -v sharkvis >/dev/null 2>&1; then exec sharkvis --raw --raw-mode \"$M\" --bars \"$B\" --fps 30; elif command -v cava >/dev/null 2>&1; then exec cava -p \"$V\"; else exit 0; fi"]
+                            running: root.shown && root.activeTab === 2 && PerfMode.visualizerAllowed
+                            command: ["sh", "-c", "V=\"$HOME/.cache/sharkshell/cava.conf\"; L=/mnt/ssd/My-Files/Projects/sharkvis/target/release/sharkvis; M=" + VisualizerState.mode + "; B=" + VisualizerState.bars + "; F=" + PerfMode.fps + "; if [ -x \"$L\" ]; then exec \"$L\" --raw --raw-mode \"$M\" --bars \"$B\" --fps \"$F\"; elif command -v sharkvis >/dev/null 2>&1; then exec sharkvis --raw --raw-mode \"$M\" --bars \"$B\" --fps \"$F\"; elif command -v cava >/dev/null 2>&1; then exec cava -p \"$V\"; else exit 0; fi"]
                             stdout: SplitParser {
                               onRead: data => {
                                 const parts = String(data).split(";")
@@ -796,7 +814,7 @@ PanelWindow {
                                   anchors.right: parent.right
                                   height: Math.max(2, parent.height * ((mediaSingle.levels[index] || 0) / 100))
                                   color: Theme.fg
-                                  Behavior on height { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+                                  
                                 }
                               }
                             }
@@ -807,7 +825,7 @@ PanelWindow {
                             anchors.margins: 8
                             visible: VisualizerState.mode !== "bars"
                             property var pts: mediaSingle.levels
-                            onPtsChanged: requestPaint()
+                            onPtsChanged: if (visible) requestPaint()
                             onVisibleChanged: if (visible) requestPaint()
                             function strokePath(ctx, w, a) {
                               ctx.strokeStyle = Theme.fg

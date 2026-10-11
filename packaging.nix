@@ -1,6 +1,6 @@
 { pkgs }:
 let
-  qsConfig = pkgs.runCommand "sharkshell-config" { src = ./config; } ''
+  qsConfig = pkgs.runCommand "sharkshell-config" { src = pkgs.lib.cleanSource ./config; } ''
     mkdir -p $out/quickshell
     cp -r $src/. $out/quickshell/
   '';
@@ -17,38 +17,52 @@ let
   sharkColorsBin = pkgs.writeShellScriptBin "shark-colors"
     "exec ${sharkColors}/bin/python3 ${./scripts/shark-colors} \"$@\"";
 
-  # Named shortcuts matching the QML file names (clockmenu, powermenu, ...)
-  # so keybinds show meaningful names instead of identical quickshell calls.
-  ipcCmd = name: target: action: pkgs.writeShellScriptBin name
-    "exec ${pkgs.quickshell}/bin/quickshell ipc call ${target} ${action}";
-  ipcCmds = [
-    (ipcCmd "lock" "lock" "lock")
-    (ipcCmd "powermenu" "power" "toggle")
-    (ipcCmd "bar" "bar" "toggle")
-    (ipcCmd "emojipicker" "emoji" "toggle")
-    (ipcCmd "launcher" "launcher" "toggle")
-    (ipcCmd "settingsmenu" "settings" "toggle")
-    (ipcCmd "clipboard" "clipboard" "toggle")
-    (ipcCmd "clockmenu" "clock" "toggle")
+  ipcSpecs = [
+    { name = "lock"; target = "lock"; action = "lock"; }
+    { name = "powermenu"; target = "power"; action = "toggle"; }
+    { name = "bar"; target = "bar"; action = "toggle"; }
+    { name = "emojipicker"; target = "emoji"; action = "toggle"; }
+    { name = "launcher"; target = "launcher"; action = "toggle"; }
+    { name = "settingsmenu"; target = "settings"; action = "toggle"; }
+    { name = "clipboard"; target = "clipboard"; action = "toggle"; }
+    { name = "clockmenu"; target = "clock"; action = "toggle"; }
+    { name = "perfprofile"; target = "perf"; action = "cycle"; }
   ];
+
+  ipcCmdsPkg = pkgs.runCommand "sharkshell-ipc-cmds" { } ''
+    mkdir -p $out/bin
+    ${pkgs.lib.concatMapStringsSep "\n" (s: ''
+      cat > $out/bin/${s.name} <<'EOF'
+      #!${pkgs.runtimeShell}
+      exec ${pkgs.quickshell}/bin/quickshell ipc call ${s.target} ${s.action} "$@"
+      EOF
+      chmod +x $out/bin/${s.name}
+    '') ipcSpecs}
+  '';
 
   sharkshell = pkgs.symlinkJoin {
     name = "sharkshell";
-    paths = [ pkgs.quickshell sharkColorsBin ] ++ ipcCmds;
+    paths = [ pkgs.quickshell sharkColorsBin ipcCmdsPkg ];
     buildInputs = [ pkgs.makeWrapper ];
     postBuild = ''
       mkdir -p "$out/lib/qt-6/qml/Quickshell"
-      cp -r ${outputPower}/lib/qt-6/qml/Quickshell/Power "$out/lib/qt-6/qml/Quickshell/Power"
-      chmod -R u+w "$out/lib/qt-6/qml/Quickshell/Power"
+      ln -sfn ${outputPower}/lib/qt-6/qml/Quickshell/Power "$out/lib/qt-6/qml/Quickshell/Power"
       wrapProgram "$out/bin/quickshell" \
         --prefix QT_PLUGIN_PATH : "${pkgs.qt6Packages.qtimageformats}/${pkgs.qt6.qtbase.qtPluginPrefix}" \
         --prefix NIXPKGS_QT6_QML_IMPORT_PATH : "$out/lib/qt-6/qml" \
         --prefix QML2_IMPORT_PATH : "$out/lib/qt-6/qml" \
-        --prefix QML2_IMPORT_PATH : "/home/matko/.local/share/qmltermwidget" \
         --prefix QML2_IMPORT_PATH : "${pkgs.qt6Packages.qt5compat}/${pkgs.qt6.qtbase.qtQmlPrefix}" \
         --prefix QML_IMPORT_PATH : "$out/lib/qt-6/qml" \
-        --prefix QML_IMPORT_PATH : "/home/matko/.local/share/qmltermwidget"
+        --suffix QML2_IMPORT_PATH : "''${SHARKSHELL_EXTRA_QML_PATH-}" \
+        --suffix QML_IMPORT_PATH : "''${SHARKSHELL_EXTRA_QML_PATH-}"
     '';
+    meta = {
+      mainProgram = "quickshell";
+      description = "Sharkshell Quickshell desktop shell (wrapped quickshell + Power plugin)";
+      homepage = "https://github.com/Matko802/sharkshell";
+      license = pkgs.lib.licenses.mit;
+      platforms = pkgs.lib.platforms.linux;
+    };
   };
 in {
   inherit qsConfig sharkshell matugenConfig sharkColorsBin;

@@ -9,48 +9,43 @@
     { self, nixpkgs }:
     let
       systems = [ "x86_64-linux" "aarch64-linux" ];
-      forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f (nixpkgs.legacyPackages.${system}));
-
-      sharkshellPkgs = pkgs: pkgs.callPackage ./packaging.nix { };
-
-      sharkshell =
-        { pkgs }:
-        (sharkshellPkgs pkgs).sharkshell.overrideAttrs (prev: {
-          meta = (prev.meta or { }) // {
-            mainProgram = "quickshell";
-            description = "Sharkshell Quickshell desktop shell (wrapped quickshell + Power plugin)";
-            homepage = "https://github.com/Matko802/sharkshell";
-            license = pkgs.lib.licenses.mit;
-            platforms = pkgs.lib.platforms.linux;
-          };
-        });
+      forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
     in
     {
-      packages = forAllSystems (pkgs: {
-        default = sharkshell { inherit pkgs; };
-        sharkshell = sharkshell { inherit pkgs; };
-        sharkshell-config = (sharkshellPkgs pkgs).qsConfig;
-        shark-colors = (sharkshellPkgs pkgs).sharkColorsBin;
-        output-power = pkgs.callPackage ./output-power.nix { };
-      });
+      packages = forAllSystems (pkgs:
+        let
+          sharkshellPkgs = pkgs.callPackage ./packaging.nix { };
+          outputPower = pkgs.callPackage ./output-power.nix { };
+        in {
+          default = sharkshellPkgs.sharkshell;
+          sharkshell = sharkshellPkgs.sharkshell;
+          sharkshell-config = sharkshellPkgs.qsConfig;
+          shark-colors = sharkshellPkgs.sharkColorsBin;
+          output-power = outputPower;
+        });
 
-      overlays.default = final: _prev: {
-        sharkshell = sharkshell { pkgs = final; };
-        sharkshell-config = (sharkshellPkgs final).qsConfig;
-      };
+      overlays.default = final: _prev:
+        let sharkshellPkgs = final.callPackage ./packaging.nix { };
+        in {
+          sharkshell = sharkshellPkgs.sharkshell;
+          sharkshell-config = sharkshellPkgs.qsConfig;
+        };
 
       nixosModules.default = import ./sharkshell.nix;
 
-      devShells = forAllSystems (pkgs:
-        pkgs.mkShell {
-          buildInputs = with pkgs; [
+      devShells = forAllSystems (pkgs: {
+        default = pkgs.mkShell {
+          packages = with pkgs; [
             quickshell
             cmake
+            ninja
             pkg-config
             wayland
+            wayland-scanner
             qt6.qtbase
             qt6.qtdeclarative
           ];
-        });
+        };
+      });
     };
 }

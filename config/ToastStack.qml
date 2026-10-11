@@ -134,12 +134,15 @@ Scope {
         if (!toastWin.paused) {
           toastWin.paused = true
           toastWin.pauseTime = Date.now()
+          dismissTimer.stop()
         }
       }
       function resume() {
         if (toastWin.paused) {
           toastWin.paused = false
           toastWin.deadline += Date.now() - toastWin.pauseTime
+          dismissTimer.interval = Math.max(200, toastWin.deadline - Date.now())
+          dismissTimer.restart()
         }
       }
       function dismissCard() { if (!card.dismissing) card.dismiss() }
@@ -168,13 +171,11 @@ Scope {
       }
 
       Timer {
-        interval: 100
-        repeat: true
+        id: dismissTimer
+        interval: toastWin.lifetime
+        repeat: false
         running: true
-        onTriggered: {
-          if (toastWin.paused) return
-          if (Date.now() >= toastWin.deadline) toastWin.dismissCard()
-        }
+        onTriggered: toastWin.dismissCard()
       }
     }
   }

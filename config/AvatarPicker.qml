@@ -396,6 +396,7 @@ Scope {
                     asynchronous: true
                     cache: true
                     smooth: true
+                    sourceSize: Qt.size(52, 52)
                   }
                 }
               }

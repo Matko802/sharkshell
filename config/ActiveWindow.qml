@@ -81,15 +81,11 @@ RowLayout {
       }
     }
   }
-  Timer {
-    id: niriTimer
-    interval: 1000
-    running: !IdleManager.gaming
-    repeat: true
-    triggeredOnStart: true
-    onTriggered: {
-      if (niriCheck.isNiri && !niriPoll.running) niriPoll.running = true
-      if (!niriCheck.decided && !niriPoll.running) niriPoll.running = true
+  Connections {
+    target: niriCheck
+    function onDecidedChanged() {
+      if (niriCheck.decided && niriCheck.isNiri && !niriPoll.running)
+        niriPoll.running = true
     }
   }
 

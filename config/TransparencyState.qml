@@ -40,18 +40,14 @@ Scope {
 
   onAmountChanged: {
     amountFile.setText(String(Math.round(root.amount * 100) / 100))
-    root.pushKittyTrans()
-    DynamicTheme.refreshFoot()
+    applyTimer.restart()
   }
 
   onTransparentChanged: {
     flagFile.setText(root.transparent ? "1" : "0")
     root.writeNiri()
     root.writeBlur()
-    root.reloadNiri()
-    root.pushKittyTrans()
-    DynamicTheme.refreshFoot()
-    root.reloadKitty()
+    applyTimer.restart()
   }
 
   IpcHandler {
@@ -105,16 +101,24 @@ Scope {
     target: BlurState
     function onRadiusChanged() {
       root.writeBlur()
-      blurTimer.restart()
+      applyTimer.restart()
     }
   }
 
   Timer {
-    id: blurTimer
-    interval: 400
+    id: applyTimer
+    interval: 600
+    repeat: false
     onTriggered: {
       root.writeBlur()
-      root.reloadNiri()
+      root.writeNiri()
+      if (!kittyTransProc.running)
+        kittyTransProc.running = true
+      DynamicTheme.refreshFoot()
+      if (!niriReloadProc.running)
+        niriReloadProc.running = true
+      if (!kittyReloadProc.running)
+        kittyReloadProc.running = true
     }
   }
 
@@ -174,9 +178,7 @@ Scope {
   }
 
   function pushKittyTrans() {
-    if (!kittyTransProc.running)
-      kittyTransProc.running = true
-    kittyTimer.restart()
+    applyTimer.restart()
   }
 
   Process {
@@ -200,9 +202,7 @@ Scope {
   }
 
   function reloadNiri() {
-    if (!niriReloadProc.running)
-      niriReloadProc.running = true
-    settleTimer.restart()
+    applyTimer.restart()
   }
 
   Process {
@@ -210,31 +210,8 @@ Scope {
     command: ["pkill", "-USR1", "kitty"]
   }
 
-  Timer {
-    id: kittyTimer
-    interval: 500
-    onTriggered: {
-      if (!kittyTransProc.running)
-        kittyTransProc.running = true
-      DynamicTheme.refreshFoot()
-    }
-  }
-
-  Timer {
-    id: settleTimer
-    interval: 1500
-    onTriggered: {
-      if (!kittyReloadProc.running)
-        kittyReloadProc.running = true
-      if (!niriReloadProc.running)
-        niriReloadProc.running = true
-    }
-  }
-
   function reloadKitty() {
-    if (!kittyReloadProc.running)
-      kittyReloadProc.running = true
-    settleTimer.restart()
+    applyTimer.restart()
   }
 
   Component.onCompleted: {

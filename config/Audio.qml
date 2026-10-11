@@ -63,13 +63,15 @@ Scope {
     }
   }
 
+  property int _volRetries: 0
   Timer {
     interval: 2000
-    running: true
+    running: !root.sinkReady && root._volRetries < 15
     repeat: true
     onTriggered: {
       if (!root.sinkReady && !volInit.running) {
         root._volIdx = 0
+        root._volRetries += 1
         volInit.running = true
       }
     }

@@ -205,7 +205,7 @@ Scope {
 
   Timer {
     id: searchTimer
-    interval: 60
+    interval: 130
     onTriggered: root.filterQuery = root.query
   }
 
@@ -348,16 +348,17 @@ Scope {
     return out
   }
 
-  readonly property var lcNames: root.sortedApps.map(e => e.name.toLowerCase())
-
   readonly property var results: {
     const q = root.filterQuery.toLowerCase()
     if (q === "")
       return root.sortedApps
+    const apps = root.sortedApps
     const out = []
-    for (let i = 0; i < root.sortedApps.length; i++)
-      if (root.lcNames[i].includes(q))
-        out.push(root.sortedApps[i])
+    for (let i = 0; i < apps.length && out.length < 200; i++) {
+      const nm = apps[i].name || ""
+      if (nm.toLowerCase().includes(q))
+        out.push(apps[i])
+    }
     return out
   }
 
@@ -403,12 +404,12 @@ Scope {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     visible: root.open || root.closePending
 
-    onVisibleChanged: { if (visible && root.open) search.forceActiveFocus() }
+    onVisibleChanged: { if (visible && root.open) focusTimer.restart() }
 
     Timer {
-      running: root.open && !root.closePending
-      repeat: true
-      interval: 500
+      id: focusTimer
+      interval: 50
+      repeat: false
       onTriggered: { if (root.open && !search.activeFocus) search.forceActiveFocus() }
     }
 

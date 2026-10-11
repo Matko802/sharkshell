@@ -193,7 +193,7 @@ Scope {
 
   readonly property var results: {
     const out = []
-    for (let i = 0; i < imageArray.length; i++)
+    for (let i = 0; i < imageArray.length && out.length < 300; i++)
       if (itemMatches(imageArray[i].filePath))
         out.push(imageArray[i])
     return out
