@@ -139,11 +139,11 @@ Scope {
         id: panel
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
-        anchors.topMargin: root.open ? 30 : -260
+        anchors.topMargin: root.open ? 30 : -220
         width: root.entries.length * root.tile + Math.max(0, root.entries.length - 1) * root.tileSpacing + 32
-        height: root.tile + 32 + 44
+        height: root.tile + 32
         color: Theme.bg
-        opacity: (panel.anchors.topMargin + 260) / 290
+        opacity: (panel.anchors.topMargin + 220) / 250
         border.color: Theme.outline
         border.width: 1
         Behavior on anchors.topMargin { NumberAnimation { duration: 170; easing.type: Easing.OutExpo } }
@@ -177,9 +177,7 @@ Scope {
 
       Row {
         id: tileRow
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: parent.top
-        anchors.topMargin: 16
+        anchors.centerIn: parent
         spacing: root.tileSpacing
 
         Repeater {
@@ -225,51 +223,6 @@ Scope {
               onEntered: { root.hoverIdx = index; root.selIdx = index }
               onExited: { if (root.hoverIdx === index) root.hoverIdx = -1 }
               onClicked: root.activate(index)
-            }
-          }
-        }
-      }
-
-      Row {
-        id: perfRow
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: 10
-        spacing: 8
-
-        Repeater {
-          model: PerfMode.modes
-          delegate: Rectangle {
-            required property var modelData
-            required property int index
-            width: (panel.width - 32 - 16) / 3
-            height: 28
-            readonly property bool isCur: PerfMode.effectiveMode === modelData
-            color: isCur ? Theme.fg : "transparent"
-            border.color: isCur ? Theme.fg : Theme.border
-            border.width: 1
-            Row {
-              anchors.centerIn: parent
-              spacing: 6
-              QIcon {
-                anchors.verticalCenter: parent.verticalCenter
-                name: PerfMode.modeIcons[index]
-                size: 14
-                color: isCur ? Theme.bg : Theme.muted
-              }
-              Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: PerfMode.modeNames[index]
-                color: isCur ? Theme.bg : Theme.muted
-                font.family: root.fontFamily
-                font.pixelSize: 10
-              }
-            }
-            MouseArea {
-              anchors.fill: parent
-              hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
-              onClicked: PerfMode.setMode(modelData)
             }
           }
         }

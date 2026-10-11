@@ -49,7 +49,7 @@ Item {
     property bool stayAwake: false
     property bool taskRunning: false
     readonly property bool _inhibited: mediaPlaying || gameMode || stayAwake || taskRunning || (audioActive && !mediaPaused)
-    readonly property real batteryScale: (PerfMode.autoSaver && PerfMode.onBattery) ? 0.5 : 1
+    readonly property real batteryScale: PerfMode.saving ? 0.5 : 1
     readonly property int effLockTimeout: root.lockTimeout <= 0 ? 0 : Math.max(1, Math.round(root.lockTimeout * root.batteryScale))
     readonly property int effScreenOffDelay: root.screenOffDelay <= 0 ? 0 : Math.max(1, Math.round(root.screenOffDelay * root.batteryScale))
     readonly property int effSuspendTimeout: root.suspendTimeout <= 0 ? 0 : Math.max(1, Math.round(root.suspendTimeout * root.batteryScale))

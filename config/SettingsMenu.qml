@@ -692,82 +692,16 @@ PanelWindow {
                 spacing: 8
 
                 Text {
-                  text: "PERFORMANCE"
+                  text: "BATTERY"
                   color: Theme.muted2
                   font.family: root.fontFamily
                   font.pixelSize: 9
                   font.letterSpacing: 2
                 }
 
-                Repeater {
-                  model: PerfMode.modes
-                  delegate: Rectangle {
-                    required property var modelData
-                    required property int index
-                    readonly property bool available: modelData !== "performance" || PerfMode.hasPerformance
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 44
-                    opacity: available ? 1 : 0.4
-                    color: PerfMode.mode === modelData ? Theme.fg : (perfMa.containsMouse && available ? Theme.bgAlt : "transparent")
-                    border.color: PerfMode.mode === modelData ? Theme.outline : (perfMa.containsMouse && available ? Theme.borderStrong : Theme.border)
-                    border.width: 1
-                    RowLayout {
-                      anchors.fill: parent
-                      anchors.leftMargin: 12
-                      anchors.rightMargin: 12
-                      spacing: 10
-                      QIcon {
-                        name: PerfMode.modeIcons[index]
-                        size: 18
-                        color: PerfMode.mode === modelData ? Theme.bg : Theme.fg
-                      }
-                      ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-                        Text {
-                          text: PerfMode.modeNames[index]
-                          color: PerfMode.mode === modelData ? Theme.bg : Theme.fg
-                          font.family: root.fontFamily
-                          font.pixelSize: 12
-                          font.weight: Font.DemiBold
-                        }
-                        Text {
-                          text: !available ? "Not offered by this system" : PerfMode.modeHints[index] + (PerfMode.autoSaver && PerfMode.onBattery && PerfMode.mode === modelData ? " (on battery: saving, timeouts halved)" : "")
-                          color: PerfMode.mode === modelData ? Theme.bg : Theme.muted
-                          font.family: root.fontFamily
-                          font.pixelSize: 10
-                        }
-                      }
-                    }
-                    MouseArea {
-                      id: perfMa
-                      anchors.fill: parent
-                      hoverEnabled: true
-                      cursorShape: Qt.PointingHandCursor
-                      onClicked: PerfMode.setMode(modelData)
-                    }
-                  }
-                }
-
-                Rectangle {
-                  visible: PerfMode.degraded
-                  Layout.fillWidth: true
-                  Layout.preferredHeight: 32
-                  color: Theme.error
-                  border.color: Theme.error
-                  border.width: 1
-                  Text {
-                    anchors.centerIn: parent
-                    text: "System reports degraded performance"
-                    color: Theme.bg
-                    font.family: root.fontFamily
-                    font.pixelSize: 11
-                  }
-                }
-
                 Rectangle {
                   Layout.fillWidth: true
-                  Layout.preferredHeight: 32
+                  Layout.preferredHeight: 44
                   color: perfAutoMa.containsMouse ? Theme.bgAlt : "transparent"
                   border.color: perfAutoMa.containsMouse ? Theme.borderStrong : Theme.border
                   border.width: 1
@@ -793,13 +727,24 @@ PanelWindow {
                         color: Theme.fg
                       }
                     }
-                    Text {
+                    ColumnLayout {
                       Layout.fillWidth: true
-                      text: "Save power on battery"
-                      color: Theme.fg
-                      font.family: root.fontFamily
-                      font.pixelSize: 12
-                      font.weight: Font.DemiBold
+                      spacing: 2
+                      Text {
+                        Layout.fillWidth: true
+                        text: "Save power on battery"
+                        color: Theme.fg
+                        font.family: root.fontFamily
+                        font.pixelSize: 12
+                        font.weight: Font.DemiBold
+                      }
+                      Text {
+                        Layout.fillWidth: true
+                        text: PerfMode.saving ? "Active: timeouts halved" : "Halves lock, monitor and sleep timeouts"
+                        color: Theme.muted
+                        font.family: root.fontFamily
+                        font.pixelSize: 10
+                      }
                     }
                   }
                   CToggle {
