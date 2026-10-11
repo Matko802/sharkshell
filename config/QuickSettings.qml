@@ -145,7 +145,7 @@ ColumnLayout {
     Layout.fillWidth: true
     Layout.preferredHeight: root.appsExpanded ? Math.min(appsCol.implicitHeight, 150) : 0
     visible: root.appsExpanded || height > 0.5
-    Behavior on Layout.preferredHeight { NumberAnimation { duration: 80; easing.type: Easing.OutCubic } }
+    Behavior on Layout.preferredHeight { NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut } }
     contentWidth: width
     contentHeight: appsCol.height
     clip: true
@@ -264,7 +264,9 @@ ColumnLayout {
   ColumnLayout {
     id: netExpCol
     Layout.fillWidth: true
-    visible: Network.expanded && Network.wifiEnabled
+    visible: opacity > 0.01
+    opacity: (Network.expanded && Network.wifiEnabled) ? 1 : 0
+    Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut } }
     spacing: 6
 
     RowLayout {
@@ -392,7 +394,7 @@ ColumnLayout {
       id: netFlick
       Layout.fillWidth: true
       Layout.preferredHeight: Math.min(netCol.height, 170)
-      Behavior on Layout.preferredHeight { NumberAnimation { duration: 80; easing.type: Easing.OutCubic } }
+      Behavior on Layout.preferredHeight { NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut } }
       clip: true
       contentWidth: netFlick.width
       contentHeight: netCol.height

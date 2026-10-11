@@ -23,7 +23,6 @@ PanelWindow {
   screen: ccCard.targetScreen
   visible: ccCard.shown && (!ControlState.screen || ControlState.screen === ccCard.targetScreen)
   implicitHeight: Math.min(card.contentHeight + 32, maxCardHeight)
-  Behavior on implicitHeight { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
 
   QsCard {
     id: card
