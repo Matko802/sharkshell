@@ -114,6 +114,13 @@ Item {
           anchors.right: parent.right
           height: Math.max(2, parent.height * ((root.levels[index] || 0) / 100))
           color: Theme.fg
+          Behavior on height {
+            enabled: !PerfMode.isSaver
+            NumberAnimation {
+              duration: 90
+              easing.type: Easing.OutCubic
+            }
+          }
         }
       }
     }

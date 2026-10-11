@@ -507,30 +507,21 @@ PanelWindow {
                   spacing: 4
                   interactive: true
                   boundsBehavior: Flickable.StopAtBounds
-                  model: (root.shown && root.activeTab === 0) ? NotificationServer.centerModel : null
+                  model: NotificationServer.centerModel
 
-                  add: (root.shown && root.activeTab === 0) ? addTrans : null
-                  populate: (root.shown && root.activeTab === 0) ? popTrans : null
-                  remove: removeTrans
-                  displaced: (root.shown && root.activeTab === 0) ? dispTrans : null
-
-                  Transition {
-                    id: addTrans
+                  add: Transition {
                     NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Theme.easingOut }
                     NumberAnimation { property: "x"; from: 60; to: 0; duration: 200; easing.type: Theme.easingOut }
                   }
-                  Transition {
-                    id: popTrans
+                  populate: Transition {
                     NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Theme.easingOut }
                     NumberAnimation { property: "x"; from: 60; to: 0; duration: 200; easing.type: Theme.easingOut }
                   }
-                  Transition {
-                    id: removeTrans
+                  remove: Transition {
                     NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 150; easing.type: Theme.easingIn }
                     NumberAnimation { property: "x"; from: 0; to: 60; duration: 150; easing.type: Theme.easingIn }
                   }
-                  Transition {
-                    id: dispTrans
+                  displaced: Transition {
                     NumberAnimation { property: "y"; duration: 200; easing.type: Theme.easingOut }
                   }
                   delegate: Rectangle {
@@ -814,7 +805,10 @@ PanelWindow {
                                   anchors.right: parent.right
                                   height: Math.max(2, parent.height * ((mediaSingle.levels[index] || 0) / 100))
                                   color: Theme.fg
-                                  
+                                  Behavior on height {
+                                    enabled: !PerfMode.isSaver
+                                    NumberAnimation { duration: 90; easing.type: Easing.OutCubic }
+                                  }
                                 }
                               }
                             }

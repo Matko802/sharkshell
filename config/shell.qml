@@ -232,7 +232,6 @@ ShellRoot {
           id: ccCardLoader
           property var scr: modelData
           active: (ControlState.open && (!ControlState.screen || ControlState.screen === scr)) || (item?.shown ?? false)
-          asynchronous: true
           sourceComponent: Component {
             ControlCenterCard {
               targetScreen: ccCardLoader.scr
@@ -243,18 +242,20 @@ ShellRoot {
           id: clockLoader
           property var scr: modelData
           active: (ClockState.open && (!ClockState.screen || ClockState.screen === scr)) || (item?.shown ?? false)
-          asynchronous: true
           sourceComponent: Component {
             ClockMenu {
               targetScreen: clockLoader.scr
             }
+          }
+          onLoaded: {
+            if (ClockState.open && (!ClockState.screen || ClockState.screen === scr))
+              item.shown = true
           }
         }
         Loader {
           id: settingsLoader
           property var scr: modelData
           active: (SettingsState.open && (!SettingsState.screen || SettingsState.screen === scr)) || (item?.shown ?? false)
-          asynchronous: true
           sourceComponent: Component {
             SettingsMenu {
               targetScreen: settingsLoader.scr
@@ -264,6 +265,15 @@ ShellRoot {
                 else if (action === "avatar")
                   root.requestAvatar()
               }
+            }
+          }
+          onLoaded: {
+            if (SettingsState.open && (!SettingsState.screen || SettingsState.screen === scr)) {
+              item.shown = true
+              item.activeTab = 0
+              item.selIdx = 0
+              item.hoverIdx = -1
+              item.hoverTab = -1
             }
           }
         }
