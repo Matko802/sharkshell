@@ -21,6 +21,10 @@ Scope {
   readonly property int visibleCount: 10
 
   property bool closePending: false
+  property string _cachedDir: ""
+  property string _scanningDir: ""
+  property bool _prewarming: false
+  property bool _openPending: false
 
   function requestClose() {
     if (!root.opened || root.closePending)
@@ -76,8 +80,34 @@ Scope {
     root.closePending = false
     root.filterText = ""
     root.selIdx = 0
-    root.entryArray = []
     root.entered = false
+    if (root.entryArray.length > 0 && root._cachedDir === root.currentDir) {
+      root.opened = true
+      root.entered = true
+      listView.forceActiveFocus()
+      return
+    }
+    if (listProc.running) {
+      if (root._scanningDir === root.currentDir) {
+        root._openPending = true
+        return
+      }
+      listProc.running = false
+    }
+    root.entryArray = []
+    root._scanningDir = root.currentDir
+    listProc.output = ""
+    listProc.running = true
+  }
+
+  function prewarm() {
+    if (root.entryArray.length > 0 || root._prewarming || listProc.running)
+      return
+    if (root._cachedDir === root.currentDir && root.entryArray.length > 0)
+      return
+    root._prewarming = true
+    root._openPending = false
+    root._scanningDir = root.currentDir
     listProc.output = ""
     listProc.running = true
   }
@@ -152,6 +182,7 @@ Scope {
     root.filterText = ""
     root.selIdx = 0
     root.entryArray = []
+    root._scanningDir = root.currentDir
     listProc.output = ""
     listProc.running = true
   }
@@ -208,6 +239,13 @@ Scope {
       return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1
     })
     root.entryArray = entries
+    root._cachedDir = root._scanningDir
+    if (root._prewarming && !root._openPending) {
+      root._prewarming = false
+      return
+    }
+    root._prewarming = false
+    root._openPending = false
     if (!root.opened) {
       root.opened = true
       root.entered = true

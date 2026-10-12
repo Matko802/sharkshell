@@ -157,4 +157,20 @@ ShellRoot {
     id: powerMenu
   }
   Lock {}
+
+  Timer {
+    id: wallpaperPrewarmTimer
+    interval: 4000
+    repeat: false
+    running: true
+    onTriggered: wallpaperPicker.prewarm()
+  }
+
+  Timer {
+    id: avatarPrewarmTimer
+    interval: 7000
+    repeat: false
+    running: true
+    onTriggered: avatarPicker.prewarm()
+  }
 }

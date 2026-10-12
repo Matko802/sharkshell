@@ -27,6 +27,9 @@ Scope {
   readonly property int visibleCount: 9
 
   property bool closePending: false
+  property string _cachedDirs: ""
+  property bool _prewarming: false
+  property bool _openPending: false
 
   property bool browsing: false
   property string browseDir: ""
@@ -81,6 +84,13 @@ Scope {
     root.openPickerWithTab(0)
   }
 
+  function resolveImageDirs() {
+    dirsFile.reload()
+    const custom = dirsFile.text().trim()
+    const home = Quickshell.env("HOME")
+    return custom || waypaperIni.text().match(/^folder\s*=\s*(.+)$/m)?.[1]?.trim() || home + "/Pictures/Wallpapers"
+  }
+
   function openPickerWithTab(tab) {
     closeTimer.stop()
     root.closePending = false
@@ -88,15 +98,50 @@ Scope {
     root.browsing = false
     root.filterText = ""
     root.activeTab = tab === 1 ? 1 : 0
-    dirsFile.reload()
-    const custom = dirsFile.text().trim()
-    const home = Quickshell.env("HOME")
-    root.imageDirs = custom || waypaperIni.text().match(/^folder\s*=\s*(.+)$/m)?.[1]?.trim() || home + "/Pictures/Wallpapers"
+    const dirs = root.resolveImageDirs()
     root.selectedImage = root.activeTab === 1 ? WallpaperState.effectiveLockPath : WallpaperState.path
-    root.imageArray = []
     root.selIdx = 0
-    root.imagesLoaded = false
     root.entered = false
+    if (root.imagesLoaded && root._cachedDirs === dirs && root.imageArray.length > 0) {
+      root.imageDirs = dirs
+      const cur = root.selectedImage
+      let found = -1
+      for (let i = 0; i < root.imageArray.length; i++)
+        if (root.imageArray[i].filePath === cur) {
+          found = i
+          break
+        }
+      root.selIdx = found >= 0 ? found : 0
+      root.opened = true
+      root.entered = true
+      listView.forceActiveFocus()
+      return
+    }
+    if (loadImagesProc.running) {
+      if (root.imageDirs === dirs) {
+        root.imageDirs = dirs
+        root._openPending = true
+        return
+      }
+      loadImagesProc.running = false
+    }
+    root.imageDirs = dirs
+    root.imageArray = []
+    root.imagesLoaded = false
+    loadImagesProc.output = ""
+    loadImagesProc.running = true
+  }
+
+  function prewarm() {
+    if (root.imagesLoaded || root._prewarming || loadImagesProc.running)
+      return
+    const dirs = root.resolveImageDirs()
+    if (root.imagesLoaded && root._cachedDirs === dirs)
+      return
+    root._prewarming = true
+    root._openPending = false
+    root.imageDirs = dirs
+    root.selectedImage = WallpaperState.path
     loadImagesProc.output = ""
     loadImagesProc.running = true
   }
@@ -435,6 +480,13 @@ Scope {
     }
     root.imageArray = newImages
     root.imagesLoaded = true
+    root._cachedDirs = root.imageDirs
+    if (root._prewarming && !root._openPending) {
+      root._prewarming = false
+      return
+    }
+    root._prewarming = false
+    root._openPending = false
     root.opened = true
     root.entered = true
     const cur = root.selectedImage
