@@ -48,7 +48,12 @@ Item {
     readonly property bool gaming: gameMode || fullscreenActive
     property bool stayAwake: false
     property bool taskRunning: false
-    readonly property bool _inhibited: mediaPlaying || gameMode || stayAwake || taskRunning || (audioActive && !mediaPaused)
+    readonly property bool _inhibited: mediaPlaying || gameMode || stayAwake || (audioActive && !mediaPaused)
+
+    onTaskRunningChanged: {
+        if (!root.taskRunning && root.suspendStageArmed && root.suspendTimeout > 0 && root._idleSeconds >= root.suspendTimeout)
+            root._idleSeconds = 0
+    }
 
     function _setScreen(off) {
         if (off === root.screenIsOff)
@@ -223,8 +228,6 @@ Item {
         command: ["sh", "-c", "command -v pgrep >/dev/null 2>&1 && pgrep -f '(^|/)(nh|nixos-rebuild)([ /]|$)|nix +(build|develop|shell|run|flake)([ /]|$)|opencode([-.]|[ /]|$)' >/dev/null"]
         onExited: (exitCode) => {
             root.taskRunning = (exitCode === 0)
-            if (exitCode === 0)
-                root.markActive()
         }
     }
 
@@ -248,7 +251,7 @@ Item {
                 root._setScreen(true)
                 root.screenOffStageArmed = false
             }
-            if (root.suspendStageArmed && root.suspendTimeout > 0 && root._idleSeconds >= root.suspendTimeout) {
+            if (root.suspendStageArmed && !root.taskRunning && root.suspendTimeout > 0 && root._idleSeconds >= root.suspendTimeout) {
                 suspendProc.running = true
                 root.suspendStageArmed = false
             }
