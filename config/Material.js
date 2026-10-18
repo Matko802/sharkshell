@@ -89,6 +89,9 @@ const CODEPOINTS = {
   "push-pin": 0xF10D,
   "keep": 0xF10D,
   "pin-drop": 0xE55E,
+  "brightness": 0xE812,
+  "brightness-high": 0xE1E6,
+  "brightness-low": 0xE1C6,
 };
 
 function resolve(name) {

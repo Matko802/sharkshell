@@ -84,7 +84,7 @@ ColumnLayout {
   }
 
   RowLayout {
-    visible: false
+    visible: BrightnessState.available
     Layout.fillWidth: true
     spacing: 10
     Item {
@@ -94,24 +94,19 @@ ColumnLayout {
       Layout.preferredHeight: 20
       QIcon {
         anchors.centerIn: parent
-        name: Audio.micIcon
+        name: BrightnessState.bright < 0.25 ? "brightness-low" : "brightness"
         size: 20
         color: Theme.fg
       }
-      MouseArea {
-        anchors.fill: parent
-        cursorShape: Qt.PointingHandCursor
-        onClicked: Audio.toggleMicMute()
-      }
     }
     CSlider {
-      id: micSlider
+      id: brightSlider
       Layout.fillWidth: true
-      value: Audio.micVol < 0 ? 0 : Audio.micVol / 100
-      onUserSet: v => Audio.setMicVol(v * 100)
+      value: BrightnessState.bright < 0 ? 0 : BrightnessState.bright
+      onUserSet: v => BrightnessState.set(v)
     }
     Text {
-      text: Math.round(micSlider.shown * 100) + "%"
+      text: BrightnessState.bright < 0 ? "" : Math.round(brightSlider.shown * 100) + "%"
       color: Theme.fg
       font.pixelSize: 11
       Layout.preferredWidth: 40
@@ -149,6 +144,42 @@ ColumnLayout {
       id: appsCol
       width: parent.width
       spacing: 6
+      RowLayout {
+        Layout.fillWidth: true
+        spacing: 8
+        Item {
+          Layout.preferredWidth: 20
+          Layout.minimumWidth: 20
+          Layout.maximumWidth: 20
+          Layout.preferredHeight: 20
+          QIcon {
+            anchors.centerIn: parent
+            name: Audio.micIcon
+            size: 20
+            color: Theme.fg
+          }
+          MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: Audio.toggleMicMute()
+          }
+        }
+        CSlider {
+          id: micSlider
+          Layout.fillWidth: true
+          value: Audio.micVol < 0 ? 0 : Audio.micVol / 100
+          onUserSet: v => Audio.setMicVol(v * 100)
+        }
+        Text {
+          text: Math.round(micSlider.shown * 100) + "%"
+          color: Theme.fg
+          font.pixelSize: 11
+          Layout.preferredWidth: 40
+          Layout.minimumWidth: 40
+          Layout.maximumWidth: 40
+          horizontalAlignment: Text.AlignRight
+        }
+      }
       Repeater {
         model: root.sinkInputs
         delegate: RowLayout {
