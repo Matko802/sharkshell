@@ -310,8 +310,8 @@ Scope {
     color: "transparent"
     WlrLayershell.namespace: "quickshell-modal"
     BackgroundEffect.blurRegion: Region {
-      item: TransparencyState.transparent && card.cardProg > 0 ? card : null
-      Region { item: TransparencyState.transparent && card.cardProg > 0 ? tabsPill : null }
+      item: TransparencyState.transparent && card.cardProg > 0 ? cardBlur : null
+      Region { item: TransparencyState.transparent && card.cardProg > 0 ? pillBlur : null }
     }
     mask: Region {
       item: card
@@ -335,13 +335,13 @@ Scope {
       anchors.horizontalCenter: card.horizontalCenter
       anchors.bottom: card.top
       anchors.bottomMargin: 8
-      readonly property real s: 0.92 + 0.08 * card.cardProg
-      width: Math.round(240 * s)
-      height: Math.round(28 * s)
+      width: 240
+      height: 28
       color: Theme.bg
       border.color: Theme.outline
       border.width: 1
-      opacity: card.cardProg
+      opacity: Math.min(1, card.cardProg * 1.6)
+      scale: card.cardProg
 
       RowLayout {
         anchors.fill: parent
@@ -374,17 +374,35 @@ Scope {
     }
 
     Rectangle {
+      id: cardBlur
+      anchors.centerIn: parent
+      width: Math.ceil(root.boxWidth * card.cardProg)
+      height: Math.ceil(card.height * card.cardProg)
+      color: "transparent"
+    }
+
+    Rectangle {
+      id: pillBlur
+      anchors.horizontalCenter: card.horizontalCenter
+      anchors.bottom: card.top
+      anchors.bottomMargin: 22 - 14 * card.cardProg
+      width: Math.ceil(240 * card.cardProg)
+      height: Math.ceil(28 * card.cardProg)
+      color: "transparent"
+    }
+
+    Rectangle {
       id: card
       anchors.centerIn: parent
       property real cardProg: root.open ? 1 : 0
-      readonly property real s: 0.92 + 0.08 * cardProg
-      width: Math.round(root.boxWidth * s)
-      height: Math.round((col.implicitHeight + 16) * s)
+      scale: cardProg
+      width: root.boxWidth
+      height: col.implicitHeight + 16
       color: Theme.bg
       border.color: Theme.outline
       border.width: 1
-      opacity: cardProg
-      Behavior on cardProg { NumberAnimation { duration: 150; easing.type: Easing.OutExpo } }
+      opacity: Math.min(1, cardProg * 1.6)
+      Behavior on cardProg { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
       ColumnLayout {
         id: col
