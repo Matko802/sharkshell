@@ -84,6 +84,7 @@ ColumnLayout {
   }
 
   RowLayout {
+    visible: false
     Layout.fillWidth: true
     spacing: 10
     Item {
@@ -123,13 +124,6 @@ ColumnLayout {
   RowLayout {
     Layout.fillWidth: true
     spacing: 8
-    Text {
-      text: "Apps"
-      color: Theme.muted2
-      font.pixelSize: 10
-      font.letterSpacing: 1
-      Layout.alignment: Qt.AlignVCenter
-    }
     Item { Layout.fillWidth: true }
     IconBtn {
       implicitWidth: 18
@@ -213,6 +207,7 @@ ColumnLayout {
   }
 
   RowLayout {
+    visible: Network.kind === "wifi"
     Layout.fillWidth: true
     spacing: 10
     Item {
@@ -247,6 +242,7 @@ ColumnLayout {
       implicitHeight: 18
       icon: Network.expanded ? "pan-up" : "pan-down"
       iconSize: 14
+      visible: Network.networks.length > 0
       onClicked: Network.expanded = !Network.expanded
     }
   }
@@ -265,7 +261,7 @@ ColumnLayout {
     id: netExpCol
     Layout.fillWidth: true
     visible: opacity > 0.01
-    opacity: (Network.expanded && Network.wifiEnabled) ? 1 : 0
+    opacity: (Network.expanded && Network.wifiEnabled && Network.kind === "wifi") ? 1 : 0
     Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut } }
     spacing: 6
 
@@ -470,18 +466,18 @@ ColumnLayout {
       Layout.preferredHeight: 20
       QIcon {
         anchors.centerIn: parent
-        name: "lock"
+        name: "shutdown"
         size: 20
         color: Theme.fg
       }
       MouseArea {
-        id: lockMa
+        id: powerMa
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: {
           ControlState.close()
-          LockState.locked = true
+          Quickshell.execDetached(["quickshell", "ipc", "call", "power", "toggle"])
         }
       }
     }
