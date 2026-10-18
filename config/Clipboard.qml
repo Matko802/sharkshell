@@ -310,8 +310,8 @@ Scope {
     color: "transparent"
     WlrLayershell.namespace: "quickshell-modal"
     BackgroundEffect.blurRegion: Region {
-      item: TransparencyState.transparent && card.cardProg >= 1 ? card : null
-      Region { item: TransparencyState.transparent && card.cardProg >= 1 ? tabsPill : null }
+      item: TransparencyState.transparent && card.cardProg > 0 ? card : null
+      Region { item: TransparencyState.transparent && card.cardProg > 0 ? tabsPill : null }
     }
     mask: Region {
       item: card
@@ -335,12 +335,12 @@ Scope {
       anchors.horizontalCenter: card.horizontalCenter
       anchors.bottom: card.top
       anchors.bottomMargin: 8
-      width: 240
-      height: 28
+      readonly property real s: 0.92 + 0.08 * card.cardProg
+      width: Math.round(240 * s)
+      height: Math.round(28 * s)
       color: Theme.bg
       border.color: Theme.outline
       border.width: 1
-      scale: 0.92 + 0.08 * card.cardProg
       opacity: card.cardProg
 
       RowLayout {
@@ -376,13 +376,13 @@ Scope {
     Rectangle {
       id: card
       anchors.centerIn: parent
-      width: root.boxWidth
-      height: col.implicitHeight + 16
+      property real cardProg: root.open ? 1 : 0
+      readonly property real s: 0.92 + 0.08 * cardProg
+      width: Math.round(root.boxWidth * s)
+      height: Math.round((col.implicitHeight + 16) * s)
       color: Theme.bg
       border.color: Theme.outline
       border.width: 1
-      property real cardProg: root.open ? 1 : 0
-      scale: 0.92 + 0.08 * cardProg
       opacity: cardProg
       Behavior on cardProg { NumberAnimation { duration: 150; easing.type: Easing.OutExpo } }
 

@@ -16,7 +16,7 @@ PanelWindow {
   exclusionMode: ExclusionMode.Ignore
   color: "transparent"
   WlrLayershell.namespace: "quickshell-modal"
-  BackgroundEffect.blurRegion: Region { item: TransparencyState.transparent && card.slideProg >= 1 ? card : null }
+  BackgroundEffect.blurRegion: Region { item: TransparencyState.transparent && card.slideProg > 0 ? card : null }
   WlrLayershell.layer: WlrLayer.Overlay
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
   readonly property bool shown: card.slideProg > 0

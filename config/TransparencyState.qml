@@ -40,14 +40,14 @@ Scope {
 
   onAmountChanged: {
     amountFile.setText(String(Math.round(root.amount * 100) / 100))
-    applyTimer.restart()
+    scheduleApply()
   }
 
   onTransparentChanged: {
     flagFile.setText(root.transparent ? "1" : "0")
     root.writeNiri()
     root.writeBlur()
-    applyTimer.restart()
+    scheduleApply()
   }
 
   IpcHandler {
@@ -101,15 +101,26 @@ Scope {
     target: BlurState
     function onRadiusChanged() {
       root.writeBlur()
-      applyTimer.restart()
+      root.scheduleApply()
     }
+  }
+
+  property bool applyPending: false
+
+  function scheduleApply() {
+    root.applyPending = true
+    if (!applyTimer.running)
+      applyTimer.restart()
   }
 
   Timer {
     id: applyTimer
-    interval: 600
+    interval: 120
     repeat: false
     onTriggered: {
+      if (!root.applyPending)
+        return
+      root.applyPending = false
       root.writeBlur()
       root.writeNiri()
       if (!kittyTransProc.running)
@@ -178,7 +189,7 @@ Scope {
   }
 
   function pushKittyTrans() {
-    applyTimer.restart()
+    scheduleApply()
   }
 
   Process {
@@ -202,7 +213,7 @@ Scope {
   }
 
   function reloadNiri() {
-    applyTimer.restart()
+    scheduleApply()
   }
 
   Process {
@@ -211,7 +222,7 @@ Scope {
   }
 
   function reloadKitty() {
-    applyTimer.restart()
+    scheduleApply()
   }
 
   Component.onCompleted: {

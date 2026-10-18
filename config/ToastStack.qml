@@ -117,7 +117,7 @@ Scope {
 
       mask: Region { item: card }
 
-      readonly property bool blurReady: card.entered && !card.dismissing && Math.abs(card.x) < 1
+      readonly property bool blurReady: card.entered && card.dragOff === 0
       readonly property int cardHeight: card.implicitHeight
       onCardHeightChanged: toastScope.scheduleReposition()
 

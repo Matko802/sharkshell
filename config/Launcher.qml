@@ -398,7 +398,7 @@ Scope {
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     WlrLayershell.namespace: "quickshell-modal"
-    BackgroundEffect.blurRegion: Region { item: TransparencyState.transparent && card.cardProg >= 1 ? card : null }
+    BackgroundEffect.blurRegion: Region { item: TransparencyState.transparent && card.cardProg > 0 ? card : null }
     mask: Region { item: card }
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
@@ -416,13 +416,13 @@ Scope {
     Rectangle {
       id: card
       anchors.centerIn: parent
-      width: root.boxWidth
-      height: col.implicitHeight + 16
+      property real cardProg: root.open ? 1 : 0
+      readonly property real s: 0.92 + 0.08 * cardProg
+      width: Math.round(root.boxWidth * s)
+      height: Math.round((col.implicitHeight + 16) * s)
       color: Theme.bg
       border.color: Theme.outline
       border.width: 1
-      property real cardProg: root.open ? 1 : 0
-      scale: 0.92 + 0.08 * cardProg
       opacity: cardProg
       Behavior on cardProg { NumberAnimation { duration: 150; easing.type: Easing.OutExpo } }
 

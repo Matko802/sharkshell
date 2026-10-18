@@ -20,7 +20,7 @@ Rectangle {
   border.color: Theme.outline
   border.width: 1
 
-  transform: Translate { y: -(1 - root.slideProg) * (root.height + 8) }
+  y: -(1 - root.slideProg) * (root.height + 8)
 
   MouseArea {
     anchors.fill: parent
