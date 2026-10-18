@@ -27,9 +27,10 @@ ColumnLayout {
   }
 
   Timer {
-    running: Network.expanded && Network.wifiEnabled && root.active
+    running: Network.wifiEnabled && root.active
     interval: 15000
     repeat: true
+    triggeredOnStart: true
     onTriggered: Network.scan()
   }
 
@@ -84,6 +85,43 @@ ColumnLayout {
   }
 
   RowLayout {
+    Layout.fillWidth: true
+    spacing: 10
+    Item {
+      Layout.preferredWidth: 20
+      Layout.minimumWidth: 20
+      Layout.maximumWidth: 20
+      Layout.preferredHeight: 20
+      QIcon {
+        anchors.centerIn: parent
+        name: Audio.micIcon
+        size: 20
+        color: Theme.fg
+      }
+      MouseArea {
+        anchors.fill: parent
+        cursorShape: Qt.PointingHandCursor
+        onClicked: Audio.toggleMicMute()
+      }
+    }
+    CSlider {
+      id: micSlider
+      Layout.fillWidth: true
+      value: Audio.micVol < 0 ? 0 : Audio.micVol / 100
+      onUserSet: v => Audio.setMicVol(v * 100)
+    }
+    Text {
+      text: Math.round(micSlider.shown * 100) + "%"
+      color: Theme.fg
+      font.pixelSize: 11
+      Layout.preferredWidth: 40
+      Layout.minimumWidth: 40
+      Layout.maximumWidth: 40
+      horizontalAlignment: Text.AlignRight
+    }
+  }
+
+  RowLayout {
     visible: BrightnessState.available
     Layout.fillWidth: true
     spacing: 10
@@ -117,6 +155,7 @@ ColumnLayout {
   }
 
   RowLayout {
+    visible: root.sinkInputs.length > 0
     Layout.fillWidth: true
     spacing: 8
     Item { Layout.fillWidth: true }
@@ -144,42 +183,6 @@ ColumnLayout {
       id: appsCol
       width: parent.width
       spacing: 6
-      RowLayout {
-        Layout.fillWidth: true
-        spacing: 8
-        Item {
-          Layout.preferredWidth: 20
-          Layout.minimumWidth: 20
-          Layout.maximumWidth: 20
-          Layout.preferredHeight: 20
-          QIcon {
-            anchors.centerIn: parent
-            name: Audio.micIcon
-            size: 20
-            color: Theme.fg
-          }
-          MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: Audio.toggleMicMute()
-          }
-        }
-        CSlider {
-          id: micSlider
-          Layout.fillWidth: true
-          value: Audio.micVol < 0 ? 0 : Audio.micVol / 100
-          onUserSet: v => Audio.setMicVol(v * 100)
-        }
-        Text {
-          text: Math.round(micSlider.shown * 100) + "%"
-          color: Theme.fg
-          font.pixelSize: 11
-          Layout.preferredWidth: 40
-          Layout.minimumWidth: 40
-          Layout.maximumWidth: 40
-          horizontalAlignment: Text.AlignRight
-        }
-      }
       Repeater {
         model: root.sinkInputs
         delegate: RowLayout {
@@ -225,14 +228,6 @@ ColumnLayout {
             horizontalAlignment: Text.AlignRight
           }
         }
-      }
-      Text {
-        Layout.fillWidth: true
-        text: root.sinkInputs.length === 0 ? "no apps playing" : ""
-        color: Theme.muted2
-        font.pixelSize: 10
-        visible: root.sinkInputs.length === 0
-        horizontalAlignment: Text.AlignHCenter
       }
     }
   }
