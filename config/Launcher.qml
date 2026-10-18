@@ -233,7 +233,7 @@ Scope {
 
   Timer {
     id: closeTimer
-    interval: 200
+    interval: 240
     onTriggered: {
       root.closePending = false
     }
@@ -399,7 +399,7 @@ Scope {
     color: "transparent"
     WlrLayershell.namespace: "quickshell-modal"
     BackgroundEffect.blurRegion: Region { item: TransparencyState.transparent && card.cardProg > 0 ? blurTracker : null }
-    mask: Region { item: card }
+    mask: Region { item: blurTracker }
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     visible: root.open || root.closePending
@@ -431,7 +431,7 @@ Scope {
       border.width: 1
       property real cardProg: root.open ? 1 : 0
       scale: cardProg
-      opacity: Math.min(1, cardProg * 1.6)
+      opacity: root.open ? Math.min(1, cardProg * 1.6) : 1
       Behavior on cardProg { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
       ColumnLayout {

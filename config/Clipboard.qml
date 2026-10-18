@@ -38,7 +38,7 @@ Scope {
 
   Timer {
     id: closeTimer
-    interval: 200
+    interval: 240
     onTriggered: {
       root.closePending = false
     }
@@ -314,8 +314,8 @@ Scope {
       Region { item: TransparencyState.transparent && card.cardProg > 0 ? pillBlur : null }
     }
     mask: Region {
-      item: card
-      Region { item: tabsPill }
+      item: cardBlur
+      Region { item: pillBlur }
     }
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
@@ -340,7 +340,7 @@ Scope {
       color: Theme.bg
       border.color: Theme.outline
       border.width: 1
-      opacity: Math.min(1, card.cardProg * 1.6)
+      opacity: root.open ? Math.min(1, card.cardProg * 1.6) : 1
       scale: card.cardProg
 
       RowLayout {
@@ -401,7 +401,7 @@ Scope {
       color: Theme.bg
       border.color: Theme.outline
       border.width: 1
-      opacity: Math.min(1, cardProg * 1.6)
+      opacity: root.open ? Math.min(1, cardProg * 1.6) : 1
       Behavior on cardProg { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
       ColumnLayout {
