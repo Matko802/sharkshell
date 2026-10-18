@@ -10,6 +10,12 @@ ColumnLayout {
   property string pwFor: ""
   property bool appsExpanded: false
   property bool active: true
+  onActiveChanged: {
+    if (active) {
+      Network.expanded = false
+      root.appsExpanded = false
+    }
+  }
 
   signal activity()
 
@@ -232,43 +238,53 @@ ColumnLayout {
     }
   }
 
-  RowLayout {
+  Item {
     Layout.fillWidth: true
-    spacing: 10
-    Item {
-      Layout.preferredWidth: 20
-      Layout.minimumWidth: 20
-      Layout.maximumWidth: 20
-      Layout.preferredHeight: 20
-      QIcon {
-        anchors.centerIn: parent
-        name: Network.online ? Network.icon : "wifi-off"
-        size: 20
-        color: Network.online ? Theme.fg : Theme.muted2
-      }
-    }
-    Text {
-      text: Network.kind === "wifi" ? Network.ssid : (Network.kind === "eth" ? "Ethernet" : (Network.wifiEnabled ? "Wi-Fi on" : "Wi-Fi off"))
-      color: Network.online ? Theme.fg : Theme.muted2
-      font.pixelSize: 12
-      elide: Text.ElideRight
-      Layout.maximumWidth: 220
-      Layout.fillWidth: true
-    }
-    Item {
-      Layout.fillWidth: true
-    }
-    CToggle {
-      checked: Network.wifiEnabled
-      onToggled: c => Network.toggleWifi()
-    }
-    IconBtn {
-      implicitWidth: 18
-      implicitHeight: 18
-      icon: Network.expanded ? "pan-up" : "pan-down"
-      iconSize: 14
-      visible: Network.networks.length > 0
+    implicitHeight: netRow.implicitHeight
+    MouseArea {
+      anchors.fill: parent
+      enabled: Network.wifiEnabled
       onClicked: Network.expanded = !Network.expanded
+    }
+    RowLayout {
+      id: netRow
+      anchors.fill: parent
+      spacing: 10
+      Item {
+        Layout.preferredWidth: 20
+        Layout.minimumWidth: 20
+        Layout.maximumWidth: 20
+        Layout.preferredHeight: 20
+        QIcon {
+          anchors.centerIn: parent
+          name: Network.online ? Network.icon : "wifi-off"
+          size: 20
+          color: Network.online ? Theme.fg : Theme.muted2
+        }
+      }
+      Text {
+        text: Network.kind === "wifi" ? Network.ssid : (Network.kind === "eth" ? "Ethernet" : (Network.wifiEnabled ? "Wi-Fi on" : "Wi-Fi off"))
+        color: Network.online ? Theme.fg : Theme.muted2
+        font.pixelSize: 12
+        elide: Text.ElideRight
+        Layout.maximumWidth: 220
+        Layout.fillWidth: true
+      }
+      Item {
+        Layout.fillWidth: true
+      }
+      CToggle {
+        checked: Network.wifiEnabled
+        onToggled: c => Network.toggleWifi()
+      }
+      IconBtn {
+        implicitWidth: 18
+        implicitHeight: 18
+        icon: Network.expanded ? "pan-up" : "pan-down"
+        iconSize: 14
+        visible: Network.networks.length > 0
+        onClicked: Network.expanded = !Network.expanded
+      }
     }
   }
 
