@@ -313,13 +313,18 @@ Scope {
       item: TransparencyState.transparent && card.cardProg > 0 ? cardBlur : null
       Region { item: TransparencyState.transparent && card.cardProg > 0 ? pillBlur : null }
     }
-    mask: Region {
-      item: cardBlur
-      Region { item: pillBlur }
-    }
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     visible: root.open || root.closePending
+
+    MouseArea {
+      anchors.fill: parent
+      onClicked: mouse => {
+        if (mouse.x >= card.x && mouse.x < card.x + card.width && mouse.y >= card.y && mouse.y < card.y + card.height)
+          return
+        root.requestClose()
+      }
+    }
 
     onVisibleChanged: { if (visible && root.open) focusTimer.restart() }
 
