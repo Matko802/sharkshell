@@ -399,10 +399,18 @@ Scope {
     color: "transparent"
     WlrLayershell.namespace: "quickshell-modal"
     BackgroundEffect.blurRegion: Region { item: TransparencyState.transparent && card.cardProg > 0 ? blurTracker : null }
-    mask: Region { item: blurTracker }
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     visible: root.open || root.closePending
+
+    MouseArea {
+      anchors.fill: parent
+      onClicked: mouse => {
+        if (mouse.x >= card.x && mouse.x < card.x + card.width && mouse.y >= card.y && mouse.y < card.y + card.height)
+          return
+        root.requestClose()
+      }
+    }
 
     onVisibleChanged: { if (visible && root.open) focusTimer.restart() }
 
