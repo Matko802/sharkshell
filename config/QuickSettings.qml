@@ -207,7 +207,6 @@ ColumnLayout {
   }
 
   RowLayout {
-    visible: Network.kind === "wifi"
     Layout.fillWidth: true
     spacing: 10
     Item {
@@ -261,7 +260,7 @@ ColumnLayout {
     id: netExpCol
     Layout.fillWidth: true
     visible: opacity > 0.01
-    opacity: (Network.expanded && Network.wifiEnabled && Network.kind === "wifi") ? 1 : 0
+    opacity: (Network.expanded && Network.wifiEnabled) ? 1 : 0
     Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut } }
     spacing: 6
 
