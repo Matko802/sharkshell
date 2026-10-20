@@ -40,9 +40,10 @@ Scope {
   function healIds() {
     var b = root.fullId(root.mimeDefaults["x-scheme-handler/http"] || "")
     if (b !== "" && b !== (root.mimeDefaults["x-scheme-handler/http"] || "")) root.setBrowser(b)
-    if (b === "") b = root.browserId
-    var bh = Apps.closestIds(b, root.idsOf(root.browsers))
-    if (b !== "" && !root.hasEntry(b) && bh && bh.length === 1) root.setBrowser(bh[0])
+    else if (b !== "" && !root.hasEntry(b)) {
+      var bh = Apps.closestIds(b, root.idsOf(root.browsers))
+      if (bh && bh.length === 1) root.setBrowser(bh[0])
+    }
     var f = root.fullId(root.mimeDefaults["inode/directory"] || "")
     if (f !== "" && f !== (root.mimeDefaults["inode/directory"] || "")) root.setFiles(f)
     if (f !== "" && !root.hasEntry(f)) {
@@ -128,7 +129,7 @@ Scope {
   }
 
   function setBrowser(id) {
-    root.setMimeDefault(id, ["x-scheme-handler/http", "x-scheme-handler/https"])
+    root.setMimeDefault(id, Apps.BROWSER_MIMES)
     kdeProc.running = false
     kdeProc.command = ["python3", "-c", Apps.KGSCRIPT, root.fullId(id)]
     kdeProc.running = true

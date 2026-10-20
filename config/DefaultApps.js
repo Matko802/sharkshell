@@ -6,6 +6,22 @@ var BROWSER_RES = [
 ];
 var BROWSER_NAME_RES = [/browser/i, /firefox/i, /chrome/i, /chromium/i, /\bzen\b/i, /helium/i, /brave/i, /vivaldi/i, /edge/i, /opera/i];
 
+var BROWSER_MIMES = [
+  "text/html",
+  "x-scheme-handler/http",
+  "x-scheme-handler/https",
+  "x-scheme-handler/chrome",
+  "x-scheme-handler/about",
+  "x-scheme-handler/question",
+  "x-scheme-handler/unknown",
+  "application/x-extension-htm",
+  "application/x-extension-html",
+  "application/x-extension-shtml",
+  "application/xhtml+xml",
+  "application/x-extension-xhtml",
+  "application/x-extension-xht"
+];
+
 var FILES_RES = [
   /nautilus/i, /dolphin/i, /thunar/i, /nemo/i, /pcmanfm/i, /caja/i,
   /konqueror/i, /krusader/i, /sunflower/i, /doublecmd/i, /spacefm/i,
