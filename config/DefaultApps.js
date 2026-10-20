@@ -175,3 +175,50 @@ function termCmdForBin(bin) {
   if (bin === "xdg-terminal-exec") return ["xdg-terminal-exec"];
   return [bin, "-e"];
 }
+
+function closestIds(stem, ids) {
+  var s = String(stem || "").replace(/\.desktop$/, "").toLowerCase();
+  if (s === "") return [];
+  var hit = [];
+  for (var i = 0; i < (ids || []).length; i++) {
+    var x = String(ids[i]);
+    if (x.toLowerCase().indexOf(s) >= 0) hit.push(x);
+  }
+  hit.sort(function(a, b) { return a.length - b.length });
+  return hit;
+}
+
+var KGSCRIPT = [
+  "import sys, os",
+  "bid = sys.argv[1]",
+  "p = os.path.expanduser(\"~/.config/kdeglobals\")",
+  "t = \"\"",
+  "if os.path.exists(p):",
+  "    t = open(p, encoding=\"utf-8\", errors=\"replace\").read()",
+  "lines = t.splitlines()",
+  "out = []",
+  "sec = None",
+  "done = False",
+  "for ln in lines:",
+  "    s = ln.strip()",
+  "    if s.startswith(\"[\"):",
+  "        if sec == \"General\" and not done:",
+  "            out.append(\"BrowserApplication=\" + bid)",
+  "            done = True",
+  "        sec = s.strip(\"[]\").strip()",
+  "    elif sec == \"General\" and s.startswith(\"BrowserApplication=\"):",
+  "        if not done:",
+  "            out.append(\"BrowserApplication=\" + bid)",
+  "            done = True",
+  "        continue",
+  "    out.append(ln)",
+  "if sec == \"General\" and not done:",
+  "    out.append(\"BrowserApplication=\" + bid)",
+  "    done = True",
+  "if not done:",
+  "    if out and out[-1] != \"\":",
+  "        out.append(\"\")",
+  "    out.append(\"[General]\")",
+  "    out.append(\"BrowserApplication=\" + bid)",
+  "open(p, \"w\", encoding=\"utf-8\").write(\"\\n\".join(out) + \"\\n\")"
+].join("\n");

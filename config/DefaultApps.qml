@@ -25,6 +25,11 @@ Scope {
     return null
   }
 
+  function hasEntry(id) {
+    var s = String(id || "")
+    return !!root.findEntry(s) || !!root.findEntry(s.replace(/\.desktop$/, ""))
+  }
+
   function fullId(id) {
     var s = String(id || "")
     if (s === "" || s.endsWith(".desktop")) return s
@@ -35,10 +40,21 @@ Scope {
   function healIds() {
     var b = root.fullId(root.mimeDefaults["x-scheme-handler/http"] || "")
     if (b !== "" && b !== (root.mimeDefaults["x-scheme-handler/http"] || "")) root.setBrowser(b)
+    if (b === "") b = root.browserId
+    var bh = Apps.closestIds(b, root.idsOf(root.browsers))
+    if (b !== "" && !root.hasEntry(b) && bh && bh.length === 1) root.setBrowser(bh[0])
     var f = root.fullId(root.mimeDefaults["inode/directory"] || "")
     if (f !== "" && f !== (root.mimeDefaults["inode/directory"] || "")) root.setFiles(f)
+    if (f !== "" && !root.hasEntry(f)) {
+      var fh = Apps.closestIds(f, root.idsOf(root.fileManagers))
+      if (fh && fh.length === 1) root.setFiles(fh[0])
+    }
     var m = root.fullId(root.mimeDefaults["x-scheme-handler/mailto"] || "")
     if (m !== "" && m !== (root.mimeDefaults["x-scheme-handler/mailto"] || "")) root.setMail(m)
+    if (m !== "" && !root.hasEntry(m)) {
+      var mh = Apps.closestIds(m, root.idsOf(root.mailClients))
+      if (mh && mh.length === 1) root.setMail(mh[0])
+    }
     var t = root.fullId(root.termChoice)
     if (t !== "" && t !== root.termChoice) root.setTerminal(t)
   }
@@ -113,6 +129,9 @@ Scope {
 
   function setBrowser(id) {
     root.setMimeDefault(id, ["x-scheme-handler/http", "x-scheme-handler/https"])
+    kdeProc.running = false
+    kdeProc.command = ["python3", "-c", Apps.KGSCRIPT, root.fullId(id)]
+    kdeProc.running = true
   }
 
   function setFiles(id) {
@@ -176,6 +195,10 @@ Scope {
 
   Process {
     id: mimeProc
+  }
+
+  Process {
+    id: kdeProc
   }
 
   FileView {
