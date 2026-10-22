@@ -297,16 +297,159 @@ Scope {
     return name.length > root.maxNameChars ? name.slice(0, root.maxNameChars - 1) + "\u2026" : name
   }
 
-  function hl(rawName, selected) {
+  function isBoundaryChar(c) {
+    return c === "" || c === " " || c === "-" || c === "_" || c === "." || c === "/" || c === ":" || c === "&" || c === "+" || c === "(" || c === "[" || c === "{"
+  }
+
+  function searchTokens(q) {
+    return q.trim().split(/\s+/).filter(t => t.length > 0)
+  }
+
+  function matchToken(q, t) {
+    const m = q.length
+    if (m === 0)
+      return null
+    const n = t.length
+    if (n < m)
+      return null
+    const at = t.indexOf(q)
+    if (at >= 0) {
+      const positions = []
+      for (let i = 0; i < m; i++)
+        positions.push(at + i)
+      if (n === m)
+        return { score: 100000, positions: positions }
+      return { score: 800 + m * 8 - at * 0.5 - (n - m) * 0.3 + (at === 0 ? 200 : isBoundaryChar(t.charAt(at - 1)) ? 160 : 0), positions: positions }
+    }
+    const wordStarts = []
+    for (let i = 0; i < n; i++) {
+      if (i === 0 || isBoundaryChar(t.charAt(i - 1))) {
+        if (!isBoundaryChar(t.charAt(i)))
+          wordStarts.push(i)
+      }
+    }
+    let initials = ""
+    for (let i = 0; i < wordStarts.length; i++)
+      initials += t.charAt(wordStarts[i])
+    const ia = initials.length > 0 ? initials.indexOf(q) : -1
+    if (ia >= 0)
+      return { score: 600 + m * 8 + (ia === 0 ? 120 : 60), positions: wordStarts.slice(ia, ia + m) }
+    let qi = 0
+    let prev = -2
+    let start = -1
+    let s = 0
+    const positions = []
+    for (let i = 0; i < n && qi < m; i++) {
+      if (t.charCodeAt(i) !== q.charCodeAt(qi))
+        continue
+      if (start < 0)
+        start = i
+      s += 6
+      if (i === prev + 1)
+        s += 8
+      if (i === 0 || isBoundaryChar(t.charAt(i - 1)))
+        s += 18
+      positions.push(i)
+      prev = i
+      qi++
+    }
+    if (qi < m)
+      return null
+    const span = positions[positions.length - 1] - start + 1
+    s -= (span - m) * 2
+    s -= (n - span) * 0.5
+    if (s < 60)
+      return null
+    return { score: s, positions: positions }
+  }
+
+  function scoreEntry(e, tokens) {
+    const name = (e.name ?? e.id ?? "").toLowerCase()
+    const gen = (e.genericName ?? "").toLowerCase()
+    const com = (e.comment ?? "").toLowerCase()
+    const ids = ((e.id ?? "") + " " + (e.execString ?? "")).toLowerCase()
+    const kw = Array.isArray(e.keywords) ? e.keywords : []
+    let total = 0
+    const positions = []
+    let nameHits = 0
+    for (let i = 0; i < tokens.length; i++) {
+      const tk = tokens[i]
+      const rn = matchToken(tk, name)
+      let best = rn ? rn.score : -1
+      for (let k = 0; k < kw.length; k++) {
+        const rk = matchToken(tk, String(kw[k]).toLowerCase())
+        if (rk && rk.score * 0.7 > best) {
+          best = rk.score * 0.7
+        }
+      }
+      const rg = gen.length > 0 ? matchToken(tk, gen) : null
+      if (rg && rg.score * 0.65 > best) {
+        best = rg.score * 0.65
+      }
+      const ri = ids.length > 0 ? matchToken(tk, ids) : null
+      if (ri && ri.score * 0.45 > best) {
+        best = ri.score * 0.45
+      }
+      const rc = com.length > 0 ? matchToken(tk, com) : null
+      if (rc && rc.score * 0.3 > best) {
+        best = rc.score * 0.3
+      }
+      if (best < 0)
+        return { score: -1, positions: [] }
+      total += best
+      if (rn) {
+        for (let p = 0; p < rn.positions.length; p++)
+          positions.push(rn.positions[p])
+      }
+      if (rn && best === rn.score)
+        nameHits++
+    }
+    if (nameHits === tokens.length && tokens.length > 1)
+      total += 150
+    return { score: total, positions: positions }
+  }
+
+  function matchPositionsFor(tokens, rawName) {
+    const nameLower = rawName.toLowerCase()
+    const positions = []
+    for (let i = 0; i < tokens.length; i++) {
+      const r = matchToken(tokens[i], nameLower)
+      if (r) {
+        for (let p = 0; p < r.positions.length; p++) {
+          if (r.positions[p] < rawName.length)
+            positions.push(r.positions[p])
+        }
+      }
+    }
+    return positions
+  }
+
+  function hl(entry, selected) {
+    const rawName = entry ? (entry.name || entry.id || "") : ""
     const name = root.fit(rawName)
-    const q = root.query.toLowerCase()
-    if (q === "")
+    const tokens = root.searchTokens(root.query.toLowerCase())
+    if (tokens.length === 0)
       return esc(name)
-    const i = name.toLowerCase().indexOf(q)
-    if (i < 0)
+    const positions = root.matchPositionsFor(tokens, rawName)
+    if (positions.length === 0)
       return esc(name)
+    positions.sort((a, b) => a - b)
+    const ranges = []
+    for (let i = 0; i < positions.length; i++) {
+      const last = ranges.length - 1
+      if (last >= 0 && ranges[last][1] === positions[i] - 1)
+        ranges[last][1] = positions[i]
+      else
+        ranges.push([positions[i], positions[i]])
+    }
     const c = selected ? Theme.bg : root.matchColor
-    return esc(name.slice(0, i)) + "<font color=\"" + c + "\">" + esc(name.slice(i, i + q.length)) + "</font>" + esc(name.slice(i + q.length))
+    let out = ""
+    let last = 0
+    for (let i = 0; i < ranges.length; i++) {
+      out += esc(name.slice(last, ranges[i][0])) + "<font color=\"" + c + "\">" + esc(name.slice(ranges[i][0], ranges[i][1] + 1)) + "</font>"
+      last = ranges[i][1] + 1
+    }
+    return out + esc(name.slice(last))
   }
 
   IpcHandler {
@@ -350,15 +493,20 @@ Scope {
 
   readonly property var results: {
     const q = root.filterQuery.toLowerCase()
-    if (q === "")
+    const tokens = root.searchTokens(q)
+    if (tokens.length === 0)
       return root.sortedApps
     const apps = root.sortedApps
-    const out = []
-    for (let i = 0; i < apps.length && out.length < 200; i++) {
-      const nm = apps[i].name || ""
-      if (nm.toLowerCase().includes(q))
-        out.push(apps[i])
+    const scored = []
+    for (let i = 0; i < apps.length; i++) {
+      const r = root.scoreEntry(apps[i], tokens)
+      if (r.score >= 0)
+        scored.push({ entry: apps[i], score: r.score, order: i })
     }
+    scored.sort((a, b) => b.score - a.score || a.order - b.order)
+    const out = []
+    for (let j = 0; j < scored.length && j < 200; j++)
+      out.push(scored[j].entry)
     return out
   }
 
@@ -603,7 +751,7 @@ Scope {
               }
               Text {
                 textFormat: Text.RichText
-                text: root.hl(modelData.name, isKeyboardSelected)
+                text: root.hl(modelData, isKeyboardSelected)
                 color: isKeyboardSelected ? Theme.bg : Theme.fg
                 font.family: root.fontFamily
                 font.pointSize: 12
