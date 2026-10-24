@@ -51,6 +51,7 @@ const CODEPOINTS = {
   "wifi-off": 0xE648,
   "wifi-lock": 0xE899,
   "network-wired": 0xE8BE,
+  "trash": 0xE872,
   "brand-speedtest": 0xE9E4,
   "bat-0": 0xEBDC,
   "bat-0-chg": 0xE1A3,

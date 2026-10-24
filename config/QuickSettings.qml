@@ -243,8 +243,13 @@ ColumnLayout {
     implicitHeight: netRow.implicitHeight
     MouseArea {
       anchors.fill: parent
-      enabled: Network.wifiEnabled
-      onClicked: Network.expanded = !Network.expanded
+      enabled: Network.mode === "wifi"
+      onClicked: {
+        if (!Network.wifiEnabled)
+          Network.selectMode("wifi")
+        else
+          Network.expanded = !Network.expanded
+      }
     }
     RowLayout {
       id: netRow
@@ -257,13 +262,13 @@ ColumnLayout {
         Layout.preferredHeight: 20
         QIcon {
           anchors.centerIn: parent
-          name: Network.online ? Network.icon : "wifi-off"
+          name: Network.online ? Network.icon : (Network.mode === "eth" ? "network-wired" : "wifi-off")
           size: 20
           color: Network.online ? Theme.fg : Theme.muted2
         }
       }
       Text {
-        text: Network.kind === "wifi" ? Network.ssid : (Network.kind === "eth" ? "Ethernet" : (Network.wifiEnabled ? "Wi-Fi on" : "Wi-Fi off"))
+        text: Network.kind === "wifi" ? Network.ssid : (Network.mode === "eth" ? "Ethernet" : (Network.wifiEnabled ? "Wi-Fi on" : "Wi-Fi off"))
         color: Network.online ? Theme.fg : Theme.muted2
         font.pixelSize: 12
         elide: Text.ElideRight
@@ -273,16 +278,52 @@ ColumnLayout {
       Item {
         Layout.fillWidth: true
       }
-      CToggle {
-        checked: Network.wifiEnabled
-        onToggled: c => Network.toggleWifi()
+      Row {
+        spacing: 2
+        Rectangle {
+          visible: Network.hasEthernet
+          implicitWidth: 22
+          implicitHeight: 18
+          color: Network.mode === "eth" ? Theme.fg : "transparent"
+          border.color: Theme.outline
+          border.width: 1
+          QIcon {
+            anchors.centerIn: parent
+            name: "network-wired"
+            size: 12
+            color: Network.mode === "eth" ? Theme.bg : Theme.muted2
+          }
+          MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: Network.selectMode("eth")
+          }
+        }
+        Rectangle {
+          implicitWidth: 22
+          implicitHeight: 18
+          color: Network.mode === "wifi" ? Theme.fg : "transparent"
+          border.color: Theme.outline
+          border.width: 1
+          QIcon {
+            anchors.centerIn: parent
+            name: Network.wifiEnabled ? Network.sigIcon(Network.sig) : "wifi-off"
+            size: 12
+            color: Network.mode === "wifi" ? Theme.bg : Theme.muted2
+          }
+          MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: Network.selectMode("wifi")
+          }
+        }
       }
       IconBtn {
         implicitWidth: 18
         implicitHeight: 18
         icon: Network.expanded ? "pan-up" : "pan-down"
         iconSize: 14
-        visible: Network.networks.length > 0
+        visible: Network.wifiEnabled && Network.networks.length > 0
         onClicked: Network.expanded = !Network.expanded
       }
     }
@@ -302,7 +343,7 @@ ColumnLayout {
     id: netExpCol
     Layout.fillWidth: true
     visible: opacity > 0.01
-    opacity: (Network.expanded && Network.wifiEnabled) ? 1 : 0
+    opacity: (Network.expanded && Network.mode === "wifi") ? 1 : 0
     Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut } }
     spacing: 6
 
@@ -443,42 +484,13 @@ ColumnLayout {
         spacing: 3
         Repeater {
           model: Network.networks
-          delegate: RowLayout {
+          delegate: Item {
             required property var modelData
             readonly property bool isActive: modelData.active || modelData.ssid === Network.activeSsid
             readonly property bool isConnecting: Network.connecting === modelData.ssid
             readonly property bool needsPw: modelData.secure && (Network.knownSsids.indexOf(modelData.ssid) < 0 || modelData.ssid === Network.failedSsid)
             Layout.fillWidth: true
-            spacing: 8
-            height: 20
-            Item {
-              Layout.preferredWidth: 13
-              Layout.preferredHeight: 13
-              QIcon {
-                anchors.centerIn: parent
-                name: isConnecting ? Network.sigIcon(connAnim.step * 25) : Network.sigIcon(modelData.sig)
-                size: 13
-                color: (isActive || isConnecting) ? Theme.fg : Theme.muted2
-              }
-            }
-            Text {
-              text: modelData.ssid
-              color: (isActive || isConnecting) ? Theme.fg : Theme.muted2
-              font.pixelSize: 11
-              elide: Text.ElideRight
-              Layout.fillWidth: true
-            }
-            Item {
-              Layout.preferredWidth: 12
-              Layout.preferredHeight: 12
-              visible: isActive || needsPw
-              QIcon {
-                anchors.centerIn: parent
-                name: isActive ? "check" : (needsPw ? "wifi-lock" : "")
-                size: 12
-                color: isActive ? Theme.fg : Theme.muted2
-              }
-            }
+            implicitHeight: 20
             MouseArea {
               anchors.fill: parent
               cursorShape: Qt.PointingHandCursor
@@ -491,6 +503,46 @@ ColumnLayout {
                 } else {
                   Network.connectTo(modelData.ssid, "")
                 }
+              }
+            }
+            RowLayout {
+              anchors.fill: parent
+              spacing: 8
+              Item {
+                Layout.preferredWidth: 13
+                Layout.preferredHeight: 13
+                QIcon {
+                  anchors.centerIn: parent
+                  name: isConnecting ? Network.sigIcon(connAnim.step * 25) : Network.sigIcon(modelData.sig)
+                  size: 13
+                  color: (isActive || isConnecting) ? Theme.fg : Theme.muted2
+                }
+              }
+              Text {
+                text: modelData.ssid
+                color: (isActive || isConnecting) ? Theme.fg : Theme.muted2
+                font.pixelSize: 11
+                elide: Text.ElideRight
+                Layout.fillWidth: true
+              }
+              Item {
+                Layout.preferredWidth: 12
+                Layout.preferredHeight: 12
+                visible: isActive || needsPw
+                QIcon {
+                  anchors.centerIn: parent
+                  name: isActive ? "check" : (needsPw ? "wifi-lock" : "")
+                  size: 12
+                  color: isActive ? Theme.fg : Theme.muted2
+                }
+              }
+              IconBtn {
+                implicitWidth: 16
+                implicitHeight: 16
+                icon: "trash"
+                iconSize: 12
+                visible: Network.knownSsids.indexOf(modelData.ssid) >= 0
+                onClicked: Network.forget(modelData.ssid)
               }
             }
           }

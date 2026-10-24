@@ -22,6 +22,11 @@ Scope {
   property string activeSsid: ""
   property var knownSsids: []
   property string failedSsid: ""
+  property var ethIfaces: []
+  property string modeIntent: ""
+
+  readonly property bool hasEthernet: ethIfaces.length > 0
+  readonly property string mode: modeIntent !== "" ? modeIntent : ((kind === "eth" || (!wifiEnabled && hasEthernet)) ? "eth" : "wifi")
 
   readonly property bool online: kind === "eth" || kind === "wifi"
   readonly property string icon: {
@@ -78,6 +83,41 @@ Scope {
     }
   }
 
+  function selectMode(target) {
+    if (modeProc.running || (target !== "eth" && target !== "wifi"))
+      return
+    if (target === "wifi" && root.mode === "wifi" && root.wifiEnabled)
+      return
+    if (target === "eth" && root.mode === "eth" && root.kind === "eth")
+      return
+    root.modeIntent = target
+    modeIntentTimer.restart()
+    if (target === "eth") {
+      console.log("[net] selecting ethernet")
+      root.wifiEnabled = false
+      root.expanded = false
+      modeProc.command = ["sh", "-c", "nmcli -t -f DEVICE,TYPE device status 2>/dev/null | awk -F: '$2==\"ethernet\"{print $1}' | while read -r d; do nmcli device connect \"$d\" >/dev/null 2>&1; done; nmcli radio wifi off"]
+    } else {
+      console.log("[net] selecting wifi")
+      root.wifiEnabled = true
+      root.expanded = true
+      modeProc.command = ["sh", "-c", "nmcli radio wifi on; nmcli -t -f DEVICE,TYPE device status 2>/dev/null | awk -F: '$2==\"ethernet\"{print $1}' | while read -r d; do nmcli device disconnect \"$d\" >/dev/null 2>&1; done"]
+      scanTimer.restart()
+    }
+    modeProc.running = true
+  }
+
+  Process {
+    id: modeProc
+    onExited: ok => console.log("[net] mode switch exit code:", ok)
+    stderr: StdioCollector {
+      onStreamFinished: {
+        if (this.text.trim() !== "")
+          console.log("[net] mode switch stderr:", this.text.trim())
+      }
+    }
+  }
+
   function scan() {
     if (!root.wifiEnabled)
       return
@@ -103,6 +143,30 @@ Scope {
         }
         root.knownSsids = out
       }
+    }
+  }
+
+  function forget(ssid) {
+    if (forgetProc.running || root.knownSsids.indexOf(ssid) < 0)
+      return
+    forgetProc.ssid = ssid
+    forgetProc.command = ["nmcli", "connection", "delete", ssid]
+    root.lastError = ""
+    forgetProc.running = true
+  }
+
+  Process {
+    id: forgetProc
+    property string ssid: ""
+    onExited: code => {
+      if (code === 0) {
+        console.log("[net] forgot", forgetProc.ssid)
+        root.knownSsids = root.knownSsids.filter(s => s !== forgetProc.ssid)
+      } else {
+        root.lastError = "failed to forget " + forgetProc.ssid
+        errTimer.restart()
+      }
+      scanTimer.restart()
     }
   }
 
@@ -139,6 +203,12 @@ Scope {
     id: scanTimer
     interval: 800
     onTriggered: root.scan()
+  }
+
+  Timer {
+    id: modeIntentTimer
+    interval: 5000
+    onTriggered: root.modeIntent = ""
   }
 
   Process {
@@ -197,7 +267,7 @@ Scope {
   Process {
     id: watcher
     running: !IdleManager.gaming
-    command: ["stdbuf", "-oL", "sh", "-c", "L=\"\"; PR=-1; PT=-1; while :; do R=$(nmcli radio wifi 2>/dev/null); K=off; S=0; N=\"\"; IF=\"\"; if nmcli -t -f TYPE,STATE device status 2>/dev/null | grep -q '^ethernet:connected'; then K=eth; IF=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | awk -F: '$2==\"ethernet\"&&$3==\"connected\"{print $1; exit}'); else L2=$(nmcli -t -f in-use,signal,ssid dev wifi 2>/dev/null | grep '^\\*' | head -n1); if [ -n \"$L2\" ]; then K=wifi; S=$(printf '%s' \"$L2\" | cut -d: -f2); N=$(printf '%s' \"$L2\" | cut -d: -f3-); IF=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | awk -F: '$2==\"wifi\"&&$3==\"connected\"{print $1; exit}'); fi; fi; AC=$(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | awk -F: '$NF==\"wifi\"{sub(/:wifi$/,\"\");print;exit}'); RX=$(cat /sys/class/net/$IF/statistics/rx_bytes 2>/dev/null || echo 0); TX=$(cat /sys/class/net/$IF/statistics/tx_bytes 2>/dev/null || echo 0); DN=0; UP=0; if [ -n \"$IF\" ] && [ \"$PR\" -ge 0 ]; then DN=$(((RX-PR)/2)); UP=$(((TX-PT)/2)); fi; [ $DN -lt 0 ] && DN=0; [ $UP -lt 0 ] && UP=0; PR=$RX; PT=$TX; V=\"kind:$K|sig:$S|ssid:$N|radio:$R|if:$IF|dn:$DN|up:$UP|ac:$AC\"; if [ \"$V\" != \"$L\" ]; then printf '%s\\n' \"$V\"; L=\"$V\"; fi; sleep 2; done"]
+    command: ["stdbuf", "-oL", "sh", "-c", "L=\"\"; PR=-1; PT=-1; while :; do R=$(nmcli radio wifi 2>/dev/null); K=off; S=0; N=\"\"; IF=\"\"; if nmcli -t -f TYPE,STATE device status 2>/dev/null | grep -q '^ethernet:connected'; then K=eth; IF=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | awk -F: '$2==\"ethernet\"&&$3==\"connected\"{print $1; exit}'); else L2=$(nmcli -t -f in-use,signal,ssid dev wifi 2>/dev/null | grep '^\\*' | head -n1); if [ -n \"$L2\" ]; then K=wifi; S=$(printf '%s' \"$L2\" | cut -d: -f2); N=$(printf '%s' \"$L2\" | cut -d: -f3-); IF=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | awk -F: '$2==\"wifi\"&&$3==\"connected\"{print $1; exit}'); fi; fi; AC=$(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | awk -F: '$NF==\"wifi\"{sub(/:wifi$/,\"\");print;exit}'); ED=$(nmcli -t -f DEVICE,TYPE device status 2>/dev/null | awk -F: '$2==\"ethernet\"{printf \"%s,\",$1}'); RX=$(cat /sys/class/net/$IF/statistics/rx_bytes 2>/dev/null || echo 0); TX=$(cat /sys/class/net/$IF/statistics/tx_bytes 2>/dev/null || echo 0); DN=0; UP=0; if [ -n \"$IF\" ] && [ \"$PR\" -ge 0 ]; then DN=$(((RX-PR)/2)); UP=$(((TX-PT)/2)); fi; [ $DN -lt 0 ] && DN=0; [ $UP -lt 0 ] && UP=0; PR=$RX; PT=$TX; V=\"kind:$K|sig:$S|ssid:$N|radio:$R|if:$IF|dn:$DN|up:$UP|ac:$AC|eth:$ED\"; if [ \"$V\" != \"$L\" ]; then printf '%s\\n' \"$V\"; L=\"$V\"; fi; sleep 2; done"]
     stdout: SplitParser {
       onRead: data => {
         let k = "off", s = 0, n = "", r = "", ifn = "", dn = 0, up = 0
@@ -215,6 +285,7 @@ Scope {
           else if (key === "dn") dn = parseInt(val) || 0
           else if (key === "up") up = parseInt(val) || 0
           else if (key === "ac") root.activeSsid = val
+          else if (key === "eth") root.ethIfaces = val.split(",").filter(x => x !== "")
         })
         root.kind = k
         root.sig = s
