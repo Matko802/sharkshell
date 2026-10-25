@@ -110,17 +110,6 @@ PanelWindow {
     if (Object.keys(root._iconCache).length < 200) root._iconCache[key] = s
     return s
   }
-  readonly property string cavaConf: "[general]\nbars = 48\nframerate = 15\n[input]\nmethod = pulse\nsource = auto\n[output]\nmethod = raw\nraw_target = /dev/stdout\ndata_format = ascii\nascii_max_range = 100\nbar_delimiter = 59\nframe_delimiter = 10\n"
-  FileView {
-    id: cavaConfFile
-    path: Quickshell.env("HOME") + "/.cache/sharkshell/cava.conf"
-  }
-  Process {
-    id: cavaConfInit
-    running: true
-    command: ["bash", "-c", "mkdir -p \"$HOME/.cache/sharkshell\""]
-    onExited: cavaConfFile.setText(root.cavaConf)
-  }
   FileView { id: statFile; path: "/proc/stat" }
   FileView { id: memFile; path: "/proc/meminfo" }
   Process {
@@ -577,10 +566,9 @@ PanelWindow {
                     MouseArea {
                       anchors.fill: parent; cursorShape: Qt.PointingHandCursor; z: -1
                       onClicked: {
-                        const live = NotificationServer.getLive(model.notifId)
-                        const acts = live && live.actions ? live.actions : []
-                        for (let i = 0; i < acts.length; i++) { const a = acts[i]; if (a && (a.identifier === "default" || (a.text || "").toLowerCase() === "view" || (a.text || "").toLowerCase() === "open")) { try { a.invoke() } catch(e) {} break } }
-                        AppFocus.focus(model); ClockState.close(); NotificationServer.dismissById(model.notifId)
+                        NotificationServer.activate(model.notifId)
+                        ClockState.close()
+                        NotificationServer.dismissById(model.notifId)
                       }
                     }
                   }
@@ -774,7 +762,7 @@ PanelWindow {
                           Process {
                             id: visProc
                             running: root.shown && root.activeTab === 2
-                            command: ["sh", "-c", "V=\"$HOME/.cache/sharkshell/cava.conf\"; L=/mnt/ssd/My-Files/Projects/sharkvis/target/release/sharkvis; M=" + VisualizerState.mode + "; B=" + VisualizerState.bars + "; if [ -x \"$L\" ]; then exec \"$L\" --raw --raw-mode \"$M\" --bars \"$B\" --fps 15; elif command -v sharkvis >/dev/null 2>&1; then exec sharkvis --raw --raw-mode \"$M\" --bars \"$B\" --fps 15; elif command -v cava >/dev/null 2>&1; then exec cava -p \"$V\"; else exit 0; fi"]
+                            command: ["sh", "-c", VisualizerState.command(VisualizerState.mode, VisualizerState.bars)]
                             stdout: SplitParser {
                               onRead: data => {
                                 const parts = String(data).split(";")
@@ -869,6 +857,7 @@ PanelWindow {
                             target: VisualizerState
                             function onModeChanged() { visProc.running = false; visProc.running = true }
                             function onBarsChanged() { visProc.running = false; visProc.running = true }
+                            function onBackendChanged() { visProc.running = false; visProc.running = true }
                           }
                         }
 

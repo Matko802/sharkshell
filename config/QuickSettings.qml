@@ -33,7 +33,7 @@ ColumnLayout {
   }
 
   Timer {
-    running: Network.wifiEnabled && root.active
+    running: Network.wifiToggleChecked && root.active
     interval: 15000
     repeat: true
     triggeredOnStart: true
@@ -238,96 +238,98 @@ ColumnLayout {
     }
   }
 
-  Item {
+  ColumnLayout {
     Layout.fillWidth: true
-    implicitHeight: netRow.implicitHeight
-    MouseArea {
-      anchors.fill: parent
-      enabled: Network.mode === "wifi"
-      onClicked: {
-        if (!Network.wifiEnabled)
-          Network.selectMode("wifi")
-        else
-          Network.expanded = !Network.expanded
+    spacing: 6
+
+    Repeater {
+      model: Network.ethDevices
+      delegate: RowLayout {
+        required property var modelData
+        Layout.fillWidth: true
+        spacing: 10
+        Item {
+          Layout.preferredWidth: 20
+          Layout.minimumWidth: 20
+          Layout.maximumWidth: 20
+          Layout.preferredHeight: 20
+          QIcon {
+            anchors.centerIn: parent
+            name: "network-wired"
+            size: 20
+            color: Network.ethChecked(modelData.name) ? Theme.fg : Theme.muted2
+          }
+        }
+        Text {
+          text: modelData.name
+          color: Network.ethChecked(modelData.name) ? Theme.fg : Theme.muted2
+          font.pixelSize: 12
+          elide: Text.ElideRight
+          Layout.maximumWidth: 220
+          Layout.fillWidth: true
+        }
+        Item {
+          Layout.fillWidth: true
+        }
+        CToggle {
+          checked: Network.ethChecked(modelData.name)
+          enabled: modelData.state !== "unavailable" && modelData.state !== "unmanaged"
+          onToggled: c => Network.setEthernet(modelData.name, c)
+        }
       }
     }
-    RowLayout {
-      id: netRow
-      anchors.fill: parent
-      spacing: 10
-      Item {
-        Layout.preferredWidth: 20
-        Layout.minimumWidth: 20
-        Layout.maximumWidth: 20
-        Layout.preferredHeight: 20
-        QIcon {
-          anchors.centerIn: parent
-          name: Network.online ? Network.icon : (Network.mode === "eth" ? "network-wired" : "wifi-off")
-          size: 20
-          color: Network.online ? Theme.fg : Theme.muted2
+
+    Item {
+      Layout.fillWidth: true
+      implicitHeight: wifiRow.implicitHeight
+      MouseArea {
+        anchors.fill: parent
+        onClicked: {
+          if (!Network.wifiToggleChecked)
+            Network.toggleWifi()
+          else
+            Network.expanded = !Network.expanded
         }
       }
-      Text {
-        text: Network.kind === "wifi" ? Network.ssid : (Network.mode === "eth" ? "Ethernet" : (Network.wifiEnabled ? "Wi-Fi on" : "Wi-Fi off"))
-        color: Network.online ? Theme.fg : Theme.muted2
-        font.pixelSize: 12
-        elide: Text.ElideRight
-        Layout.maximumWidth: 220
-        Layout.fillWidth: true
-      }
-      Item {
-        Layout.fillWidth: true
-      }
-      Rectangle {
-        id: netModeSlider
-        visible: Network.hasEthernet
-        implicitWidth: 46
-        implicitHeight: 18
-        color: "transparent"
-        border.color: Theme.outline
-        border.width: 1
-        Rectangle {
-          id: netModeKnob
-          width: 22
-          height: parent.height - 4
-          y: 2
-          x: Network.mode === "eth" ? 2 : parent.width - width - 2
-          color: Theme.fg
-          Behavior on x {
-            NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut }
+      RowLayout {
+        id: wifiRow
+        anchors.fill: parent
+        spacing: 10
+        Item {
+          Layout.preferredWidth: 20
+          Layout.minimumWidth: 20
+          Layout.maximumWidth: 20
+          Layout.preferredHeight: 20
+          QIcon {
+            anchors.centerIn: parent
+            name: Network.wifiToggleChecked ? Network.sigIcon(Network.sig) : "wifi-off"
+            size: 20
+            color: Network.wifiToggleChecked ? Theme.fg : Theme.muted2
           }
         }
-        QIcon {
-          anchors.horizontalCenter: parent.left
-          anchors.horizontalCenterOffset: 13
-          anchors.verticalCenter: parent.verticalCenter
-          name: "network-wired"
-          size: 12
-          color: Network.mode === "eth" ? Theme.bg : Theme.muted2
+        Text {
+          text: Network.kind === "wifi" ? Network.ssid : (Network.wifiToggleChecked ? "Wi-Fi on" : "Wi-Fi off")
+          color: Network.wifiToggleChecked ? Theme.fg : Theme.muted2
+          font.pixelSize: 12
+          elide: Text.ElideRight
+          Layout.maximumWidth: 220
+          Layout.fillWidth: true
         }
-        QIcon {
-          anchors.horizontalCenter: parent.right
-          anchors.horizontalCenterOffset: -13
-          anchors.verticalCenter: parent.verticalCenter
-          name: Network.wifiEnabled ? Network.sigIcon(Network.sig) : "wifi-off"
-          size: 12
-          color: Network.mode === "wifi" ? Theme.bg : Theme.muted2
+        Item {
+          Layout.fillWidth: true
         }
-        MouseArea {
-          anchors.fill: parent
-          cursorShape: Qt.PointingHandCursor
-          onClicked: function(mouse) {
-            Network.selectMode(mouse.x < parent.width / 2 ? "eth" : "wifi")
-          }
+        CToggle {
+          checked: Network.wifiToggleChecked
+          onToggled: c => Network.toggleWifi()
         }
-      }
-      IconBtn {
-        implicitWidth: 18
-        implicitHeight: 18
-        icon: Network.expanded ? "pan-up" : "pan-down"
-        iconSize: 14
-        visible: Network.wifiEnabled && Network.networks.length > 0
-        onClicked: Network.expanded = !Network.expanded
+        IconBtn {
+          implicitWidth: 18
+          implicitHeight: 18
+          icon: Network.expanded ? "pan-up" : "pan-down"
+          iconSize: 14
+          visible: Network.wifiToggleChecked
+          onClicked: Network.expanded = !Network.expanded
+        }
       }
     }
   }
@@ -346,7 +348,7 @@ ColumnLayout {
     id: netExpCol
     Layout.fillWidth: true
     visible: opacity > 0.01
-    opacity: (Network.expanded && Network.mode === "wifi") ? 1 : 0
+    opacity: (Network.expanded && Network.wifiToggleChecked) ? 1 : 0
     Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut } }
     spacing: 6
 

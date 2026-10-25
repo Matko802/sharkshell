@@ -22,11 +22,13 @@ Scope {
   property string activeSsid: ""
   property var knownSsids: []
   property string failedSsid: ""
-  property var ethIfaces: []
-  property string modeIntent: ""
+  property var ethDevices: []
+  property var ethPending: ({})
+  property var ethQueue: []
+  property string wifiPending: ""
 
-  readonly property bool hasEthernet: ethIfaces.length > 0
-  readonly property string mode: modeIntent !== "" ? modeIntent : ((kind === "eth" || (!wifiEnabled && hasEthernet)) ? "eth" : "wifi")
+  readonly property bool hasEthernet: ethDevices.length > 0
+  readonly property bool wifiToggleChecked: wifiPending !== "" ? wifiPending === "on" : wifiEnabled
 
   readonly property bool online: kind === "eth" || kind === "wifi"
   readonly property string icon: {
@@ -64,17 +66,27 @@ Scope {
   }
 
   function toggleWifi() {
-    const target = root.wifiEnabled ? "off" : "on"
+    const target = root.wifiToggleChecked ? "off" : "on"
     console.log("[net] toggling wifi radio:", target)
+    root.wifiPending = target
+    wifiPendingTimer.restart()
+    if (target === "off")
+      root.expanded = false
     toggleProc.command = ["/run/current-system/sw/bin/nmcli", "radio", "wifi", target]
     toggleProc.running = true
-    if (!root.wifiEnabled)
+    if (target === "on")
       scanTimer.restart()
   }
 
   Process {
     id: toggleProc
-    onExited: ok => console.log("[net] toggle exit code:", ok)
+    onExited: code => {
+      console.log("[net] toggle exit code:", code)
+      if (code !== 0) {
+        root.wifiPending = ""
+        wifiPendingTimer.stop()
+      }
+    }
     stderr: StdioCollector {
       onStreamFinished: {
         if (this.text.trim() !== "")
@@ -83,43 +95,98 @@ Scope {
     }
   }
 
-  function selectMode(target) {
-    if (modeProc.running || (target !== "eth" && target !== "wifi"))
-      return
-    if (target === "wifi" && root.mode === "wifi" && root.wifiEnabled)
-      return
-    if (target === "eth" && root.mode === "eth" && root.kind === "eth")
-      return
-    root.modeIntent = target
-    modeIntentTimer.restart()
-    if (target === "eth") {
-      console.log("[net] selecting ethernet")
-      root.wifiEnabled = false
-      root.expanded = false
-      modeProc.command = ["sh", "-c", "nmcli -t -f DEVICE,TYPE device status 2>/dev/null | awk -F: '$2==\"ethernet\"{print $1}' | while read -r d; do nmcli device connect \"$d\" >/dev/null 2>&1; done; nmcli radio wifi off"]
-    } else {
-      console.log("[net] selecting wifi")
-      root.wifiEnabled = true
-      root.expanded = true
-      modeProc.command = ["sh", "-c", "nmcli radio wifi on; nmcli -t -f DEVICE,TYPE device status 2>/dev/null | awk -F: '$2==\"ethernet\"{print $1}' | while read -r d; do nmcli device disconnect \"$d\" >/dev/null 2>&1; done"]
-      scanTimer.restart()
+  Timer {
+    id: wifiPendingTimer
+    interval: 5000
+    onTriggered: root.wifiPending = ""
+  }
+
+  function ethChecked(device) {
+    if (root.ethPending[device] !== undefined)
+      return root.ethPending[device]
+    for (let i = 0; i < root.ethDevices.length; i++) {
+      if (root.ethDevices[i].name === device)
+        return root.ethDevices[i].state === "connected"
     }
-    modeProc.running = true
+    return false
+  }
+
+  function clearEthPending(device) {
+    if (root.ethPending[device] === undefined)
+      return
+    const pending = Object.assign({}, root.ethPending)
+    delete pending[device]
+    root.ethPending = pending
+  }
+
+  function reconcileEthPending() {
+    const pending = Object.assign({}, root.ethPending)
+    let changed = false
+    for (const device in pending) {
+      let state = ""
+      for (let i = 0; i < root.ethDevices.length; i++) {
+        if (root.ethDevices[i].name === device) {
+          state = root.ethDevices[i].state
+          break
+        }
+      }
+      if ((pending[device] && state === "connected") || (!pending[device] && state === "disconnected")) {
+        delete pending[device]
+        changed = true
+      }
+    }
+    if (changed)
+      root.ethPending = pending
+  }
+
+  function setEthernet(device, on) {
+    const pending = Object.assign({}, root.ethPending)
+    pending[device] = on
+    root.ethPending = pending
+    ethPendingTimer.restart()
+    if (ethProc.running) {
+      root.ethQueue = [...root.ethQueue, { "device": device, "on": on }]
+      return
+    }
+    root.runEth(device, on)
+  }
+
+  function runEth(device, on) {
+    ethProc.device = device
+    ethProc.command = ["nmcli", "device", on ? "connect" : "disconnect", device]
+    ethProc.running = true
   }
 
   Process {
-    id: modeProc
-    onExited: ok => console.log("[net] mode switch exit code:", ok)
+    id: ethProc
+    property string device: ""
+    onExited: code => {
+      if (code !== 0) {
+        console.log("[net] ethernet toggle exit code:", code)
+        root.clearEthPending(ethProc.device)
+      }
+      if (root.ethQueue.length > 0) {
+        const next = root.ethQueue[0]
+        root.ethQueue = root.ethQueue.slice(1)
+        root.runEth(next.device, next.on)
+      }
+    }
     stderr: StdioCollector {
       onStreamFinished: {
         if (this.text.trim() !== "")
-          console.log("[net] mode switch stderr:", this.text.trim())
+          console.log("[net] ethernet toggle stderr:", this.text.trim())
       }
     }
   }
 
+  Timer {
+    id: ethPendingTimer
+    interval: 5000
+    onTriggered: root.ethPending = ({})
+  }
+
   function scan() {
-    if (!root.wifiEnabled)
+    if (!root.wifiToggleChecked)
       return
     root.scanning = true
     if (scanProc.running)
@@ -205,12 +272,6 @@ Scope {
     onTriggered: root.scan()
   }
 
-  Timer {
-    id: modeIntentTimer
-    interval: 5000
-    onTriggered: root.modeIntent = ""
-  }
-
   Process {
     id: scanProc
     command: ["nmcli", "-t", "-e", "no", "-f", "in-use,signal,security,ssid", "device", "wifi", "list"]
@@ -264,10 +325,21 @@ Scope {
       root.scan()
   }
 
+  onEthDevicesChanged: root.reconcileEthPending()
+
+  function reconcileWifiPending() {
+    if (root.wifiPending === "")
+      return
+    if ((root.wifiPending === "on") === root.wifiEnabled) {
+      root.wifiPending = ""
+      wifiPendingTimer.stop()
+    }
+  }
+
   Process {
     id: watcher
     running: !IdleManager.gaming
-    command: ["stdbuf", "-oL", "sh", "-c", "L=\"\"; PR=-1; PT=-1; while :; do R=$(nmcli radio wifi 2>/dev/null); K=off; S=0; N=\"\"; IF=\"\"; if nmcli -t -f TYPE,STATE device status 2>/dev/null | grep -q '^ethernet:connected'; then K=eth; IF=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | awk -F: '$2==\"ethernet\"&&$3==\"connected\"{print $1; exit}'); else L2=$(nmcli -t -f in-use,signal,ssid dev wifi 2>/dev/null | grep '^\\*' | head -n1); if [ -n \"$L2\" ]; then K=wifi; S=$(printf '%s' \"$L2\" | cut -d: -f2); N=$(printf '%s' \"$L2\" | cut -d: -f3-); IF=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | awk -F: '$2==\"wifi\"&&$3==\"connected\"{print $1; exit}'); fi; fi; AC=$(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | awk -F: '$NF==\"wifi\"{sub(/:wifi$/,\"\");print;exit}'); ED=$(nmcli -t -f DEVICE,TYPE device status 2>/dev/null | awk -F: '$2==\"ethernet\"{printf \"%s,\",$1}'); RX=$(cat /sys/class/net/$IF/statistics/rx_bytes 2>/dev/null || echo 0); TX=$(cat /sys/class/net/$IF/statistics/tx_bytes 2>/dev/null || echo 0); DN=0; UP=0; if [ -n \"$IF\" ] && [ \"$PR\" -ge 0 ]; then DN=$(((RX-PR)/2)); UP=$(((TX-PT)/2)); fi; [ $DN -lt 0 ] && DN=0; [ $UP -lt 0 ] && UP=0; PR=$RX; PT=$TX; V=\"kind:$K|sig:$S|ssid:$N|radio:$R|if:$IF|dn:$DN|up:$UP|ac:$AC|eth:$ED\"; if [ \"$V\" != \"$L\" ]; then printf '%s\\n' \"$V\"; L=\"$V\"; fi; sleep 2; done"]
+    command: ["stdbuf", "-oL", "sh", "-c", "L=\"\"; PR=-1; PT=-1; while :; do R=$(nmcli radio wifi 2>/dev/null); K=off; S=0; N=\"\"; IF=\"\"; if nmcli -t -f TYPE,STATE device status 2>/dev/null | grep -q '^ethernet:connected'; then K=eth; IF=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | awk -F: '$2==\"ethernet\"&&$3==\"connected\"{print $1; exit}'); else L2=$(nmcli -t -f in-use,signal,ssid dev wifi 2>/dev/null | grep '^\\*' | head -n1); if [ -n \"$L2\" ]; then K=wifi; S=$(printf '%s' \"$L2\" | cut -d: -f2); N=$(printf '%s' \"$L2\" | cut -d: -f3-); IF=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | awk -F: '$2==\"wifi\"&&$3==\"connected\"{print $1; exit}'); fi; fi; AC=$(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | awk -F: '$NF==\"wifi\"{sub(/:wifi$/,\"\");print;exit}'); ED=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | awk -F: '$2==\"ethernet\"{printf \"%s=%s,\",$1,$3}'); RX=$(cat /sys/class/net/$IF/statistics/rx_bytes 2>/dev/null || echo 0); TX=$(cat /sys/class/net/$IF/statistics/tx_bytes 2>/dev/null || echo 0); DN=0; UP=0; if [ -n \"$IF\" ] && [ \"$PR\" -ge 0 ]; then DN=$(((RX-PR)/2)); UP=$(((TX-PT)/2)); fi; [ $DN -lt 0 ] && DN=0; [ $UP -lt 0 ] && UP=0; PR=$RX; PT=$TX; V=\"kind:$K|sig:$S|ssid:$N|radio:$R|if:$IF|dn:$DN|up:$UP|ac:$AC|eth:$ED\"; if [ \"$V\" != \"$L\" ]; then printf '%s\\n' \"$V\"; L=\"$V\"; fi; sleep 2; done"]
     stdout: SplitParser {
       onRead: data => {
         let k = "off", s = 0, n = "", r = "", ifn = "", dn = 0, up = 0
@@ -285,12 +357,24 @@ Scope {
           else if (key === "dn") dn = parseInt(val) || 0
           else if (key === "up") up = parseInt(val) || 0
           else if (key === "ac") root.activeSsid = val
-          else if (key === "eth") root.ethIfaces = val.split(",").filter(x => x !== "")
+          else if (key === "eth") {
+            const devs = []
+            val.split(",").forEach(item => {
+              if (item === "")
+                return
+              const eq = item.indexOf("=")
+              if (eq < 0)
+                return
+              devs.push({ "name": item.slice(0, eq), "state": item.slice(eq + 1) })
+            })
+            root.ethDevices = devs
+          }
         })
         root.kind = k
         root.sig = s
         root.ssid = n
         root.wifiEnabled = r.trim() === "enabled"
+        root.reconcileWifiPending()
         root.iface = ifn
         root.downRate = dn
         root.upRate = up

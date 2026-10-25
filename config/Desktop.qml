@@ -17,6 +17,10 @@ PanelWindow {
   WlrLayershell.namespace: "quickshell-desktop"
   WlrLayershell.layer: WlrLayer.Bottom
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+  BackgroundEffect.blurRegion: Region {
+    Region { item: root.menuOpen ? menu : null }
+    Region { item: root.banding && root.bandMoved ? band : null }
+  }
 
   readonly property string desktopDir: Quickshell.env("HOME") + "/Plocha"
   readonly property int cellW: 128
@@ -31,6 +35,12 @@ PanelWindow {
 
   property var entries: []
   property var selectedPaths: []
+  property var iconPositions: ({})
+  property var layout: ({})
+  property bool positionsLoaded: false
+  property bool iconDragging: false
+  property var dragOrigins: ({})
+  property var dragPositions: ({})
   property string lastRows: ""
   property string pendingSelectPath: ""
   property bool iconsHidden: false
@@ -46,30 +56,30 @@ PanelWindow {
   property real bandEndY: 0
   property var bandBase: []
 
+  onEntriesChanged: root.rebuildLayout()
+  onIconPositionsChanged: root.rebuildLayout()
+  onWidthChanged: root.rebuildLayout()
+  onHeightChanged: root.rebuildLayout()
+
   readonly property var menuItems: {
     if (root.menuIndex >= 0) {
       return [
         { label: root.selectedPaths.length > 1 ? "Open Selected" : "Open", icon: "go-next", action: "open" },
         { label: "Open Containing Folder", icon: "folder-open", action: "folder" },
-        { label: "Copy Path", icon: "content-copy", action: "copy" },
-        { label: "Refresh", icon: "refresh", action: "refresh" }
+        { label: "Copy Path", icon: "content-copy", action: "copy" }
       ]
     }
-    const items = [
+    return [
       { label: "New Folder", icon: "plus", action: "newfolder" },
       { label: "Open Desktop Folder", icon: "folder-open", action: "folder" },
       { label: "Open Terminal Here", icon: "terminal", action: "terminal" },
       { label: "Change Wallpaper", icon: "wallpaper", action: "wallpaper" },
-      { label: "Refresh", icon: "refresh", action: "refresh" }
+      {
+        label: root.iconsHidden ? "Show Icons" : "Hide Icons",
+        icon: root.iconsHidden ? "eye" : "eye-off",
+        action: "toggleicons"
+      }
     ]
-    if (!root.iconsHidden && root.entries.length > 0)
-      items.push({ label: "Select All", icon: "select-all", action: "selectall" })
-    items.push({
-      label: root.iconsHidden ? "Show Desktop Icons" : "Hide Desktop Icons",
-      icon: root.iconsHidden ? "eye" : "eye-off",
-      action: "toggleicons"
-    })
-    return items
   }
 
   function withAlpha(color, alpha) {
@@ -98,11 +108,152 @@ PanelWindow {
     root.selectedPaths = []
   }
 
-  function selectAll() {
-    const list = []
-    for (let i = 0; i < root.entries.length; i++)
-      list.push(root.entries[i].path)
-    root.selectedPaths = list
+  function slotPosition(slot) {
+    return {
+      x: root.leftMargin + Math.floor(slot / root.rows) * (root.cellW + root.gapX),
+      y: root.topMargin + (slot % root.rows) * (root.cellH + root.gapY)
+    }
+  }
+
+  function rectOverlaps(a, b) {
+    return a.x < b.x + root.cellW && a.x + root.cellW > b.x && a.y < b.y + root.cellH && a.y + root.cellH > b.y
+  }
+
+  function rebuildLayout() {
+    const out = {}
+    const occupied = []
+    for (let i = 0; i < root.entries.length; i++) {
+      const path = root.entries[i].path
+      const saved = root.iconPositions[path]
+      if (!saved)
+        continue
+      const x = Math.max(0, Math.min(root.width - root.cellW, saved.x))
+      const y = Math.max(0, Math.min(root.height - root.cellH, saved.y))
+      out[path] = { x: x, y: y }
+      occupied.push({ x: x, y: y })
+    }
+    let slot = 0
+    for (let i = 0; i < root.entries.length; i++) {
+      const path = root.entries[i].path
+      if (out[path])
+        continue
+      let pos = root.slotPosition(slot)
+      while (occupied.some(function(rect) { return root.rectOverlaps(pos, rect) })) {
+        slot++
+        pos = root.slotPosition(slot)
+      }
+      out[path] = pos
+      occupied.push(pos)
+      slot++
+    }
+    root.layout = out
+  }
+
+  function persistLayout() {
+    if (!root.positionsLoaded)
+      return
+    const map = Object.assign({}, root.iconPositions)
+    let changed = false
+    for (let i = 0; i < root.entries.length; i++) {
+      const path = root.entries[i].path
+      if (!map[path] && root.layout[path]) {
+        map[path] = { x: root.layout[path].x, y: root.layout[path].y }
+        changed = true
+      }
+    }
+    if (changed) {
+      root.iconPositions = map
+      root.savePositions()
+    }
+  }
+
+  function loadPositions(raw) {
+    let parsed = null
+    try {
+      parsed = JSON.parse(raw)
+    } catch (e) {
+      return
+    }
+    if (!parsed || typeof parsed !== "object")
+      return
+    const clean = {}
+    for (const key in parsed) {
+      const v = parsed[key]
+      if (v && typeof v.x === "number" && typeof v.y === "number" && isFinite(v.x) && isFinite(v.y))
+        clean[key] = { x: v.x, y: v.y }
+    }
+    if (JSON.stringify(clean) === JSON.stringify(root.iconPositions))
+      return
+    root.iconPositions = clean
+  }
+
+  function savePositions() {
+    if (!root.positionsLoaded)
+      return
+    positionsFile.setText(JSON.stringify(root.iconPositions))
+  }
+
+  function positionFor(path) {
+    const dragged = root.dragPositions[path]
+    if (dragged)
+      return dragged
+    return root.layout[path] || { x: 0, y: 0 }
+  }
+
+  function beginIconDrag(path) {
+    const origins = {}
+    const list = root.isSelected(path) ? root.selectedPaths.slice() : [path]
+    if (!root.isSelected(path))
+      root.selectOnly(path)
+    for (let i = 0; i < list.length; i++) {
+      const pos = root.layout[list[i]]
+      if (pos)
+        origins[list[i]] = { x: pos.x, y: pos.y }
+    }
+    root.dragOrigins = origins
+    root.dragPositions = origins
+    root.iconDragging = true
+  }
+
+  function moveIconDrag(dx, dy) {
+    let minX = Infinity
+    let maxX = -Infinity
+    let minY = Infinity
+    let maxY = -Infinity
+    for (const path in root.dragOrigins) {
+      const pos = root.dragOrigins[path]
+      minX = Math.min(minX, pos.x)
+      maxX = Math.max(maxX, pos.x)
+      minY = Math.min(minY, pos.y)
+      maxY = Math.max(maxY, pos.y)
+    }
+    if (minX === Infinity)
+      return
+    dx = Math.max(-minX, Math.min(root.width - root.cellW - maxX, dx))
+    dy = Math.max(-minY, Math.min(root.height - root.cellH - maxY, dy))
+    const next = {}
+    for (const path in root.dragOrigins)
+      next[path] = { x: root.dragOrigins[path].x + dx, y: root.dragOrigins[path].y + dy }
+    root.dragPositions = next
+  }
+
+  function endIconDrag() {
+    if (!root.iconDragging)
+      return
+    const map = Object.assign({}, root.iconPositions)
+    for (const path in root.dragPositions)
+      map[path] = root.dragPositions[path]
+    root.iconPositions = map
+    root.savePositions()
+    root.dragPositions = ({})
+    root.dragOrigins = ({})
+    root.iconDragging = false
+  }
+
+  function cancelIconDrag() {
+    root.dragPositions = ({})
+    root.dragOrigins = ({})
+    root.iconDragging = false
   }
 
   function updateBandSelection() {
@@ -114,9 +265,10 @@ PanelWindow {
     const y2 = Math.max(root.bandStartY, root.bandEndY)
     const list = root.bandBase.slice()
     for (let i = 0; i < root.entries.length; i++) {
-      const cx = root.leftMargin + Math.floor(i / root.rows) * (root.cellW + root.gapX)
-      const cy = root.topMargin + (i % root.rows) * (root.cellH + root.gapY)
-      if (cx < x2 && cx + root.cellW > x1 && cy < y2 && cy + root.cellH > y1) {
+      const pos = root.layout[root.entries[i].path]
+      if (!pos)
+        continue
+      if (pos.x < x2 && pos.x + root.cellW > x1 && pos.y < y2 && pos.y + root.cellH > y1) {
         const path = root.entries[i].path
         if (list.indexOf(path) < 0)
           list.push(path)
@@ -132,7 +284,7 @@ PanelWindow {
   }
 
   function scan() {
-    if (scanProc.running)
+    if (root.iconDragging || scanProc.running)
       return
     scanProc.output = ""
     scanProc.running = true
@@ -183,6 +335,7 @@ PanelWindow {
     }
     if (root.menuOpen)
       root.menuOpen = false
+    root.persistLayout()
   }
 
   function iconFor(entry) {
@@ -286,10 +439,6 @@ PanelWindow {
   function runMenu(action) {
     const entry = root.entries[root.menuIndex]
     root.menuOpen = false
-    if (action === "refresh") {
-      root.scan()
-      return
-    }
     if (action === "folder") {
       Quickshell.execDetached(["xdg-open", root.desktopDir])
       return
@@ -304,10 +453,6 @@ PanelWindow {
     }
     if (action === "wallpaper") {
       Quickshell.execDetached(["quickshell", "ipc", "call", "wallpaper", "openDesktop"])
-      return
-    }
-    if (action === "selectall") {
-      root.selectAll()
       return
     }
     if (action === "toggleicons") {
@@ -395,6 +540,23 @@ PanelWindow {
     onFileChanged: reload()
   }
 
+  FileView {
+    id: positionsFile
+    path: Quickshell.env("HOME") + "/.cache/quickshell-desktop-positions.json"
+    watchChanges: true
+    printErrors: false
+    onLoaded: {
+      root.loadPositions(text())
+      root.positionsLoaded = true
+      root.persistLayout()
+    }
+    onLoadFailed: {
+      root.positionsLoaded = true
+      root.persistLayout()
+    }
+    onFileChanged: reload()
+  }
+
   Timer {
     interval: 5000
     repeat: true
@@ -455,15 +617,16 @@ PanelWindow {
 
       width: root.cellW
       height: root.cellH
-      x: root.leftMargin + Math.floor(index / root.rows) * (root.cellW + root.gapX)
-      y: root.topMargin + (index % root.rows) * (root.cellH + root.gapY)
+      x: root.positionFor(cell.modelData.path).x
+      y: root.positionFor(cell.modelData.path).y
+      z: root.dragPositions[cell.modelData.path] ? 10 : 0
 
       Rectangle {
         anchors.fill: parent
         anchors.margins: 2
-        color: cell.isSelected ? root.withAlpha(Theme.fg, 0.16) : (cell.hovered ? root.withAlpha(Theme.fg, 0.08) : "transparent")
+        color: cell.isSelected ? root.withAlpha(Theme.outline, 0.18) : (cell.hovered ? root.withAlpha(Theme.fg, 0.08) : "transparent")
         border.width: cell.isSelected ? 1 : 0
-        border.color: Theme.fg
+        border.color: Theme.outline
         Behavior on color {
           ColorAnimation { duration: Theme.animFast }
         }
@@ -502,7 +665,7 @@ PanelWindow {
           anchors.fill: parent
           color: "transparent"
           border.width: cell.modelData.thumb !== "" && thumb.status === Image.Ready ? 1 : 0
-          border.color: cell.hovered || cell.isSelected ? root.withAlpha(Theme.fg, 0.8) : root.withAlpha(Theme.fg, 0.35)
+          border.color: cell.hovered || cell.isSelected ? root.withAlpha(Theme.outline, 0.9) : root.withAlpha(Theme.fg, 0.35)
           Behavior on border.color {
             ColorAnimation { duration: Theme.animFast }
           }
@@ -546,24 +709,65 @@ PanelWindow {
       }
 
       MouseArea {
+        id: cellMouse
+
+        property bool holding: false
+        property bool moved: false
+        property real pressSceneX: 0
+        property real pressSceneY: 0
+
         anchors.fill: parent
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
-        cursorShape: Qt.PointingHandCursor
+        cursorShape: root.dragPositions[cell.modelData.path] ? Qt.ClosedHandCursor : Qt.PointingHandCursor
         onEntered: cell.hovered = true
         onExited: cell.hovered = false
+        onPressed: function(mouse) {
+          if (mouse.button !== Qt.LeftButton)
+            return
+          holding = true
+          moved = false
+          pressSceneX = mouse.x + cell.x
+          pressSceneY = mouse.y + cell.y
+          if (root.menuOpen)
+            root.menuOpen = false
+          if (mouse.modifiers & Qt.ControlModifier)
+            root.toggleSelected(cell.modelData.path)
+          else if (!cell.isSelected)
+            root.selectOnly(cell.modelData.path)
+        }
+        onPositionChanged: function(mouse) {
+          if (!holding)
+            return
+          const dx = mouse.x + cell.x - pressSceneX
+          const dy = mouse.y + cell.y - pressSceneY
+          if (!moved && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
+            moved = true
+            root.beginIconDrag(cell.modelData.path)
+          }
+          if (moved)
+            root.moveIconDrag(dx, dy)
+        }
+        onReleased: function(mouse) {
+          if (mouse.button !== Qt.LeftButton)
+            return
+          holding = false
+          if (moved) {
+            moved = false
+            root.endIconDrag()
+          }
+        }
+        onCanceled: {
+          holding = false
+          moved = false
+          if (root.iconDragging)
+            root.cancelIconDrag()
+        }
         onClicked: function(mouse) {
           if (mouse.button === Qt.RightButton) {
             if (!cell.isSelected)
               root.selectOnly(cell.modelData.path)
             root.openMenu(index, mouse.x + cell.x, mouse.y + cell.y)
-          } else {
-            if (mouse.modifiers & Qt.ControlModifier)
-              root.toggleSelected(cell.modelData.path)
-            else if (!cell.isSelected)
-              root.selectOnly(cell.modelData.path)
-            if (root.menuOpen)
-              root.menuOpen = false
           }
         }
         onDoubleClicked: function(mouse) {
@@ -575,14 +779,16 @@ PanelWindow {
   }
 
   Rectangle {
+    id: band
+
     visible: root.banding && root.bandMoved
     x: Math.min(root.bandStartX, root.bandEndX)
     y: Math.min(root.bandStartY, root.bandEndY)
     width: Math.abs(root.bandEndX - root.bandStartX)
     height: Math.abs(root.bandEndY - root.bandStartY)
-    color: root.withAlpha(Theme.fg, 0.08)
+    color: root.withAlpha(Theme.outline, 0.12)
     border.width: 1
-    border.color: root.withAlpha(Theme.fg, 0.65)
+    border.color: root.withAlpha(Theme.outline, 0.85)
     z: 50
   }
 
@@ -594,7 +800,7 @@ PanelWindow {
     height: menuCol.implicitHeight + 8
     x: Math.max(8, Math.min(root.menuX, root.width - width - 8))
     y: Math.max(8, Math.min(root.menuY, root.height - height - 8))
-    color: Theme.bg
+    color: root.withAlpha(Theme.bgBase, Math.min(Theme.bg.a, 0.8))
     border.width: 1
     border.color: Theme.outline
     z: 100
@@ -617,7 +823,7 @@ PanelWindow {
 
           width: menuCol.width
           height: 30
-          color: rowMa.containsMouse ? Theme.fg : "transparent"
+          color: rowMa.containsMouse ? Theme.outline : "transparent"
           Behavior on color {
             ColorAnimation { duration: Theme.animFast }
           }
@@ -632,13 +838,13 @@ PanelWindow {
               anchors.verticalCenter: parent.verticalCenter
               name: modelData.icon
               size: 14
-              color: rowMa.containsMouse ? Theme.bg : Theme.fg
+              color: rowMa.containsMouse ? Theme.bgBase : Theme.fg
             }
 
             Text {
               anchors.verticalCenter: parent.verticalCenter
               text: modelData.label
-              color: rowMa.containsMouse ? Theme.bg : Theme.fg
+              color: rowMa.containsMouse ? Theme.bgBase : Theme.fg
               font.family: Theme.fontFamily
               font.pixelSize: 11
             }

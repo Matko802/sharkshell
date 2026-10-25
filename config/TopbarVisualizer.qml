@@ -51,7 +51,7 @@ Item {
   Process {
     id: visProc
     running: VisualizerState.topbar && !IdleManager.gaming
-    command: ["sh", "-c", "V=\"$HOME/.cache/sharkshell/cava.conf\"; L=/mnt/ssd/My-Files/Projects/sharkvis/target/release/sharkvis; M=" + VisualizerState.mode + "; B=" + root.topBars + "; if [ -x \"$L\" ]; then exec \"$L\" --raw --raw-mode \"$M\" --bars \"$B\" --fps 15; elif command -v sharkvis >/dev/null 2>&1; then exec sharkvis --raw --raw-mode \"$M\" --bars \"$B\" --fps 15; elif command -v cava >/dev/null 2>&1; then exec cava -p \"$V\"; else exit 0; fi"]
+    command: ["sh", "-c", VisualizerState.command(VisualizerState.mode, root.topBars)]
     stdout: SplitParser {
       onRead: data => {
         const parts = String(data).split(";")
@@ -76,6 +76,12 @@ Item {
   Connections {
     target: VisualizerState
     function onModeChanged() {
+      if (visProc.running) {
+        visProc.running = false
+        visProc.running = true
+      }
+    }
+    function onBackendChanged() {
       if (visProc.running) {
         visProc.running = false
         visProc.running = true

@@ -36,7 +36,7 @@ PanelWindow {
     { name: "Theme", glyph: "wallpaper" },
     { name: "Sound", glyph: "audio-volume-high" },
     { name: "User", glyph: "user-circle" },
-    { name: "Visual", glyph: "equalizer" },
+    { name: "Visualizer", glyph: "equalizer" },
     { name: "Power", glyph: "suspend" },
     { name: "Apps", glyph: "settings" }
   ]
@@ -75,7 +75,7 @@ PanelWindow {
     return arr
   }
 
-  readonly property var visualItems: [{ kind: "mode" }, { kind: "bars" }, { kind: "topbar" }]
+  readonly property var visualItems: [{ kind: "mode" }, { kind: "bars" }, { kind: "backend" }, { kind: "topbar" }]
   readonly property var currentItems: root.activeTab === 0 ? root.themeItems : (root.activeTab === 5 ? root.appsItems : (root.activeTab === 3 ? root.visualItems : (root.activeTab === 4 ? [] : root.audioModel)))
 
   property int expandedApp: -1
@@ -101,6 +101,7 @@ PanelWindow {
       root.selIdx = i
       if (i === 0) VisualizerState.cycleMode()
       else if (i === 1) VisualizerState.cycleBars()
+      else if (i === 2) VisualizerState.cycleBackend()
       else VisualizerState.toggleTopbar()
     } else {
       root.selIdx = i
@@ -650,7 +651,98 @@ PanelWindow {
                     cursorShape: Qt.PointingHandCursor
                     onEntered: root.hoverIdx = -12
                     onExited: { if (root.hoverIdx === -12) root.hoverIdx = -1 }
-                    onClicked: { root.selIdx = 2; VisualizerState.toggleTopbar() }
+                    onClicked: { root.selIdx = 2; VisualizerState.cycleBackend() }
+                  }
+                  RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    spacing: 10
+                    Item {
+                      Layout.preferredWidth: 20
+                      Layout.preferredHeight: 20
+                      QIcon {
+                        anchors.centerIn: parent
+                        name: "tune"
+                        size: 18
+                        color: root.selIdx === 2 ? Theme.bg : Theme.fg
+                      }
+                    }
+                    Text {
+                      Layout.fillWidth: true
+                      text: "Backend"
+                      color: root.selIdx === 2 ? Theme.bg : Theme.fg
+                      font.family: root.fontFamily
+                      font.pixelSize: 12
+                      font.weight: Font.DemiBold
+                    }
+                    Rectangle {
+                      id: backendSlider
+                      implicitWidth: 128
+                      implicitHeight: 20
+                      color: "transparent"
+                      border.color: root.selIdx === 2 ? Theme.bg : Theme.outline
+                      border.width: 1
+                      Rectangle {
+                        width: (parent.width - 4) / 2
+                        height: parent.height - 4
+                        y: 2
+                        x: VisualizerState.backend === "sharkvis" ? 2 : 2 + (parent.width - 4) / 2
+                        color: root.selIdx === 2 ? Theme.bg : Theme.fg
+                        Behavior on x {
+                          NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut }
+                        }
+                      }
+                      Row {
+                        anchors.fill: parent
+                        Text {
+                          width: parent.width / 2
+                          height: parent.height
+                          text: "Sharkvis"
+                          horizontalAlignment: Text.AlignHCenter
+                          verticalAlignment: Text.AlignVCenter
+                          color: VisualizerState.backend === "sharkvis" ? (root.selIdx === 2 ? Theme.fg : Theme.bg) : (root.selIdx === 2 ? Theme.bg : Theme.muted2)
+                          font.family: root.fontFamily
+                          font.pixelSize: 9
+                        }
+                        Text {
+                          width: parent.width / 2
+                          height: parent.height
+                          text: "Cava"
+                          horizontalAlignment: Text.AlignHCenter
+                          verticalAlignment: Text.AlignVCenter
+                          color: VisualizerState.backend === "cava" ? (root.selIdx === 2 ? Theme.fg : Theme.bg) : (root.selIdx === 2 ? Theme.bg : Theme.muted2)
+                          font.family: root.fontFamily
+                          font.pixelSize: 9
+                        }
+                      }
+                      MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: function(mouse) {
+                          root.selIdx = 2
+                          VisualizerState.setBackend(mouse.x < parent.width / 2 ? "sharkvis" : "cava")
+                        }
+                      }
+                    }
+                  }
+                }
+
+                Rectangle {
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: 32
+                  color: root.selIdx === 3 ? Theme.fg
+                       : (root.hoverIdx === -13 ? Theme.bgAlt : "transparent")
+                  border.color: root.selIdx === 3 ? Theme.outline
+                       : (root.hoverIdx === -13 ? Theme.borderStrong : Theme.border)
+                  border.width: 1
+                  MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onEntered: root.hoverIdx = -13
+                    onExited: { if (root.hoverIdx === -13) root.hoverIdx = -1 }
+                    onClicked: { root.selIdx = 3; VisualizerState.toggleTopbar() }
                   }
                   RowLayout {
                     anchors.fill: parent
@@ -664,13 +756,13 @@ PanelWindow {
                         anchors.centerIn: parent
                         name: "music"
                         size: 18
-                        color: root.selIdx === 2 ? Theme.bg : Theme.fg
+                        color: root.selIdx === 3 ? Theme.bg : Theme.fg
                       }
                     }
                     Text {
                       Layout.fillWidth: true
                       text: "Show in top bar"
-                      color: root.selIdx === 2 ? Theme.bg : Theme.fg
+                      color: root.selIdx === 3 ? Theme.bg : Theme.fg
                       font.family: root.fontFamily
                       font.pixelSize: 12
                       font.weight: Font.DemiBold

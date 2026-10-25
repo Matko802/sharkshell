@@ -10,8 +10,77 @@ Scope {
   property bool dnd: false
   property var notifications: []
   property var hiddenToasts: []
+  property var notifPids: ({})
+  property var pendingNotifs: []
+  property var pendingSenders: []
 
   property int meaningfulCount: 0
+
+  Process {
+    id: senderWatch
+    running: true
+    command: ["sh", Quickshell.shellDir + "/notif-watch.sh"]
+    stdout: SplitParser {
+      onRead: data => root.handleSenderLine(data)
+    }
+    onExited: senderRestart.restart()
+  }
+
+  Timer {
+    id: senderRestart
+    interval: 1000
+    onTriggered: senderWatch.running = true
+  }
+
+  function handleSenderLine(line) {
+    const parts = String(line).split("\t")
+    if (parts.length < 2)
+      return
+    const pid = parseInt(parts[0], 10)
+    const app = parts.slice(1).join("\t")
+    root.pendingSenders = [...root.pendingSenders, { "pid": isNaN(pid) ? -1 : pid, "app": app }]
+    root.matchSenders()
+  }
+
+  function queueNotif(notif) {
+    root.pendingNotifs = [...root.pendingNotifs, { "id": notif.id, "app": notif.appName || notif.desktopEntry || "" }]
+    root.matchSenders()
+  }
+
+  function matchSenders() {
+    const notifs = root.pendingNotifs.slice()
+    const senders = root.pendingSenders.slice()
+    const pids = Object.assign({}, root.notifPids)
+    let changed = false
+    while (notifs.length > 0 && senders.length > 0) {
+      const n = notifs[0]
+      let idx = -1
+      for (let j = 0; j < senders.length; j++) {
+        if (String(senders[j].app).toLowerCase() === String(n.app).toLowerCase()) {
+          idx = j
+          break
+        }
+      }
+      if (idx < 0)
+        idx = 0
+      pids[n.id] = senders[idx].pid
+      senders.splice(idx, 1)
+      notifs.splice(0, 1)
+      changed = true
+    }
+    if (changed)
+      root.notifPids = pids
+    root.pendingNotifs = notifs
+    root.pendingSenders = senders
+  }
+
+  function forgetPid(id) {
+    if (root.notifPids[id] === undefined)
+      return
+    const pids = Object.assign({}, root.notifPids)
+    delete pids[id]
+    root.notifPids = pids
+  }
 
   function isMeaningful(n) {
     if (!n) return false
@@ -62,6 +131,7 @@ Scope {
     imageSupported: true
 
     onNotification: notif => {
+      root.queueNotif(notif)
       notif.tracked = true
       if (!root.isMeaningful(notif))
         return
@@ -138,6 +208,7 @@ Scope {
     root.hiddenToasts = root.hiddenToasts.filter(x => x !== notif.id)
     const i = findPopupIndex(notif.id)
     if (i >= 0) popupModel.remove(i)
+    root.forgetPid(notif.id)
   }
 
   function dismissById(id) {
@@ -148,6 +219,7 @@ Scope {
       root.hiddenToasts = root.hiddenToasts.filter(x => x !== id)
       const i = findPopupIndex(id)
       if (i >= 0) popupModel.remove(i)
+      root.forgetPid(id)
     }
   }
 
@@ -158,6 +230,9 @@ Scope {
     root.centerModel.clear()
     root.hiddenToasts = []
     popupModel.clear()
+    root.notifPids = ({})
+    root.pendingNotifs = []
+    root.pendingSenders = []
   }
 
   function getLive(id) {
@@ -179,28 +254,39 @@ Scope {
 
   function toggleDnd() { root.setDnd(!root.dnd) }
 
-  Process { id: focusProc; running: false }
-  function focusApp(raw) {
-    if (!raw) return
-    const app = String(raw).replace(/"/g, '\\"')
-    focusProc.command = ["sh", "-c",
-      "ID=$(niri msg -j windows | tr '}' '\\n' | grep -i '" + app + "' | head -1 | grep -o '\"id\":[0-9]*' | cut -d: -f2)" +
-      " && [ -n \"$ID\" ] && niri msg action focus-window --id \"$ID\" 2>/dev/null"
-    ]
-    focusProc.running = true
+  function defaultAction(live) {
+    if (!live || !live.actions)
+      return null
+    const acts = live.actions
+    for (let i = 0; i < acts.length; i++) {
+      const a = acts[i]
+      if (!a)
+        continue
+      const text = String(a.text || "").toLowerCase()
+      if (a.identifier === "default" || text === "view" || text === "open")
+        return a
+    }
+    return null
+  }
+
+  function activate(id) {
+    const live = root.notifications.find(n => n && n.id === id) || null
+    if (!live)
+      return false
+    const action = root.defaultAction(live)
+    if (action) {
+      try {
+        action.invoke()
+      } catch (e) {
+        console.log("[notif] default action failed:", e)
+      }
+    }
+    const pid = root.notifPids[id] || -1
+    AppFocus.focusPid(pid, live.desktopEntry || live.appName)
+    return !!action
   }
 
   function focusPopup(id) {
-    let app = ""
-    const i = findPopupIndex(id)
-    if (i >= 0) {
-      const row = popupModel.get(i)
-      app = row.desktopEntry || row.appName
-    }
-    if (!app) {
-      const live = root.notifications.find(n => n && n.id === id)
-      if (live) app = live.desktopEntry || live.appName
-    }
-    focusApp(app)
+    root.activate(id)
   }
 }
