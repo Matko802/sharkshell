@@ -278,43 +278,46 @@ ColumnLayout {
       Item {
         Layout.fillWidth: true
       }
-      Row {
-        spacing: 2
+      Rectangle {
+        id: netModeSlider
+        visible: Network.hasEthernet
+        implicitWidth: 46
+        implicitHeight: 18
+        color: "transparent"
+        border.color: Theme.outline
+        border.width: 1
         Rectangle {
-          visible: Network.hasEthernet
-          implicitWidth: 22
-          implicitHeight: 18
-          color: Network.mode === "eth" ? Theme.fg : "transparent"
-          border.color: Theme.outline
-          border.width: 1
-          QIcon {
-            anchors.centerIn: parent
-            name: "network-wired"
-            size: 12
-            color: Network.mode === "eth" ? Theme.bg : Theme.muted2
-          }
-          MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: Network.selectMode("eth")
+          id: netModeKnob
+          width: 22
+          height: parent.height - 4
+          y: 2
+          x: Network.mode === "eth" ? 2 : parent.width - width - 2
+          color: Theme.fg
+          Behavior on x {
+            NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut }
           }
         }
-        Rectangle {
-          implicitWidth: 22
-          implicitHeight: 18
-          color: Network.mode === "wifi" ? Theme.fg : "transparent"
-          border.color: Theme.outline
-          border.width: 1
-          QIcon {
-            anchors.centerIn: parent
-            name: Network.wifiEnabled ? Network.sigIcon(Network.sig) : "wifi-off"
-            size: 12
-            color: Network.mode === "wifi" ? Theme.bg : Theme.muted2
-          }
-          MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: Network.selectMode("wifi")
+        QIcon {
+          anchors.horizontalCenter: parent.left
+          anchors.horizontalCenterOffset: 13
+          anchors.verticalCenter: parent.verticalCenter
+          name: "network-wired"
+          size: 12
+          color: Network.mode === "eth" ? Theme.bg : Theme.muted2
+        }
+        QIcon {
+          anchors.horizontalCenter: parent.right
+          anchors.horizontalCenterOffset: -13
+          anchors.verticalCenter: parent.verticalCenter
+          name: Network.wifiEnabled ? Network.sigIcon(Network.sig) : "wifi-off"
+          size: 12
+          color: Network.mode === "wifi" ? Theme.bg : Theme.muted2
+        }
+        MouseArea {
+          anchors.fill: parent
+          cursorShape: Qt.PointingHandCursor
+          onClicked: function(mouse) {
+            Network.selectMode(mouse.x < parent.width / 2 ? "eth" : "wifi")
           }
         }
       }

@@ -105,6 +105,15 @@ ShellRoot {
       }
     }
   }
+  Variants {
+    model: Quickshell.screens
+    delegate: Component {
+      Desktop {
+        required property var modelData
+        screen: modelData
+      }
+    }
+  }
   PanelWindow {
     anchors.top: true
     anchors.bottom: true
