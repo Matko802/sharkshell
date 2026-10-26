@@ -10,6 +10,7 @@ Scope {
   property int sig: 0
   property string ssid: ""
   property bool wifiEnabled: false
+  property bool wifiPresent: false
   property string iface: ""
   property real downRate: 0
   property real upRate: 0
@@ -186,7 +187,7 @@ Scope {
   }
 
   function scan() {
-    if (!root.wifiToggleChecked)
+    if (!root.wifiPresent || !root.wifiToggleChecked)
       return
     root.scanning = true
     if (scanProc.running)
@@ -327,6 +328,13 @@ Scope {
 
   onEthDevicesChanged: root.reconcileEthPending()
 
+  onWifiPresentChanged: {
+    if (!root.wifiPresent) {
+      root.expanded = false
+      root.wifiPending = ""
+    }
+  }
+
   function reconcileWifiPending() {
     if (root.wifiPending === "")
       return
@@ -339,10 +347,10 @@ Scope {
   Process {
     id: watcher
     running: !IdleManager.gaming
-    command: ["stdbuf", "-oL", "sh", "-c", "L=\"\"; PR=-1; PT=-1; while :; do R=$(nmcli radio wifi 2>/dev/null); K=off; S=0; N=\"\"; IF=\"\"; if nmcli -t -f TYPE,STATE device status 2>/dev/null | grep -q '^ethernet:connected'; then K=eth; IF=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | awk -F: '$2==\"ethernet\"&&$3==\"connected\"{print $1; exit}'); else L2=$(nmcli -t -f in-use,signal,ssid dev wifi 2>/dev/null | grep '^\\*' | head -n1); if [ -n \"$L2\" ]; then K=wifi; S=$(printf '%s' \"$L2\" | cut -d: -f2); N=$(printf '%s' \"$L2\" | cut -d: -f3-); IF=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | awk -F: '$2==\"wifi\"&&$3==\"connected\"{print $1; exit}'); fi; fi; AC=$(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | awk -F: '$NF==\"wifi\"{sub(/:wifi$/,\"\");print;exit}'); ED=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | awk -F: '$2==\"ethernet\"{printf \"%s=%s,\",$1,$3}'); RX=$(cat /sys/class/net/$IF/statistics/rx_bytes 2>/dev/null || echo 0); TX=$(cat /sys/class/net/$IF/statistics/tx_bytes 2>/dev/null || echo 0); DN=0; UP=0; if [ -n \"$IF\" ] && [ \"$PR\" -ge 0 ]; then DN=$(((RX-PR)/2)); UP=$(((TX-PT)/2)); fi; [ $DN -lt 0 ] && DN=0; [ $UP -lt 0 ] && UP=0; PR=$RX; PT=$TX; V=\"kind:$K|sig:$S|ssid:$N|radio:$R|if:$IF|dn:$DN|up:$UP|ac:$AC|eth:$ED\"; if [ \"$V\" != \"$L\" ]; then printf '%s\\n' \"$V\"; L=\"$V\"; fi; sleep 2; done"]
+    command: ["stdbuf", "-oL", "sh", "-c", "L=\"\"; PR=-1; PT=-1; while :; do R=$(nmcli radio wifi 2>/dev/null); WP=0; nmcli -t -f DEVICE,TYPE device status 2>/dev/null | grep -q '^[^:]*:wifi$' && WP=1; K=off; S=0; N=\"\"; IF=\"\"; if nmcli -t -f TYPE,STATE device status 2>/dev/null | grep -q '^ethernet:connected'; then K=eth; IF=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | awk -F: '$2==\"ethernet\"&&$3==\"connected\"{print $1; exit}'); else L2=$(nmcli -t -f in-use,signal,ssid dev wifi 2>/dev/null | grep '^\\*' | head -n1); if [ -n \"$L2\" ]; then K=wifi; S=$(printf '%s' \"$L2\" | cut -d: -f2); N=$(printf '%s' \"$L2\" | cut -d: -f3-); IF=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | awk -F: '$2==\"wifi\"&&$3==\"connected\"{print $1; exit}'); fi; fi; AC=$(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | awk -F: '$NF==\"wifi\"{sub(/:wifi$/,\"\");print;exit}'); ED=$(nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null | awk -F: '$2==\"ethernet\"{printf \"%s=%s,\",$1,$3}'); RX=$(cat /sys/class/net/$IF/statistics/rx_bytes 2>/dev/null || echo 0); TX=$(cat /sys/class/net/$IF/statistics/tx_bytes 2>/dev/null || echo 0); DN=0; UP=0; if [ -n \"$IF\" ] && [ \"$PR\" -ge 0 ]; then DN=$(((RX-PR)/2)); UP=$(((TX-PT)/2)); fi; [ $DN -lt 0 ] && DN=0; [ $UP -lt 0 ] && UP=0; PR=$RX; PT=$TX; V=\"kind:$K|sig:$S|ssid:$N|radio:$R|wp:$WP|if:$IF|dn:$DN|up:$UP|ac:$AC|eth:$ED\"; if [ \"$V\" != \"$L\" ]; then printf '%s\\n' \"$V\"; L=\"$V\"; fi; sleep 2; done"]
     stdout: SplitParser {
       onRead: data => {
-        let k = "off", s = 0, n = "", r = "", ifn = "", dn = 0, up = 0
+        let k = "off", s = 0, n = "", r = "", wp = 0, ifn = "", dn = 0, up = 0
         data.split("|").forEach(seg => {
           const i = seg.indexOf(":")
           if (i < 0)
@@ -353,6 +361,7 @@ Scope {
           else if (key === "sig") s = parseInt(val) || 0
           else if (key === "ssid") n = val
           else if (key === "radio") r = val
+          else if (key === "wp") wp = parseInt(val) || 0
           else if (key === "if") ifn = val
           else if (key === "dn") dn = parseInt(val) || 0
           else if (key === "up") up = parseInt(val) || 0
@@ -374,6 +383,7 @@ Scope {
         root.sig = s
         root.ssid = n
         root.wifiEnabled = r.trim() === "enabled"
+        root.wifiPresent = wp === 1
         root.reconcileWifiPending()
         root.iface = ifn
         root.downRate = dn
