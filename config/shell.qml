@@ -48,11 +48,43 @@ ShellRoot {
         exclusionMode: ExclusionMode.Auto
         exclusiveZone: OverviewState.open ? 0 : 30
         WlrLayershell.namespace: "quickshell"
-        BackgroundEffect.blurRegion: Region { item: root.barShown && TransparencyState.transparent && !IdleManager.gaming ? barBg : null }
+        readonly property bool blurWanted: root.barShown && TransparencyState.transparent && !IdleManager.gaming
+        property bool blurActive: false
+        property real blurProg: 0
+        Timer {
+          id: blurSettle
+          interval: 200
+          onTriggered: {
+            if (barWindow.blurActive !== barWindow.blurWanted) {
+              barWindow.blurActive = barWindow.blurWanted
+              barWindow.blurProg = 0
+            }
+          }
+        }
+        Timer {
+          id: blurSlice
+          interval: 16
+          repeat: true
+          running: barWindow.visible && barWindow.blurActive && barWindow.blurProg < 1
+          onTriggered: barWindow.blurProg = Math.min(1, barWindow.blurProg + 0.1)
+        }
+        onBlurWantedChanged: blurSettle.restart()
+        Component.onCompleted: blurSettle.restart()
+        onVisibleChanged: {
+          if (visible) {
+            blurSettle.restart()
+            barWindow.blurProg = 0
+          } else {
+            blurSettle.stop()
+            barWindow.blurActive = false
+            barWindow.blurProg = 0
+          }
+        }
         readonly property bool barVisible: root.barShown || clockMenu.shown || settingsMenu.shown || controlCard.shown
         visible: barVisible
         mask: Region { item: root.barShown ? barBg : null }
         WlrLayershell.layer: WlrLayer.Overlay
+        BackgroundEffect.blurRegion: Region { item: blurTracker }
         Rectangle {
           id: barBg
           anchors.fill: parent
@@ -60,6 +92,14 @@ ShellRoot {
           opacity: root.barShown ? 1 : 0
           visible: opacity > 0.01
           Bar { anchors.fill: parent }
+        }
+        Rectangle {
+          id: blurTracker
+          anchors.top: parent.top
+          anchors.left: parent.left
+          width: Math.ceil(parent.width * barWindow.blurProg)
+          height: Math.ceil(parent.height * barWindow.blurProg)
+          color: "transparent"
         }
         ControlCenter {
           targetScreen: modelData
