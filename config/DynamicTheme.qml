@@ -684,7 +684,7 @@ Scope {
   }
 
   function pushAppThemes() {
-    var css = AppTheme.gtkCssText()
+    var css = AppTheme.gtkCssText(true)
     var kde = AppTheme.kdeColorsText()
     if (css === root.appliedGtkCss && kde === root.appliedKdeText)
       return
