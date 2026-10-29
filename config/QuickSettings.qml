@@ -332,230 +332,219 @@ ColumnLayout {
           onClicked: Network.expanded = !Network.expanded
         }
       }
+    }
 
+    Item {
+      id: wifiPanel
+      readonly property bool shown: Network.wifiPresent && Network.wifiToggleChecked && Network.expanded
+      Layout.fillWidth: true
+      Layout.preferredHeight: shown ? Math.min(wifiInner.implicitHeight, 220) : 0
+      visible: shown || height > 0.5
+      Behavior on Layout.preferredHeight { NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut } }
+      clip: true
 
-      Item {
-        id: wifiPopup
+      ColumnLayout {
+        id: wifiInner
+        anchors.top: parent.top
+        anchors.left: parent.left
         anchors.right: parent.right
-        anchors.bottom: parent.top
-        anchors.bottomMargin: 6
-        width: parent.width
-        height: Math.min(240, Math.max(100, parent.mapToItem(root, 0, 0).y - 8))
-        visible: opacity > 0.01
-        opacity: (Network.wifiPresent && Network.expanded && Network.wifiToggleChecked) ? 1 : 0
-        z: 100
-        Behavior on opacity { NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut } }
-        Rectangle {
-          anchors.fill: parent
-          color: Theme.bg
-          border.color: Theme.outline
-          border.width: 1
-          clip: true
-          ColumnLayout {
-            id: popupCol
-            anchors.fill: parent
-            anchors.margins: 6
-            spacing: 4
+        spacing: 4
 
-            RowLayout {
-              Layout.fillWidth: true
-              Text {
-                text: "Networks"
-                color: Theme.muted2
-                font.pixelSize: 10
-                font.letterSpacing: 1
-              }
-              Text {
-                text: Network.connecting !== "" ? "connecting to " + Network.connecting : (Network.scanning ? "scanning" : "")
-                color: Theme.muted2
-                font.pixelSize: 10
-                Layout.leftMargin: 6
-                Layout.fillWidth: text !== ""
-                Layout.maximumWidth: 150
-                elide: Text.ElideRight
-              }
-              Item {
-                Layout.fillWidth: true
-              }
-              Text {
-                text: Network.lastError
-                color: Theme.error
-                font.pixelSize: 10
-                visible: Network.lastError !== ""
-                Layout.maximumWidth: 120
-                elide: Text.ElideRight
-              }
-              IconBtn {
-                implicitWidth: 18
-                implicitHeight: 18
-                icon: "refresh"
-                iconSize: 14
-                onClicked: Network.scan()
-              }
-            }
+        RowLayout {
+          Layout.fillWidth: true
+          Text {
+            text: "Networks"
+            color: Theme.muted2
+            font.pixelSize: 10
+            font.letterSpacing: 1
+          }
+          Text {
+            text: Network.connecting !== "" ? "connecting to " + Network.connecting : (Network.scanning ? "scanning" : "")
+            color: Theme.muted2
+            font.pixelSize: 10
+            Layout.leftMargin: 6
+            Layout.fillWidth: text !== ""
+            Layout.maximumWidth: 150
+            elide: Text.ElideRight
+          }
+          Item {
+            Layout.fillWidth: true
+          }
+          Text {
+            text: Network.lastError
+            color: Theme.error
+            font.pixelSize: 10
+            visible: Network.lastError !== ""
+            Layout.maximumWidth: 120
+            elide: Text.ElideRight
+          }
+          IconBtn {
+            implicitWidth: 18
+            implicitHeight: 18
+            icon: "refresh"
+            iconSize: 14
+            onClicked: Network.scan()
+          }
+        }
 
-            ColumnLayout {
-              visible: root.pwFor !== ""
-              Layout.fillWidth: true
-              spacing: 4
-              Text {
-                text: "password for " + root.pwFor
-                color: Theme.fg
-                font.pixelSize: 10
-              }
-              Rectangle {
-                Layout.fillWidth: true
-                implicitHeight: 22
-                color: Theme.bgAlt
-                border.color: Theme.outline
-                border.width: 1
-                TextInput {
-                  id: pwInput
-                  anchors.fill: parent
-                  anchors.margins: 4
-                  echoMode: TextInput.Password
-                  color: Theme.fg
-                  font.pixelSize: 11
-                  clip: true
-                  onVisibleChanged: {
-                    if (visible)
-                      forceActiveFocus()
-                  }
-                  onTextChanged: root.activity()
-                  Keys.onPressed: root.activity()
-                  Keys.onReturnPressed: root.submitPw()
-                  Keys.onEnterPressed: root.submitPw()
-                  Keys.onEscapePressed: {
-                    root.pwFor = ""
-                    text = ""
-                  }
-                }
-              }
-              RowLayout {
-                spacing: 6
-                layoutDirection: Qt.RightToLeft
-                Rectangle {
-                  implicitWidth: 54
-                  implicitHeight: 20
-                  color: pwOkMa.pressed ? Theme.fg : Theme.bg
-                  border.color: Theme.outline
-                  border.width: 1
-                  Text {
-                    anchors.centerIn: parent
-                    text: "connect"
-                    color: pwOkMa.pressed ? Theme.bg : Theme.fg
-                    font.pixelSize: 9
-                  }
-                  MouseArea {
-                    id: pwOkMa
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.submitPw()
-                  }
-                }
-                Rectangle {
-                  implicitWidth: 48
-                  implicitHeight: 20
-                  color: pwNoMa.pressed ? Theme.fg : Theme.bg
-                  border.color: Theme.outline
-                  border.width: 1
-                  Text {
-                    anchors.centerIn: parent
-                    text: "cancel"
-                    color: pwNoMa.pressed ? Theme.bg : Theme.fg
-                    font.pixelSize: 9
-                  }
-                  MouseArea {
-                    id: pwNoMa
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                      root.pwFor = ""
-                      pwInput.text = ""
-                    }
-                  }
-                }
-              }
-            }
-
-            Flickable {
-              id: netFlick
-              Layout.fillWidth: true
-              Layout.preferredHeight: Math.min(netCol.height, 170)
-              Layout.fillHeight: true
-              Behavior on Layout.preferredHeight { NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut } }
+        ColumnLayout {
+          visible: root.pwFor !== ""
+          Layout.fillWidth: true
+          spacing: 4
+          Text {
+            text: "password for " + root.pwFor
+            color: Theme.fg
+            font.pixelSize: 10
+          }
+          Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: 22
+            color: Theme.bgAlt
+            border.color: Theme.outline
+            border.width: 1
+            TextInput {
+              id: pwInput
+              anchors.fill: parent
+              anchors.margins: 4
+              echoMode: TextInput.Password
+              color: Theme.fg
+              font.pixelSize: 11
               clip: true
-              contentWidth: netFlick.width
-              contentHeight: netCol.height
-              boundsBehavior: Flickable.StopAtBounds
-              flickableDirection: Flickable.VerticalFlick
-              ColumnLayout {
-                id: netCol
-                width: netFlick.width
-                spacing: 3
-                Repeater {
-                  model: Network.networks
-                  delegate: Item {
-                    required property var modelData
-                    readonly property bool isActive: modelData.active || modelData.ssid === Network.activeSsid
-                    readonly property bool isConnecting: Network.connecting === modelData.ssid
-                    readonly property bool needsPw: modelData.secure && (Network.knownSsids.indexOf(modelData.ssid) < 0 || modelData.ssid === Network.failedSsid)
+              onVisibleChanged: {
+                if (visible)
+                  forceActiveFocus()
+              }
+              onTextChanged: root.activity()
+              Keys.onPressed: root.activity()
+              Keys.onReturnPressed: root.submitPw()
+              Keys.onEnterPressed: root.submitPw()
+              Keys.onEscapePressed: {
+                root.pwFor = ""
+                text = ""
+              }
+            }
+          }
+          RowLayout {
+            spacing: 6
+            layoutDirection: Qt.RightToLeft
+            Rectangle {
+              implicitWidth: 54
+              implicitHeight: 20
+              color: pwOkMa.pressed ? Theme.fg : Theme.bg
+              border.color: Theme.outline
+              border.width: 1
+              Text {
+                anchors.centerIn: parent
+                text: "connect"
+                color: pwOkMa.pressed ? Theme.bg : Theme.fg
+                font.pixelSize: 9
+              }
+              MouseArea {
+                id: pwOkMa
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.submitPw()
+              }
+            }
+            Rectangle {
+              implicitWidth: 48
+              implicitHeight: 20
+              color: pwNoMa.pressed ? Theme.fg : Theme.bg
+              border.color: Theme.outline
+              border.width: 1
+              Text {
+                anchors.centerIn: parent
+                text: "cancel"
+                color: pwNoMa.pressed ? Theme.bg : Theme.fg
+                font.pixelSize: 9
+              }
+              MouseArea {
+                id: pwNoMa
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                  root.pwFor = ""
+                  pwInput.text = ""
+                }
+              }
+            }
+          }
+        }
+
+        Flickable {
+          id: netFlick
+          Layout.fillWidth: true
+          Layout.preferredHeight: Math.min(netCol.height, 150)
+          clip: true
+          contentWidth: netFlick.width
+          contentHeight: netCol.height
+          boundsBehavior: Flickable.StopAtBounds
+          flickableDirection: Flickable.VerticalFlick
+          ColumnLayout {
+            id: netCol
+            width: netFlick.width
+            spacing: 3
+            Repeater {
+              model: Network.networks
+              delegate: Item {
+                required property var modelData
+                readonly property bool isActive: modelData.active || modelData.ssid === Network.activeSsid
+                readonly property bool isConnecting: Network.connecting === modelData.ssid
+                readonly property bool needsPw: modelData.secure && (Network.knownSsids.indexOf(modelData.ssid) < 0 || modelData.ssid === Network.failedSsid)
+                Layout.fillWidth: true
+                implicitHeight: 20
+                MouseArea {
+                  anchors.fill: parent
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: {
+                    if (Network.connecting !== "" || isActive)
+                      return
+                    if (needsPw) {
+                      root.pwFor = modelData.ssid
+                      pwInput.text = ""
+                    } else {
+                      Network.connectTo(modelData.ssid, "")
+                    }
+                  }
+                }
+                RowLayout {
+                  anchors.fill: parent
+                  spacing: 8
+                  Item {
+                    Layout.preferredWidth: 13
+                    Layout.preferredHeight: 13
+                    QIcon {
+                      anchors.centerIn: parent
+                      name: isConnecting ? Network.sigIcon(connAnim.step * 25) : Network.sigIcon(modelData.sig)
+                      size: 13
+                      color: (isActive || isConnecting) ? Theme.fg : Theme.muted2
+                    }
+                  }
+                  Text {
+                    text: modelData.ssid
+                    color: (isActive || isConnecting) ? Theme.fg : Theme.muted2
+                    font.pixelSize: 11
+                    elide: Text.ElideRight
                     Layout.fillWidth: true
-                    implicitHeight: 20
-                    MouseArea {
-                      anchors.fill: parent
-                      cursorShape: Qt.PointingHandCursor
-                      onClicked: {
-                        if (Network.connecting !== "" || isActive)
-                          return
-                        if (needsPw) {
-                          root.pwFor = modelData.ssid
-                          pwInput.text = ""
-                        } else {
-                          Network.connectTo(modelData.ssid, "")
-                        }
-                      }
+                  }
+                  Item {
+                    Layout.preferredWidth: 12
+                    Layout.preferredHeight: 12
+                    visible: isActive || needsPw
+                    QIcon {
+                      anchors.centerIn: parent
+                      name: isActive ? "check" : (needsPw ? "wifi-lock" : "")
+                      size: 12
+                      color: isActive ? Theme.fg : Theme.muted2
                     }
-                    RowLayout {
-                      anchors.fill: parent
-                      spacing: 8
-                      Item {
-                        Layout.preferredWidth: 13
-                        Layout.preferredHeight: 13
-                        QIcon {
-                          anchors.centerIn: parent
-                          name: isConnecting ? Network.sigIcon(connAnim.step * 25) : Network.sigIcon(modelData.sig)
-                          size: 13
-                          color: (isActive || isConnecting) ? Theme.fg : Theme.muted2
-                        }
-                      }
-                      Text {
-                        text: modelData.ssid
-                        color: (isActive || isConnecting) ? Theme.fg : Theme.muted2
-                        font.pixelSize: 11
-                        elide: Text.ElideRight
-                        Layout.fillWidth: true
-                      }
-                      Item {
-                        Layout.preferredWidth: 12
-                        Layout.preferredHeight: 12
-                        visible: isActive || needsPw
-                        QIcon {
-                          anchors.centerIn: parent
-                          name: isActive ? "check" : (needsPw ? "wifi-lock" : "")
-                          size: 12
-                          color: isActive ? Theme.fg : Theme.muted2
-                        }
-                      }
-                      IconBtn {
-                        implicitWidth: 16
-                        implicitHeight: 16
-                        icon: "trash"
-                        iconSize: 12
-                        visible: Network.knownSsids.indexOf(modelData.ssid) >= 0
-                        onClicked: Network.forget(modelData.ssid)
-                      }
-                    }
+                  }
+                  IconBtn {
+                    implicitWidth: 16
+                    implicitHeight: 16
+                    icon: "trash"
+                    iconSize: 12
+                    visible: Network.knownSsids.indexOf(modelData.ssid) >= 0
+                    onClicked: Network.forget(modelData.ssid)
                   }
                 }
               }
