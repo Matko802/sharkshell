@@ -20,7 +20,10 @@ Singleton {
   property string iniText3: ""
   property string iniText4: ""
 
-  readonly property string gtkTheme: "adw-gtk3-dark"
+  function gtkTheme(dark) {
+    var d = (dark === undefined ? DynamicTheme.darkMode : !!dark)
+    return d ? "adw-gtk3-dark" : "adw-gtk3"
+  }
 
   function iconTheme(dark) {
     var d = (dark === undefined ? DynamicTheme.darkMode : !!dark)
@@ -209,8 +212,9 @@ Singleton {
     var d = (dark === undefined ? DynamicTheme.darkMode : !!dark)
     var darkFlag = d ? "1" : "0"
     var icon = d ? "Papirus-Dark" : "Papirus"
+    var theme = root.gtkTheme(d)
     var pairs = [
-      ["gtk-theme-name", root.gtkTheme],
+      ["gtk-theme-name", theme],
       ["gtk-icon-theme-name", icon],
       ["gtk-font-name", Theme.fontFamily + " 10"],
       ["gtk-cursor-theme-name", "Adwaita"],
@@ -250,7 +254,7 @@ Singleton {
     L.push("filesystems=xdg-config/gtk-3.0:ro;xdg-config/gtk-4.0:ro;xdg-config/kdeglobals:ro;xdg-data/color-schemes:ro;xdg-data/themes:ro;xdg-data/icons:ro;/nix/store:ro;")
     L.push("")
     L.push("[Environment]")
-    L.push("GTK_THEME=" + root.gtkTheme)
+    L.push("GTK_THEME=" + root.gtkTheme(d))
     L.push("ICON_THEME=" + (d ? "Papirus-Dark" : "Papirus"))
     L.push("QT_QPA_PLATFORMTHEME=kde")
     return L.join("\n") + "\n"
@@ -264,7 +268,7 @@ Singleton {
     dconfProc.running = false
     dconfProc.command = ["bash", "-c",
       "dconf write /org/gnome/desktop/interface/color-scheme \"'prefer-" + scheme + "'\";"
-      + " dconf write /org/gnome/desktop/interface/gtk-theme " + "'" + root.gtkTheme + "'" + ";"
+      + " dconf write /org/gnome/desktop/interface/gtk-theme \"'" + root.gtkTheme(d) + "'\";"
       + " dconf write /org/gnome/desktop/interface/icon-theme \"'" + icon + "'\";"
       + " dconf write /org/gnome/desktop/interface/font-name \"'" + font + "'\";"
       + " dconf write /org/gnome/desktop/interface/monospace-font-name \"'" + font + "'\""]
