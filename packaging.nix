@@ -1,4 +1,4 @@
-{ pkgs }:
+{ pkgs, lib }:
 let
   qsConfig = pkgs.runCommand "sharkshell-config" { src = pkgs.lib.cleanSource ./config; } ''
     mkdir -p $out/quickshell
@@ -48,6 +48,7 @@ let
       mkdir -p "$out/lib/qt-6/qml/Quickshell"
       ln -sfn ${outputPower}/lib/qt-6/qml/Quickshell/Power "$out/lib/qt-6/qml/Quickshell/Power"
       wrapProgram "$out/bin/quickshell" \
+        --prefix PATH : "${lib.makeBinPath [ pkgs.imagemagick pkgs.cliphist ]}" \
         --prefix QT_PLUGIN_PATH : "${pkgs.qt6Packages.qtimageformats}/${pkgs.qt6.qtbase.qtPluginPrefix}" \
         --prefix NIXPKGS_QT6_QML_IMPORT_PATH : "$out/lib/qt-6/qml" \
         --prefix QML2_IMPORT_PATH : "$out/lib/qt-6/qml" \
