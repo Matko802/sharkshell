@@ -83,6 +83,8 @@ Scope {
       required property string image
       required property string desktopEntry
       required property string appName
+      required property var actions
+      required property double expireTimeout
       required property bool leaving
       onLeavingChanged: { if (leaving) toastWin.dismissCard() }
 
@@ -127,6 +129,8 @@ Scope {
       property double pauseTime: 0
 
       Component.onCompleted: {
+        toastWin.lifetime = toastWin.expireTimeout > 0 ? toastWin.expireTimeout : (toastWin.urgency === 2 ? 10000 : 5000)
+        dismissTimer.interval = toastWin.lifetime
         toastWin.deadline = Date.now() + toastWin.lifetime
         toastWin.lastCardY = toastWin.cardY
       }
@@ -161,12 +165,14 @@ Scope {
         image: toastWin.image
         desktopEntry: toastWin.desktopEntry
         appName: toastWin.appName
+        actions: toastWin.actions
         onHoveredChanged: {
           if (card.hovered) toastWin.pause()
           else toastWin.resume()
         }
         onDismissed: NotificationServer.removePopup(toastWin.notifId)
         onCloseRequested: toastWin.dismissCard()
+        onActionClicked: actId => NotificationServer.invokeAction(toastWin.notifId, actId)
         onCardClicked: NotificationServer.focusPopup(toastWin.notifId)
       }
 

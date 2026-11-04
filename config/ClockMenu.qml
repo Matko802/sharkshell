@@ -515,55 +515,78 @@ PanelWindow {
                   }
                   delegate: Rectangle {
                     width: notifList.width
-                    height: nRow.implicitHeight + 16
-                    color: Theme.bgAlt
-                    border.color: Theme.border
+                    height: nRow.implicitHeight + 20
+                    color: dHover.containsMouse ? Theme.bg : Theme.bgAlt
+                    border.color: dHover.containsMouse ? Theme.fg : Theme.border
                     border.width: 1
                     RowLayout {
                       id: nRow
                       anchors.left: parent.left
                       anchors.right: parent.right
                       anchors.top: parent.top
-                      anchors.margins: 8
-                      spacing: 8
+                      anchors.margins: 10
+                      spacing: 10
                       Item {
-                        Layout.preferredWidth: 20; Layout.preferredHeight: 20; Layout.alignment: Qt.AlignTop
+                        Layout.preferredWidth: 22; Layout.preferredHeight: 22; Layout.alignment: Qt.AlignTop
                         visible: {
                           const ic = model.appIcon || ""
                           const de = model.desktopEntry || ""
                           const im = model.image ? String(model.image) : ""
                           return im !== "" || ic !== "" || de !== ""
                         }
+                        Rectangle {
+                          anchors.fill: parent
+                          color: Theme.bg
+                          border.color: Theme.border
+                          border.width: 1
+                        }
                         IconImage {
-                          anchors.fill: parent; anchors.margins: 1
+                          anchors.fill: parent; anchors.margins: 3
                           visible: { const im = model.image ? String(model.image) : ""; return !(im !== "" && (im.startsWith("/") || im.startsWith("file://") || im.startsWith("image://"))) }
                           source: root.iconSrc(model)
-                          implicitSize: 20
+                          implicitSize: 16
                         }
                         Image {
-                          anchors.fill: parent; anchors.margins: 1
+                          anchors.fill: parent; anchors.margins: 3
                           visible: { const im = model.image ? String(model.image) : ""; return im !== "" && (im.startsWith("/") || im.startsWith("file://") || im.startsWith("image://")) }
                           source: model.image ? String(model.image) : ""
                           fillMode: Image.PreserveAspectCrop
-                          sourceSize.width: 40; sourceSize.height: 40; asynchronous: true
+                          sourceSize.width: 44; sourceSize.height: 44; asynchronous: true
                         }
                       }
                       ColumnLayout {
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignTop
-                        spacing: 2
-                        Text { text: (model.appName || model.desktopEntry || "").toUpperCase(); color: Theme.muted2; font.family: Theme.fontFamily; font.pixelSize: 8; font.letterSpacing: 1; elide: Text.ElideRight; Layout.fillWidth: true; visible: text !== "" }
-                         Text { text: model.summary || ""; color: Theme.fg; font.family: Theme.fontFamily; font.pixelSize: 11; Layout.fillWidth: true; wrapMode: Text.WordWrap }
-                         Text { text: model.body || ""; color: Theme.muted; font.family: Theme.fontFamily; font.pixelSize: 9; Layout.fillWidth: true; wrapMode: Text.WordWrap; visible: (model.body || "") !== "" }
+                        spacing: 3
+                        RowLayout {
+                          Layout.fillWidth: true
+                          spacing: 6
+                          Text {
+                            text: (model.appName || model.desktopEntry || "").toUpperCase()
+                            color: Theme.muted2; font.family: Theme.fontFamily; font.pixelSize: 8; font.letterSpacing: 1
+                            elide: Text.ElideRight; Layout.fillWidth: true; visible: text !== ""
+                          }
+                          Text {
+                            text: model.time || ""
+                            color: Theme.muted3; font.family: Theme.fontFamily; font.pixelSize: 8
+                            visible: text !== ""
+                          }
+                        }
+                        Text { text: model.summary || ""; color: Theme.fg; font.family: Theme.fontFamily; font.pixelSize: 11; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                        Text { text: model.body || ""; color: Theme.muted; font.family: Theme.fontFamily; font.pixelSize: 9; Layout.fillWidth: true; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight; visible: (model.body || "") !== "" }
                       }
                       Rectangle {
-                        Layout.preferredWidth: 14; Layout.preferredHeight: 14; Layout.alignment: Qt.AlignTop
-                        color: dMa.containsMouse ? Theme.fg : "transparent"
-                        Text { anchors.centerIn: parent; text: "x"; color: dMa.containsMouse ? Theme.bg : Theme.muted2; font.family: Theme.fontFamily; font.pixelSize: 9; font.bold: true }
+                        Layout.preferredWidth: 16; Layout.preferredHeight: 16; Layout.alignment: Qt.AlignTop
+                        color: dMa.containsMouse || dMa.pressed ? Theme.fg : "transparent"
+                        border.color: dMa.containsMouse || dMa.pressed ? Theme.fg : Theme.border
+                        border.width: 1
+                        Text { anchors.centerIn: parent; text: "x"; color: dMa.containsMouse || dMa.pressed ? Theme.bg : Theme.muted2; font.family: Theme.fontFamily; font.pixelSize: 9; font.bold: true }
                         MouseArea { id: dMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: NotificationServer.dismissById(model.notifId) }
                       }
                     }
                     MouseArea {
+                      id: dHover
+                      hoverEnabled: true
                       anchors.fill: parent; cursorShape: Qt.PointingHandCursor; z: -1
                       onClicked: {
                         NotificationServer.activate(model.notifId)

@@ -119,8 +119,48 @@ Scope {
       body: notif.body || "",
       urgency: notif.urgency ?? 1,
       expireTimeout: notif.expireTimeout ?? 0,
-      image: notif.image || ""
+      image: notif.image || "",
+      time: root.stamp()
     })
+  }
+
+  function stamp() {
+    const d = new Date()
+    const pad = n => String(n).padStart(2, "0")
+    return pad(d.getHours()) + ":" + pad(d.getMinutes())
+  }
+
+  function collectActions(notif) {
+    const out = []
+    if (notif && notif.actions) {
+      for (let i = 0; i < notif.actions.length; i++) {
+        const a = notif.actions[i]
+        if (!a || a.identifier === "default")
+          continue
+        out.push({ id: a.identifier, text: a.text || a.identifier })
+      }
+    }
+    return out
+  }
+
+  function actionFor(id, actId) {
+    const live = root.notifications.find(n => n && n.id === id) || null
+    if (!live || !live.actions)
+      return null
+    for (let i = 0; i < live.actions.length; i++) {
+      const a = live.actions[i]
+      if (a && a.identifier === actId)
+        return a
+    }
+    return null
+  }
+
+  function invokeAction(id, actId) {
+    const a = root.actionFor(id, actId)
+    if (!a)
+      return
+    try { a.invoke() } catch (e) {}
+    root.dismissById(id)
   }
 
   NotificationServer {
@@ -139,13 +179,11 @@ Scope {
       root.notifications = [notif, ...root.notifications]
       root.meaningfulCount = root.notifications.length
       root.centerInsert(notif)
-      console.log("QS notif", notif.id, notif.summary, "popup before", popupModel.count)
       if ((root.dnd && notif.urgency !== NotificationUrgency.Critical) || ControlState.open || ClockState.open || SettingsState.open) {
         root.hiddenToasts = [...root.hiddenToasts, notif.id]
         return
       }
       addPopup(notif)
-      console.log("QS added popup", notif.id, "count", popupModel.count)
     }
   }
 
@@ -161,6 +199,7 @@ Scope {
       urgency: notif.urgency ?? 1,
       expireTimeout: notif.expireTimeout ?? 0,
       image: notif.image || "",
+      actions: root.collectActions(notif),
       leaving: false
     })
     while (popupModel.count > 4)
@@ -206,9 +245,10 @@ Scope {
     root.meaningfulCount = root.notifications.length
     root.centerRemove(notif.id)
     root.hiddenToasts = root.hiddenToasts.filter(x => x !== notif.id)
-    const i = findPopupIndex(notif.id)
-    if (i >= 0) popupModel.remove(i)
     root.forgetPid(notif.id)
+    const i = findPopupIndex(notif.id)
+    if (i >= 0 && !popupModel.get(i).leaving)
+      popupModel.setProperty(i, "leaving", true)
   }
 
   function dismissById(id) {
@@ -217,10 +257,11 @@ Scope {
     else {
       root.centerRemove(id)
       root.hiddenToasts = root.hiddenToasts.filter(x => x !== id)
-      const i = findPopupIndex(id)
-      if (i >= 0) popupModel.remove(i)
       root.forgetPid(id)
     }
+    const i = findPopupIndex(id)
+    if (i >= 0 && !popupModel.get(i).leaving)
+      popupModel.setProperty(i, "leaving", true)
   }
 
   function clearAll() {

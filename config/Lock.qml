@@ -106,6 +106,7 @@ Scope {
             return
           surf.uiVisible = false
           surf.menuOpen = false
+          PowerState.forceClose()
         }
 
         function openMenu(section) {
@@ -410,6 +411,12 @@ Scope {
             if (graceActive) {
               LockState.locked = false
             } else {
+              if (PowerState.open) {
+                const onPower = mouse.x >= lockPowerTiles.x && mouse.x < lockPowerTiles.x + lockPowerTiles.width
+                  && mouse.y >= lockPowerTiles.y && mouse.y < lockPowerTiles.y + lockPowerTiles.height
+                if (!onPower)
+                  PowerState.requestClose()
+              }
               if (surf.menuOpen) {
                 const onBtn = mouse.y <= 30 && mouse.x >= surf.width - lockBar.qsBtnWidth
                 if (!onBtn) {
@@ -420,6 +427,65 @@ Scope {
               }
               surf.wake()
               mouse.accepted = false
+            }
+          }
+        }
+
+        Item {
+          id: powerClip
+          anchors.fill: parent
+          visible: (PowerState.open || PowerState.closePending) && LockState.locked && surf.contentShown
+
+          PowerMenuTiles {
+            id: lockPowerTiles
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: parent.top
+            anchors.topMargin: PowerState.open ? 36 : -(height + 250)
+            opacity: PowerState.open ? 1 : 0
+            Behavior on anchors.topMargin { NumberAnimation { duration: 170; easing.type: Easing.OutExpo } }
+            Behavior on opacity { NumberAnimation { duration: 170; easing.type: Easing.OutCubic } }
+            open: PowerState.open && LockState.locked
+          }
+        }
+
+        Connections {
+          target: PowerState
+          function onOpenChanged() {
+            if (PowerState.open) {
+              surf.menuOpen = false
+              surf.wake()
+            }
+          }
+        }
+
+        VolumeCard {
+          id: lockVolume
+          anchors.horizontalCenter: parent.horizontalCenter
+          anchors.bottom: parent.bottom
+
+          Connections {
+            target: Audio
+            function onVolChanged() {
+              if (LockState.locked && surf.contentShown) {
+                lockVolume.show()
+                if (ControlState.sliderDrags === 0)
+                  Audio.playVolumeSound()
+              }
+            }
+            function onMutedChanged() {
+              if (LockState.locked && surf.contentShown) {
+                lockVolume.show()
+                if (ControlState.sliderDrags === 0)
+                  Audio.playVolumeSound()
+              }
+            }
+          }
+
+          Connections {
+            target: LockState
+            function onLockedChanged() {
+              if (!LockState.locked)
+                lockVolume.shown = false
             }
           }
         }
@@ -479,6 +545,7 @@ Scope {
               graceActive = true
               surf.uiVisible = true
               surf.menuOpen = false
+              PowerState.forceClose()
               passwordBox.text = ""
               lockContext.currentText = ""
               graceTimer.restart()
@@ -489,16 +556,36 @@ Scope {
               lockContext.currentText = ""
               graceTimer.stop()
               idleTimer.stop()
+              PowerState.forceClose()
             }
           }
         }
 
         Keys.onPressed: function(event) {
-          if (event.key === Qt.Key_Escape && surf.menuOpen && !graceActive) {
-            surf.menuOpen = false
+          if (event.key === Qt.Key_Escape && (surf.menuOpen || PowerState.open) && !graceActive) {
             event.accepted = true
+            if (PowerState.open)
+              PowerState.requestClose()
+            if (surf.menuOpen)
+              surf.menuOpen = false
           } else if (graceActive) {
             LockState.locked = false
+          } else if (PowerState.open) {
+            if (event.key === Qt.Key_Up || event.key === Qt.Key_Left) {
+              lockPowerTiles.move(-1)
+              event.accepted = true
+            } else if (event.key === Qt.Key_Down || event.key === Qt.Key_Right) {
+              lockPowerTiles.move(1)
+              event.accepted = true
+            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+              lockPowerTiles.activate(lockPowerTiles.selIdx)
+              event.accepted = true
+            } else if (event.key === Qt.Key_Tab) {
+              lockPowerTiles.move(1)
+              event.accepted = true
+            } else {
+              surf.wake()
+            }
           } else {
             surf.wake()
           }

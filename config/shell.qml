@@ -101,9 +101,6 @@ ShellRoot {
           height: Math.ceil(parent.height * barWindow.blurProg)
           color: "transparent"
         }
-        ControlCenter {
-          targetScreen: modelData
-        }
         ControlCenterCard {
           id: controlCard
           targetScreen: modelData
@@ -154,33 +151,46 @@ ShellRoot {
       }
     }
   }
-  PanelWindow {
-    anchors.top: true
-    anchors.bottom: true
-    anchors.left: true
-    anchors.right: true
-    exclusionMode: ExclusionMode.Ignore
-    color: "transparent"
-    WlrLayershell.namespace: "quickshell-backdrop"
-    WlrLayershell.layer: WlrLayer.Top
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-    mask: Region { }
-    visible: (launcher.open || launcher.closePending)
-      || (emojiPicker.open || emojiPicker.closePending)
-      || (clipboard.open || clipboard.closePending)
-      || (powerMenu.open || powerMenu.closePending)
-      || ((wallpaperPicker.opened || wallpaperPicker.closePending) && wallpaperPicker.imagesLoaded)
-      || (avatarPicker.opened || avatarPicker.closePending)
+  Variants {
+    model: Quickshell.screens
+    delegate: Component {
+      PanelWindow {
+        id: popupBackdrop
+        required property var modelData
+        screen: modelData
+        anchors.top: true
+        anchors.bottom: true
+        anchors.left: true
+        anchors.right: true
+        exclusionMode: ExclusionMode.Ignore
+        color: "transparent"
+        WlrLayershell.namespace: "quickshell-backdrop"
+        WlrLayershell.layer: WlrLayer.Top
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+        visible: (launcher.open || launcher.closePending)
+          || (emojiPicker.open || emojiPicker.closePending)
+          || (clipboard.open || clipboard.closePending)
+          || (PowerState.open || PowerState.closePending)
+          || ((wallpaperPicker.opened || wallpaperPicker.closePending) && wallpaperPicker.imagesLoaded)
+          || (avatarPicker.opened || avatarPicker.closePending)
+          || (ControlState.open && (!ControlState.screen || ControlState.screen === modelData))
+          || (ClockState.open && (!ClockState.screen || ClockState.screen === modelData))
+          || (SettingsState.open && (!SettingsState.screen || SettingsState.screen === modelData))
 
-    MouseArea {
-      anchors.fill: parent
-      onClicked: {
-        launcher.requestClose()
-        emojiPicker.requestClose()
-        clipboard.requestClose()
-        powerMenu.requestClose()
-        wallpaperPicker.requestClose()
-        avatarPicker.requestClose()
+        MouseArea {
+          anchors.fill: parent
+          onClicked: {
+            launcher.requestClose()
+            emojiPicker.requestClose()
+            clipboard.requestClose()
+            PowerState.requestClose()
+            wallpaperPicker.requestClose()
+            avatarPicker.requestClose()
+            ControlState.close()
+            ClockState.close()
+            SettingsState.close()
+          }
+        }
       }
     }
   }

@@ -14,18 +14,19 @@ Rectangle {
   property string desktopEntry: ""
   property string appName: ""
   property string fontFamily: Theme.fontFamily
-  property int groupCount: 1
+  property var actions: []
 
   signal closeRequested()
   signal cardClicked()
+  signal actionClicked(string actId)
   signal dismissed()
 
   color: Theme.bg
   radius: Theme.rounding
-  border.color: Theme.outline
-  border.width: 1
+  border.color: root.urgency === 2 ? Theme.error : Theme.outline
+  border.width: root.urgency === 2 ? 2 : 1
   implicitWidth: 340
-  implicitHeight: col.implicitHeight + Theme.paddingS * 2
+  implicitHeight: col.implicitHeight + Theme.paddingS * 2 + 4
 
   property bool entered: false
   property bool dismissing: false
@@ -35,10 +36,14 @@ Rectangle {
 
   readonly property bool slidingOut: !entered || dismissing
   x: (slidingOut ? 360 : 0) + dragOff
-  Behavior on x { NumberAnimation { duration: root.slidingOut ? 150 : 200; easing.type: root.slidingOut ? Easing.InCubic : Easing.OutCubic } }
+  Behavior on x { NumberAnimation { duration: root.slidingOut ? 150 : 220; easing.type: root.slidingOut ? Easing.InCubic : Easing.OutCubic } }
+
+  readonly property real dragFade: 1 - Math.min(0.8, Math.abs(root.dragOff) / root.width)
+  opacity: root.dismissing ? 0 : (root.entered ? root.dragFade : 0)
+  Behavior on opacity { NumberAnimation { duration: 130; easing.type: Easing.OutCubic } }
 
   onDismissingChanged: if (root.dismissing) dismissTimer.start()
-  Timer { id: dismissTimer; interval: 160; repeat: false; onTriggered: root.dismissed() }
+  Timer { id: dismissTimer; interval: 200; repeat: false; onTriggered: root.dismissed() }
 
   function dismiss() { root.dragOff = 0; root.dismissing = true }
   readonly property bool hovered: ma.containsMouse
@@ -69,6 +74,17 @@ Rectangle {
     }
   }
 
+  Rectangle {
+    id: urgentBar
+    anchors.left: parent.left
+    anchors.leftMargin: root.urgency === 2 ? 0 : root.border.width
+    anchors.top: parent.top
+    anchors.bottom: parent.bottom
+    width: root.urgency === 2 ? 3 : 0
+    color: Theme.error
+    visible: root.urgency === 2
+  }
+
   Column {
     id: col
     spacing: 6
@@ -76,59 +92,81 @@ Rectangle {
       left: parent.left
       right: parent.right
       top: parent.top
-      margins: 8
+      leftMargin: 10
+      rightMargin: 10
+      topMargin: Theme.paddingS + 2
     }
 
     RowLayout {
       width: parent.width
-      spacing: 8
+      spacing: 10
 
-      Image {
-        id: iconImg
-        Layout.preferredWidth: 26
-        Layout.preferredHeight: 26
+      Rectangle {
+        id: iconBox
+        Layout.preferredWidth: 34
+        Layout.preferredHeight: 34
         Layout.alignment: Qt.AlignTop
-        source: {
-          if (root.image && root.image.length > 0) {
-            const v = String(root.image)
-            if (v.startsWith("file://") || v.startsWith("/")) return v
-            if (v.indexOf("://") >= 0) return v
-            return Quickshell.iconPath(v, true)
+        color: Theme.bgAlt
+        border.color: Theme.border
+        border.width: 1
+        visible: iconImg.visible
+
+        Image {
+          id: iconImg
+          anchors.centerIn: parent
+          source: {
+            if (root.image && root.image.length > 0) {
+              const v = String(root.image)
+              if (v.startsWith("file://") || v.startsWith("/")) return v
+              if (v.indexOf("://") >= 0) return v
+              return Quickshell.iconPath(v, true)
+            }
+            if (root.appIcon && root.appIcon.length > 0) return Quickshell.iconPath(root.appIcon, true)
+            return ""
           }
-          if (root.appIcon && root.appIcon.length > 0) return Quickshell.iconPath(root.appIcon, true)
-          return ""
+          visible: status === Image.Ready
+          fillMode: Image.PreserveAspectFit
+          asynchronous: true
+          smooth: true
+          onStatusChanged: if (status === Image.Error) visible = false
         }
-        visible: status === Image.Ready
-        fillMode: Image.PreserveAspectFit
-        asynchronous: true
-        smooth: true
-        onStatusChanged: if (status === Image.Error) visible = false
       }
 
       ColumnLayout {
         Layout.fillWidth: true
-        spacing: 2
+        spacing: 3
 
         RowLayout {
           Layout.fillWidth: true
+          spacing: 8
           Text {
             Layout.fillWidth: true
             text: root.app.toUpperCase()
-            color: Theme.fg
+            color: Theme.muted
             font.family: root.fontFamily
-            font.pixelSize: 10
-            font.letterSpacing: 1
+            font.pixelSize: 9
+            font.letterSpacing: 1.5
             elide: Text.ElideRight
           }
+          Text {
+            visible: root.urgency === 2
+            text: "!"
+            color: Theme.error
+            font.family: root.fontFamily
+            font.pixelSize: 10
+            font.bold: true
+          }
           Rectangle {
-            implicitWidth: 18
-            implicitHeight: 18
+            implicitWidth: 20
+            implicitHeight: 20
             color: closeMa.containsMouse || closeMa.pressed ? Theme.fg : "transparent"
+            border.color: closeMa.containsMouse || closeMa.pressed ? Theme.fg : Theme.border
+            border.width: 1
             Text {
               anchors.centerIn: parent
               text: "✕"
               color: closeMa.pressed || closeMa.containsMouse ? Theme.bg : Theme.muted
-              font.pixelSize: 11
+              font.pixelSize: 10
             }
             MouseArea {
               id: closeMa
@@ -146,6 +184,7 @@ Rectangle {
           color: Theme.fg
           font.family: root.fontFamily
           font.pixelSize: 12
+          font.bold: true
           wrapMode: Text.WordWrap
           visible: root.summary.length > 0
         }
@@ -155,9 +194,49 @@ Rectangle {
           text: root.body
           color: Theme.muted
           font.family: root.fontFamily
-          font.pixelSize: 11
+          font.pixelSize: 10.5
           wrapMode: Text.WordWrap
+          maximumLineCount: 5
+          elide: Text.ElideRight
           visible: root.body.length > 0
+        }
+      }
+    }
+
+    Row {
+      id: actionRow
+      spacing: 6
+      visible: root.actions.length > 0
+
+      Repeater {
+        model: root.actions.slice(0, 3)
+
+        delegate: Rectangle {
+          required property var modelData
+          implicitWidth: Math.min(150, actText.implicitWidth + 20)
+          implicitHeight: 22
+          color: actMa.containsMouse ? Theme.fg : Theme.bgAlt
+          border.color: Theme.border
+          border.width: 1
+
+          Text {
+            id: actText
+            anchors.centerIn: parent
+            text: modelData.text
+            color: actMa.containsMouse ? Theme.bg : Theme.fg
+            font.family: root.fontFamily
+            font.pixelSize: 9
+            elide: Text.ElideRight
+            maximumWidth: 130
+          }
+          MouseArea {
+            id: actMa
+            width: parent.width
+            height: parent.height
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.actionClicked(modelData.id)
+          }
         }
       }
     }
