@@ -213,21 +213,28 @@ Rectangle {
 
         delegate: Rectangle {
           required property var modelData
-          implicitWidth: Math.min(150, actText.implicitWidth + 20)
+          implicitWidth: Math.min(150, actMetrics.implicitWidth + 20)
           implicitHeight: 22
           color: actMa.containsMouse ? Theme.fg : Theme.bgAlt
           border.color: Theme.border
           border.width: 1
 
+          TextMetrics {
+            id: actMetrics
+            font.family: root.fontFamily
+            font.pixelSize: 9
+            text: modelData.text
+          }
+
           Text {
             id: actText
             anchors.centerIn: parent
+            width: Math.min(130, actMetrics.implicitWidth)
             text: modelData.text
             color: actMa.containsMouse ? Theme.bg : Theme.fg
             font.family: root.fontFamily
             font.pixelSize: 9
             elide: Text.ElideRight
-            maximumWidth: 130
           }
           MouseArea {
             id: actMa
