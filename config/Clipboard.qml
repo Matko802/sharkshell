@@ -525,7 +525,7 @@ Scope {
           Row {
             id: swipeRow
             x: -root.swipeIdx * swipeContainer.width
-            Behavior on x { enabled: root.open && !root.closePending; NumberAnimation { duration: 130; easing.type: Theme.easingOut } }
+            Behavior on x { enabled: root.open && !root.closePending; NumberAnimation { duration: Theme.animSwipe; easing.type: Theme.easingSwipe } }
             height: swipeContainer.height
 
             Item {

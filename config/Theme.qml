@@ -26,6 +26,8 @@ Singleton {
   readonly property int easingOut: Easing.OutCubic
   readonly property int easingIn: Easing.InCubic
   readonly property int easingDefault: Easing.OutCubic
+  readonly property int animSwipe: 280
+  readonly property int easingSwipe: Easing.OutExpo
 
   property color bgBase: DynamicTheme.bg
   property color bg: Qt.rgba(bgBase.r, bgBase.g, bgBase.b, root.surfaceAlpha)

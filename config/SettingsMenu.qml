@@ -276,7 +276,7 @@ PanelWindow {
             contentWidth: swipeRow.width
             contentHeight: swipeRow.height
             contentX: root.activeTab * pageFlick.width
-            Behavior on contentX { NumberAnimation { duration: 130; easing.type: Theme.easingOut } }
+            Behavior on contentX { NumberAnimation { duration: Theme.animSwipe; easing.type: Theme.easingSwipe } }
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             flickableDirection: Flickable.VerticalFlick

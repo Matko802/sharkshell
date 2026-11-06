@@ -531,7 +531,7 @@ Scope {
       contentWidth: panel.width * 2
       contentHeight: height
       contentX: root.activeTab * panel.width
-      Behavior on contentX { NumberAnimation { duration: 130; easing.type: Easing.OutCubic } }
+      Behavior on contentX { NumberAnimation { duration: Theme.animSwipe; easing.type: Theme.easingSwipe } }
 
       Row {
         spacing: 0
