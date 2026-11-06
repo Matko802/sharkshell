@@ -534,10 +534,6 @@ PanelWindow {
                           const im = model.image ? String(model.image) : ""
                           return im !== "" || ic !== "" || de !== ""
                         }
-                        Rectangle {
-                          anchors.fill: parent
-                          color: Theme.bg
-                        }
                         IconImage {
                           anchors.fill: parent; anchors.margins: 3
                           visible: { const im = model.image ? String(model.image) : ""; return !(im !== "" && (im.startsWith("/") || im.startsWith("file://") || im.startsWith("image://"))) }

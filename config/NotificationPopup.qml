@@ -106,12 +106,14 @@ Rectangle {
         Layout.preferredWidth: 34
         Layout.preferredHeight: 34
         Layout.alignment: Qt.AlignTop
-        color: Theme.bgAlt
+        color: "transparent"
         visible: iconImg.visible
 
         Image {
           id: iconImg
           anchors.centerIn: parent
+          width: 24
+          height: 24
           source: {
             if (root.image && root.image.length > 0) {
               const v = String(root.image)
