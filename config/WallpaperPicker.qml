@@ -633,12 +633,12 @@ Scope {
           id: navGrid
           width: parent.width
           property int totalRows: Math.ceil(root.imageResults.length / 2)
-          height: Math.min(5, Math.max(1, totalRows)) * 118
+          height: 118
           clip: true
           cellWidth: Math.floor(width / 2)
           cellHeight: 118
           model: root.imageResults
-          interactive: totalRows > 5
+          interactive: totalRows > 1
 
           delegate: Item {
             required property var modelData
