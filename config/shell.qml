@@ -102,9 +102,17 @@ ShellRoot {
           anchors.right: parent.right
           anchors.bottom: parent.bottom
           height: 1
-          color: Theme.border
-          opacity: barBg.opacity
+          opacity: barBg.opacity * 0.55
           visible: opacity > 0.01
+          gradient: Gradient {
+            orientation: Gradient.Horizontal
+            stops: [
+              GradientStop { position: 0.0; color: Qt.rgba(Theme.border.r, Theme.border.g, Theme.border.b, 0) },
+              GradientStop { position: 0.12; color: Theme.border },
+              GradientStop { position: 0.88; color: Theme.border },
+              GradientStop { position: 1.0; color: Qt.rgba(Theme.border.r, Theme.border.g, Theme.border.b, 0) }
+            ]
+          }
         }
         Rectangle {
           id: blurTracker
