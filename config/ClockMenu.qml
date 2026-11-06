@@ -514,11 +514,14 @@ PanelWindow {
                     NumberAnimation { property: "y"; duration: 200; easing.type: Theme.easingOut }
                   }
                   delegate: Rectangle {
+                    id: dCard
                     width: notifList.width
                     height: nRow.implicitHeight + 20
-                    color: dHover.containsMouse ? Theme.hover : Theme.bgAlt
+                    color: "transparent"
                     border.color: Theme.border
                     border.width: 1
+                    opacity: 1 - Math.min(0.8, Math.abs(dCard.dragOff) / dCard.width)
+                    transform: Translate { x: dCard.dragOff }
                     RowLayout {
                       id: nRow
                       anchors.left: parent.left
@@ -580,7 +583,30 @@ PanelWindow {
                       id: dHover
                       hoverEnabled: true
                       anchors.fill: parent; cursorShape: Qt.PointingHandCursor; z: -1
+                      property real pressX: 0
+                      property real dragOff: 0
+                      preventStealing: dragOff !== 0
+                      onPressed: mouse => { pressX = mouse.x; dragOff = 0 }
+                      onPositionChanged: mouse => {
+                        if (!pressed)
+                          return
+                        const dx = mouse.x - pressX
+                        if (Math.abs(dx) > 4) {
+                          dragOff = Math.max(-dCard.width, Math.min(dCard.width, dx))
+                          dCard.dragOff = dragOff
+                        }
+                      }
+                      onReleased: {
+                        if (Math.abs(dCard.dragOff) > dCard.width * 0.3) {
+                          NotificationServer.dismissById(model.notifId)
+                        } else {
+                          dCard.dragOff = 0
+                        }
+                        dragOff = 0
+                      }
                       onClicked: {
+                        if (Math.abs(dCard.dragOff) > 10)
+                          return
                         NotificationServer.activate(model.notifId)
                         ClockState.close()
                         NotificationServer.dismissById(model.notifId)
