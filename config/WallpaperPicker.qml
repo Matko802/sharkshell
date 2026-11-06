@@ -14,6 +14,8 @@ Scope {
   property string filterText: ""
   property string rootDir: ""
   property string navDir: ""
+  property var navHistory: []
+  property int navPos: -1
   property var folderArray: []
   property var imageArray: []
   property string selectedImage: ""
@@ -186,8 +188,7 @@ Scope {
     return entry.name.toLowerCase().indexOf(root.filterText.toLowerCase()) !== -1
   }
 
-  readonly property var folderResults: {
-    const out = []
+  readonly property var folderResults: {    const out = []
     for (let i = 0; i < folderArray.length; i++)
       if (root.folderMatches(folderArray[i]))
         out.push(folderArray[i])
@@ -212,7 +213,7 @@ Scope {
       folderView.positionViewAtIndex(Math.max(0, root.browseSel - 2), ListView.Beginning)
   }
 
-  function navigate(dir) {
+  function loadDir(dir) {
     root.editingDir = false
     root.filterText = ""
     root.browseSel = 0
@@ -225,6 +226,27 @@ Scope {
     thumbProc.output = ""
     foldersProc.running = true
     thumbProc.running = true
+  }
+
+  function navigate(dir) {
+    root.navHistory = root.navHistory.slice(0, root.navPos + 1)
+    root.navHistory.push(dir)
+    root.navPos = root.navHistory.length - 1
+    root.loadDir(dir)
+  }
+
+  function navBack() {
+    if (root.navPos <= 0)
+      return
+    root.navPos = root.navPos - 1
+    root.loadDir(root.navHistory[root.navPos])
+  }
+
+  function navFwd() {
+    if (root.navPos >= root.navHistory.length - 1)
+      return
+    root.navPos = root.navPos + 1
+    root.loadDir(root.navHistory[root.navPos])
   }
 
   function ascend() {
@@ -357,6 +379,7 @@ Scope {
       border.color: Theme.outline
       border.width: 1
       opacity: panel.opacity
+      scale: panel.slideProg
 
       RowLayout {
         anchors.fill: parent
@@ -397,11 +420,13 @@ Scope {
       anchors.bottom: parent.bottom
       anchors.bottomMargin: 10
       width: 176
+      readonly property real slideProg: (panel.anchors.leftMargin + panel.width) / (20 + panel.width)
       color: Theme.bg
       opacity: (panel.anchors.leftMargin + panel.width) / (20 + panel.width)
       border.color: Theme.outline
       border.width: 1
       Behavior on anchors.leftMargin { NumberAnimation { duration: 170; easing.type: Easing.OutExpo } }
+      Behavior on scale { NumberAnimation { duration: 170; easing.type: Easing.OutExpo } }
 
       focus: true
 
@@ -436,11 +461,14 @@ Scope {
             root.requestClose()
           }
           event.accepted = true
-        } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Right) && !root.editingDir) {
+        } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && !root.editingDir) {
           root.descend(root.browseSel)
           event.accepted = true
+        } else if (event.key === Qt.Key_Right && !root.editingDir) {
+          root.navFwd()
+          event.accepted = true
         } else if (event.key === Qt.Key_Left && !root.editingDir) {
-          root.ascend()
+          root.navBack()
           event.accepted = true
         } else if (event.key === Qt.Key_Backspace) {
           if (root.editingDir)
@@ -485,20 +513,50 @@ Scope {
             height: 26
             radius: Theme.rounding
             color: backMa.containsMouse ? Theme.fg : "transparent"
-            border.color: Theme.outline
+            border.color: backEnabled ? Theme.outline : Theme.border
             border.width: 1
-            QIcon { anchors.centerIn: parent; name: "arrow-left"; size: 16; color: backMa.containsMouse ? Theme.bg : Theme.fg }
-            MouseArea { id: backMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.ascend() }
+            readonly property bool backEnabled: root.navPos > 0
+            Text {
+              anchors.centerIn: parent
+              text: "<"
+              color: backMa.containsMouse ? Theme.bg : (parent.backEnabled ? Theme.fg : Theme.muted3)
+              font.family: root.fontFamily
+              font.pixelSize: 13
+              font.bold: true
+            }
+            MouseArea {
+              id: backMa
+              anchors.fill: parent
+              enabled: parent.backEnabled
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.navBack()
+            }
           }
           Rectangle {
             width: 30
             height: 26
             radius: Theme.rounding
+            readonly property bool fwdEnabled: root.navPos < root.navHistory.length - 1
             color: fwdMa.containsMouse ? Theme.fg : "transparent"
-            border.color: Theme.outline
+            border.color: fwdEnabled ? Theme.outline : Theme.border
             border.width: 1
-            QIcon { anchors.centerIn: parent; name: "arrow-right"; size: 16; color: fwdMa.containsMouse ? Theme.bg : Theme.fg }
-            MouseArea { id: fwdMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.descend(root.browseSel) }
+            Text {
+              anchors.centerIn: parent
+              text: ">"
+              color: fwdMa.containsMouse ? Theme.bg : (parent.fwdEnabled ? Theme.fg : Theme.muted3)
+              font.family: root.fontFamily
+              font.pixelSize: 13
+              font.bold: true
+            }
+            MouseArea {
+              id: fwdMa
+              anchors.fill: parent
+              enabled: parent.fwdEnabled
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.navFwd()
+            }
           }
           Rectangle {
             width: 30
@@ -510,18 +568,6 @@ Scope {
             QIcon { anchors.centerIn: parent; name: "home"; size: 16; color: homeMa.containsMouse ? Theme.bg : Theme.fg }
             MouseArea { id: homeMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.goHome() }
           }
-        }
-
-        Text {
-          visible: root.isLockTab
-          width: parent.width
-          text: WallpaperState.lockPath === "" ? "following desktop" : "custom lockscreen"
-          color: Theme.fg
-          opacity: 0.6
-          font.family: root.fontFamily
-          font.pixelSize: 10
-          horizontalAlignment: Text.AlignHCenter
-          elide: Text.ElideRight
         }
 
         Rectangle {
