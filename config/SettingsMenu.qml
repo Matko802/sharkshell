@@ -38,7 +38,8 @@ PanelWindow {
     { name: "User", glyph: "user-circle" },
     { name: "Visualizer", glyph: "equalizer" },
     { name: "Power", glyph: "suspend" },
-    { name: "Apps", glyph: "settings" }
+    { name: "Apps", glyph: "settings" },
+    { name: "Info", glyph: "info" }
   ]
 
   function fmtDur(s) {
@@ -76,7 +77,7 @@ PanelWindow {
   }
 
   readonly property var visualItems: [{ kind: "mode" }, { kind: "bars" }, { kind: "backend" }, { kind: "topbar" }]
-  readonly property var currentItems: root.activeTab === 0 ? root.themeItems : (root.activeTab === 5 ? root.appsItems : (root.activeTab === 3 ? root.visualItems : (root.activeTab === 4 ? [] : root.audioModel)))
+  readonly property var currentItems: root.activeTab === 0 ? root.themeItems : (root.activeTab === 5 ? root.appsItems : (root.activeTab === 3 ? root.visualItems : (root.activeTab === 4 || root.activeTab === 6 ? [] : root.audioModel)))
 
   property int expandedApp: -1
   readonly property var appsItems: DefaultApps.rows
@@ -86,6 +87,42 @@ PanelWindow {
   function chooseApp(cat, id) {
     DefaultApps.setApp(cat, id)
     root.expandedApp = -1
+  }
+
+  property string shellVersion: "1.0.0"
+  property string qsVersion: ""
+  property string kernelVersion: ""
+  property string uptimeText: ""
+  property string hostText: ""
+
+  readonly property var infoRows: [
+    { label: "Quickshell", value: root.qsVersion || "unknown" },
+    { label: "Compositor", value: Env.compositor || "unknown" },
+    { label: "Kernel", value: root.kernelVersion || "unknown" },
+    { label: "Uptime", value: root.uptimeText || "unknown" },
+    { label: "Host", value: root.hostText || "unknown" }
+  ]
+
+  Process {
+    id: infoProc
+    running: true
+    command: ["sh", "-c",
+      "qs=$(quickshell --version 2>/dev/null | head -n1); "
+      + "kr=$(uname -r 2>/dev/null); "
+      + "up=$(awk '{s=$1; d=int(s/86400); h=int(s%86400/3600); m=int(s%3600/60); r=\"\"; if(d>0) r=r d \"d \"; if(d>0||h>0) r=r h \"h \"; print r m \"m\"}' /proc/uptime); "
+      + "us=${USER:-$(id -un)}; hn=$(hostname 2>/dev/null); "
+      + "printf '%s\\n%s\\n%s\\n%s\\n' \"$qs\" \"$kr\" \"$up\" \"$us@$hn\""]
+    stdout: SplitParser {
+      onRead: function(data) { infoProc.lines.push(data) }
+    }
+    property var lines: []
+    onExited: {
+      const l = infoProc.lines
+      root.qsVersion = l.length > 0 ? l[0] : ""
+      root.kernelVersion = l.length > 1 ? l[1] : ""
+      root.uptimeText = l.length > 2 ? l[2] : ""
+      root.hostText = l.length > 3 ? l[3] : ""
+    }
   }
 
   function activate(i) {
@@ -990,6 +1027,102 @@ PanelWindow {
                         color: Theme.muted2
                         font.family: root.fontFamily
                         font.pixelSize: 10
+                      }
+                    }
+                  }
+                }
+              }
+
+              ColumnLayout {
+                id: tab6col
+                width: pageFlick.width
+                spacing: 10
+
+                Rectangle {
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: 128
+                  color: Theme.bgAlt
+                  border.color: Theme.border
+                  border.width: 1
+
+                  RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 16
+                    anchors.rightMargin: 16
+                    spacing: 20
+
+                    Image {
+                      Layout.preferredWidth: 104
+                      Layout.preferredHeight: 104
+                      Layout.alignment: Qt.AlignVCenter
+                      source: Qt.resolvedUrl("assets/watchshark.png")
+                      fillMode: Image.PreserveAspectFit
+                      smooth: true
+                      asynchronous: true
+                      mipmap: true
+                    }
+
+                    ColumnLayout {
+                      Layout.fillWidth: true
+                      Layout.fillHeight: true
+                      Layout.alignment: Qt.AlignVCenter
+                      spacing: 4
+
+                      Text {
+                        text: "SHARKSHELL"
+                        color: Theme.fg
+                        font.family: root.fontFamily
+                        font.pixelSize: 20
+                        font.letterSpacing: 6
+                        font.bold: true
+                      }
+                      Text {
+                        text: "v" + shellVersion
+                        color: Theme.muted
+                        font.family: root.fontFamily
+                        font.pixelSize: 11
+                      }
+                      Text {
+                        text: "desktop shell for wayland"
+                        color: Theme.muted2
+                        font.family: root.fontFamily
+                        font.pixelSize: 9
+                        font.letterSpacing: 2
+                      }
+                    }
+                  }
+                }
+
+                Repeater {
+                  model: root.infoRows
+                  delegate: Rectangle {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 28
+                    color: Theme.bgAlt
+                    border.color: Theme.border
+                    border.width: 1
+                    RowLayout {
+                      anchors.fill: parent
+                      anchors.leftMargin: 12
+                      anchors.rightMargin: 12
+                      spacing: 10
+                      Text {
+                        text: modelData.label.toUpperCase()
+                        color: Theme.muted2
+                        font.family: root.fontFamily
+                        font.pixelSize: 9
+                        font.letterSpacing: 2
+                        Layout.preferredWidth: 100
+                      }
+                      Text {
+                        Layout.fillWidth: true
+                        text: modelData.value
+                        color: Theme.fg
+                        font.family: root.fontFamily
+                        font.pixelSize: 11
+                        elide: Text.ElideRight
+                        horizontalAlignment: Text.AlignRight
                       }
                     }
                   }
