@@ -115,10 +115,6 @@ Scope {
     panel.forceActiveFocus()
   }
 
-  onActiveTabChanged: {
-    tabSwitchAnim.from = root.activeTab === 1 ? 60 : -60
-    tabSwitchAnim.restart()
-  }
 
   function currentPosX() {
     return root.isLockTab ? WallpaperState.lockPositionX : WallpaperState.positionX
@@ -213,11 +209,6 @@ Scope {
     if (root.browseSel >= root.folderResults.length)
       root.browseSel = Math.max(0, root.folderResults.length - 1)
   }
-  onBrowseSelChanged: {
-    if (folderView && root.folderResults.length > 0)
-      folderView.positionViewAtIndex(Math.max(0, root.browseSel - 2), ListView.Beginning)
-  }
-
   function loadDir(dir) {
     root.editingDir = false
     root.filterText = ""
@@ -278,15 +269,40 @@ Scope {
   }
 
   function applyImage(i) {
+    root.chooseImage(root.activeTab, i)
+  }
+
+  function chooseImage(tab, i) {
     const entry = root.imageResults[i]
     if (!entry)
       return
     root.selectedImage = entry.filePath
-    if (root.isLockTab)
+    if (tab === 1)
       WallpaperState.setLock(entry.filePath)
     else
       WallpaperState.set(entry.filePath)
   }
+
+  function posXFor(tab) {
+    return tab === 1 ? WallpaperState.lockPositionX : WallpaperState.positionX
+  }
+
+  function posYFor(tab) {
+    return tab === 1 ? WallpaperState.lockPositionY : WallpaperState.positionY
+  }
+
+  function setPosFor(tab, x, y) {
+    if (tab === 1)
+      WallpaperState.setLockPosition(x, y)
+    else
+      WallpaperState.setPosition(x, y)
+  }
+
+  function grabFocus() {
+    panel.forceActiveFocus()
+  }
+
+  readonly property bool loadingDirs: foldersProc.running || thumbProc.running
 
   Process {
     id: foldersProc
@@ -501,384 +517,34 @@ Scope {
         }
       }
 
-    Item {
-      id: contentWrap
+    Flickable {
+      id: pageFlick
       anchors.fill: parent
+      clip: true
+      interactive: false
+      contentWidth: panel.width * 2
+      contentHeight: height
+      contentX: root.activeTab * panel.width
+      Behavior on contentX { NumberAnimation { duration: 130; easing.type: Easing.OutCubic } }
 
-      Column {
-        id: topCol
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.margins: 8
-        spacing: 6
+      Row {
+        spacing: 0
 
-        Row {
-          width: parent.width
-          spacing: 6
-
-          Rectangle {
-            width: 30
-            height: 26
-            radius: Theme.rounding
-            color: backMa.containsMouse ? Theme.fg : "transparent"
-            border.color: backEnabled ? Theme.outline : Theme.border
-            border.width: 1
-            readonly property bool backEnabled: root.navPos > 0
-            Text {
-              anchors.centerIn: parent
-              text: "<"
-              color: backMa.containsMouse ? Theme.bg : (parent.backEnabled ? Theme.fg : Theme.muted3)
-              font.family: root.fontFamily
-              font.pixelSize: 13
-              font.bold: true
-            }
-            MouseArea {
-              id: backMa
-              anchors.fill: parent
-              enabled: parent.backEnabled
-              hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
-              onClicked: root.navBack()
-            }
-          }
-          Rectangle {
-            width: 30
-            height: 26
-            radius: Theme.rounding
-            readonly property bool fwdEnabled: root.navPos < root.navHistory.length - 1
-            color: fwdMa.containsMouse ? Theme.fg : "transparent"
-            border.color: fwdEnabled ? Theme.outline : Theme.border
-            border.width: 1
-            Text {
-              anchors.centerIn: parent
-              text: ">"
-              color: fwdMa.containsMouse ? Theme.bg : (parent.fwdEnabled ? Theme.fg : Theme.muted3)
-              font.family: root.fontFamily
-              font.pixelSize: 13
-              font.bold: true
-            }
-            MouseArea {
-              id: fwdMa
-              anchors.fill: parent
-              enabled: parent.fwdEnabled
-              hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
-              onClicked: root.navFwd()
-            }
-          }
-          Rectangle {
-            width: 30
-            height: 26
-            radius: Theme.rounding
-            color: homeMa.containsMouse ? Theme.fg : "transparent"
-            border.color: Theme.outline
-            border.width: 1
-            QIcon { anchors.centerIn: parent; name: "home"; size: 16; color: homeMa.containsMouse ? Theme.bg : Theme.fg }
-            MouseArea { id: homeMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.goHome() }
-          }
+        WallpaperBrowsePage {
+          width: panel.width
+          height: pageFlick.height
+          tab: 0
+          picker: root
         }
 
-        Rectangle {
-          width: parent.width
-          height: 22
-          color: root.editingDir ? Theme.fg : "transparent"
-          border.color: Theme.outline
-          border.width: 1
-
-          TextInput {
-            id: dirInput
-            anchors.fill: parent
-            anchors.margins: 4
-            clip: true
-            verticalAlignment: TextInput.AlignVCenter
-            font.family: root.fontFamily
-            font.pixelSize: 9
-            color: root.editingDir ? Theme.bg : Theme.fg
-            text: root.navDir
-            readOnly: !root.editingDir
-
-            function open() {
-              root.editingDir = true
-              text = root.navDir
-              forceActiveFocus()
-              cursorPosition = text.length
-            }
-
-            function commit() {
-              root.editingDir = false
-              panel.forceActiveFocus()
-              const next = text.trim().replace(/^~(?=\/|$)/, Quickshell.env("HOME") || "")
-              if (next !== "" && next !== root.navDir)
-                root.navigate(next)
-            }
-
-            Keys.onReturnPressed: commit()
-            Keys.onEnterPressed: commit()
-            Keys.onEscapePressed: {
-              root.editingDir = false
-              text = root.navDir
-              panel.forceActiveFocus()
-            }
-          }
-
-          MouseArea {
-            anchors.fill: parent
-            enabled: !root.editingDir
-            cursorShape: Qt.PointingHandCursor
-            onClicked: dirInput.open()
-          }
-        }
-
-        ListView {
-          id: folderView
-          width: parent.width
-          visible: root.folderResults.length > 0
-          height: visible ? Math.min(root.visibleCount, root.folderResults.length) * (root.browseRowH + root.thumbSpacing) : 0
-          clip: true
-          spacing: root.thumbSpacing
-          model: root.folderResults
-          highlightMoveDuration: 120
-          highlightMoveVelocity: -1
-
-          delegate: Rectangle {
-            required property var modelData
-            required property int index
-            width: folderView.width
-            height: root.browseRowH
-            color: root.browseSel === index ? Theme.fg : (folderMa.containsMouse ? Theme.hover : "transparent")
-
-            RowLayout {
-              anchors.fill: parent
-              anchors.leftMargin: 8
-              anchors.rightMargin: 8
-              spacing: 10
-              Item {
-                Layout.preferredWidth: 26
-                Layout.preferredHeight: 26
-                QIcon {
-                  anchors.centerIn: parent
-                  name: "folder"
-                  size: 20
-                  color: root.browseSel === index ? Theme.bg : Theme.fg
-                }
-              }
-              Text {
-                Layout.fillWidth: true
-                text: modelData.name
-                color: root.browseSel === index ? Theme.bg : Theme.fg
-                font.family: root.fontFamily
-                font.pixelSize: 11
-                elide: Text.ElideRight
-              }
-            }
-
-            MouseArea {
-              id: folderMa
-              anchors.fill: parent
-              hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
-              onClicked: { root.browseSel = index; root.descend(index) }
-            }
-          }
-
-          Text {
-            visible: root.folderResults.length === 0
-            anchors.centerIn: parent
-            text: "no folders here"
-            color: Theme.muted
-            font.family: root.fontFamily
-            font.pointSize: 11
-          }
-        }
-
-        Text {
-          visible: root.filterText !== "" && !root.editingDir
-          width: parent.width
-          text: "filter: " + root.filterText
-          color: Theme.fg
-          opacity: 0.6
-          font.family: root.fontFamily
-          font.pixelSize: 10
-          elide: Text.ElideRight
-        }
-
-      }
-
-      GridView {
-        id: navGrid
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: topCol.bottom
-        anchors.topMargin: 6
-        anchors.bottom: bottomCol.top
-        anchors.bottomMargin: 6
-        property int totalRows: root.imageResults.length
-          clip: true
-          cellWidth: width
-          cellHeight: 118
-          model: root.imageResults
-          interactive: true
-
-          delegate: Item {
-            required property var modelData
-            required property int index
-            width: navGrid.cellWidth
-            height: navGrid.cellHeight
-
-            Image {
-              anchors.fill: parent
-              anchors.margins: 3
-              source: Util.fileUrl(modelData.thumbnailPath)
-              fillMode: Image.PreserveAspectCrop
-              asynchronous: true
-              cache: true
-              smooth: true
-            }
-
-            Rectangle {
-              anchors.fill: parent
-              anchors.margins: 3
-              color: modelData.filePath === root.selectedImage ? Theme.hover : "transparent"
-              border.width: gridMa.containsMouse ? 2 : (modelData.filePath === root.selectedImage ? 2 : 0)
-              border.color: Theme.outline
-            }
-
-            MouseArea {
-              id: gridMa
-              anchors.fill: parent
-              hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
-              onClicked: root.applyImage(index)
-            }
-          }
-
-          Text {
-            visible: root.imageArray.length === 0
-            anchors.centerIn: parent
-            text: (foldersProc.running || thumbProc.running) ? "loading..." : "no images in this folder"
-            color: Theme.muted
-            font.family: root.fontFamily
-            font.pointSize: 11
-          }
-        }
-
-      Column {
-        id: bottomCol
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        anchors.margins: 8
-        spacing: 6
-
-        Column {
-          width: parent.width
-          spacing: 4
-
-          Row {
-            width: parent.width
-            spacing: 6
-            Text {
-              width: 12
-              text: "X"
-              color: Theme.fg
-              opacity: 0.6
-              font.family: root.fontFamily
-              font.pixelSize: 10
-              anchors.verticalCenter: parent.verticalCenter
-            }
-            CSlider {
-              width: parent.width - 44
-              anchors.verticalCenter: parent.verticalCenter
-              value: root.isLockTab ? WallpaperState.lockPositionX : WallpaperState.positionX
-              onUserSet: v => root.setCurrentPosition(v, root.currentPosY())
-            }
-            Text {
-              width: 26
-              text: Math.round((root.isLockTab ? WallpaperState.lockPositionX : WallpaperState.positionX) * 100)
-              color: Theme.fg
-              opacity: 0.6
-              font.family: root.fontFamily
-              font.pixelSize: 10
-              anchors.verticalCenter: parent.verticalCenter
-              horizontalAlignment: Text.AlignRight
-            }
-          }
-
-          Row {
-            width: parent.width
-            spacing: 6
-            Text {
-              width: 12
-              text: "Y"
-              color: Theme.fg
-              opacity: 0.6
-              font.family: root.fontFamily
-              font.pixelSize: 10
-              anchors.verticalCenter: parent.verticalCenter
-            }
-            CSlider {
-              width: parent.width - 44
-              anchors.verticalCenter: parent.verticalCenter
-              value: root.isLockTab ? WallpaperState.lockPositionY : WallpaperState.positionY
-              onUserSet: v => root.setCurrentPosition(root.currentPosX(), v)
-            }
-            Text {
-              width: 26
-              text: Math.round((root.isLockTab ? WallpaperState.lockPositionY : WallpaperState.positionY) * 100)
-              color: Theme.fg
-              opacity: 0.6
-              font.family: root.fontFamily
-              font.pixelSize: 10
-              anchors.verticalCenter: parent.verticalCenter
-              horizontalAlignment: Text.AlignRight
-            }
-          }
-        }
-
-        Item {
-          visible: root.isLockTab && WallpaperState.lockPath !== ""
-          width: parent.width
-          height: 26
-
-          Rectangle {
-            anchors.centerIn: parent
-            width: 130
-            height: 24
-            radius: Theme.rounding
-            color: useDesktopMa.containsMouse ? Theme.fg : "transparent"
-            border.color: Theme.outline
-            border.width: 1
-
-            Text {
-              anchors.centerIn: parent
-              text: "Use desktop"
-              color: useDesktopMa.containsMouse ? Theme.bg : Theme.fg
-              font.family: root.fontFamily
-              font.pixelSize: 11
-            }
-
-            MouseArea {
-              id: useDesktopMa
-              anchors.fill: parent
-              hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
-              onClicked: {
-                WallpaperState.clearLock()
-                root.selectedImage = WallpaperState.effectiveLockPath
-              }
-            }
-          }
+        WallpaperBrowsePage {
+          width: panel.width
+          height: pageFlick.height
+          tab: 1
+          picker: root
         }
       }
-      }
-
-      SequentialAnimation {
-        id: tabSwitchAnim
-        property int from: 0
-        PropertyAction { target: contentWrap; property: "x"; value: tabSwitchAnim.from }
-        NumberAnimation { target: contentWrap; property: "x"; to: 0; duration: 180; easing.type: Easing.OutCubic }
-      }
+    }
     }
   }
 }
