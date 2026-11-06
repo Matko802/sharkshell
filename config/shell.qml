@@ -43,10 +43,10 @@ ShellRoot {
         anchors.top: true
         anchors.left: true
         anchors.right: true
-        implicitHeight: 30
+        implicitHeight: 31
         color: "transparent"
         exclusionMode: ExclusionMode.Auto
-        exclusiveZone: OverviewState.open ? 0 : 30
+        exclusiveZone: OverviewState.open ? 0 : 31
         WlrLayershell.namespace: "quickshell"
         readonly property bool blurWanted: root.barShown && TransparencyState.transparent && !IdleManager.gaming
         property bool blurActive: false
@@ -87,11 +87,24 @@ ShellRoot {
         BackgroundEffect.blurRegion: Region { item: blurTracker }
         Rectangle {
           id: barBg
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
+          height: 30
           color: Theme.bg
           opacity: root.barShown ? 1 : 0
           visible: opacity > 0.01
           Bar { anchors.fill: parent }
+        }
+        Rectangle {
+          id: barLine
+          anchors.left: parent.left
+          anchors.right: parent.right
+          anchors.bottom: parent.bottom
+          height: 1
+          color: Theme.border
+          opacity: barBg.opacity
+          visible: opacity > 0.01
         }
         Rectangle {
           id: blurTracker
