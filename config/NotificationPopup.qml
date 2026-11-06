@@ -161,7 +161,6 @@ Rectangle {
             Layout.fillWidth: true
             text: root.app.toUpperCase()
             color: Theme.muted
-            font.family: root.fontFamily
             font.pixelSize: 9
             font.letterSpacing: 1.5
             elide: Text.ElideRight
@@ -170,7 +169,6 @@ Rectangle {
             visible: root.urgency === 2
             text: "!"
             color: Theme.error
-            font.family: root.fontFamily
             font.pixelSize: 10
             font.bold: true
           }
@@ -198,7 +196,6 @@ Rectangle {
           Layout.fillWidth: true
           text: root.summary
           color: Theme.fg
-          font.family: root.fontFamily
           font.pixelSize: 12
           font.bold: true
           wrapMode: Text.WordWrap
@@ -209,7 +206,6 @@ Rectangle {
           Layout.fillWidth: true
           text: root.body
           color: Theme.muted
-          font.family: root.fontFamily
           font.pixelSize: 10
           wrapMode: Text.WordWrap
           maximumLineCount: 5
@@ -235,7 +231,6 @@ Rectangle {
 
           TextMetrics {
             id: actMetrics
-            font.family: root.fontFamily
             font.pixelSize: 9
             text: modelData.text
           }
@@ -246,7 +241,6 @@ Rectangle {
             width: Math.min(130, actMetrics.implicitWidth)
             text: modelData.text
             color: actMa.containsMouse ? Theme.bg : Theme.fg
-            font.family: root.fontFamily
             font.pixelSize: 9
             elide: Text.ElideRight
           }

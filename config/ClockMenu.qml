@@ -516,8 +516,8 @@ PanelWindow {
                   delegate: Rectangle {
                     width: notifList.width
                     height: nRow.implicitHeight + 20
-                    color: dHover.containsMouse ? Theme.bg : Theme.bgAlt
-                    border.color: dHover.containsMouse ? Theme.fg : Theme.border
+                    color: dHover.containsMouse ? Theme.hover : Theme.bgAlt
+                    border.color: Theme.border
                     border.width: 1
                     RowLayout {
                       id: nRow
@@ -557,22 +557,22 @@ PanelWindow {
                           spacing: 6
                           Text {
                             text: (model.appName || model.desktopEntry || "").toUpperCase()
-                            color: Theme.muted2; font.family: Theme.fontFamily; font.pixelSize: 8; font.letterSpacing: 1
+                            color: Theme.muted2; font.pixelSize: 8; font.letterSpacing: 1
                             elide: Text.ElideRight; Layout.fillWidth: true; visible: text !== ""
                           }
                           Text {
                             text: model.time || ""
-                            color: Theme.muted3; font.family: Theme.fontFamily; font.pixelSize: 8
+                            color: Theme.muted3; font.pixelSize: 8
                             visible: text !== ""
                           }
                         }
-                        Text { text: model.summary || ""; color: Theme.fg; font.family: Theme.fontFamily; font.pixelSize: 11; Layout.fillWidth: true; wrapMode: Text.WordWrap }
-                        Text { text: model.body || ""; color: Theme.muted; font.family: Theme.fontFamily; font.pixelSize: 9; Layout.fillWidth: true; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight; visible: (model.body || "") !== "" }
+                        Text { text: model.summary || ""; color: Theme.fg; font.pixelSize: 11; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                        Text { text: model.body || ""; color: Theme.muted; font.pixelSize: 9; Layout.fillWidth: true; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight; visible: (model.body || "") !== "" }
                       }
                       Rectangle {
                         Layout.preferredWidth: 16; Layout.preferredHeight: 16; Layout.alignment: Qt.AlignTop
                         color: dMa.containsMouse || dMa.pressed ? Theme.fg : "transparent"
-                        Text { anchors.centerIn: parent; text: "x"; color: dMa.containsMouse || dMa.pressed ? Theme.bg : Theme.muted2; font.family: Theme.fontFamily; font.pixelSize: 9; font.bold: true }
+                        Text { anchors.centerIn: parent; text: "x"; color: dMa.containsMouse || dMa.pressed ? Theme.bg : Theme.muted2; font.pixelSize: 9; font.bold: true }
                         MouseArea { id: dMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: NotificationServer.dismissById(model.notifId) }
                       }
                     }
