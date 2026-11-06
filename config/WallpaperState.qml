@@ -171,6 +171,22 @@ Scope {
     lockFile.setText("")
   }
 
+  function resetPosition() {
+    root.position = "center"
+    root.positionX = 0.5
+    root.positionY = 0.5
+    posXFile.setText(String(root.positionX))
+    posYFile.setText(String(root.positionY))
+  }
+
+  function resetLockPosition() {
+    root.lockPosition = "center"
+    root.lockPositionX = 0.5
+    root.lockPositionY = 0.5
+    lockPosXFile.setText(String(root.lockPositionX))
+    lockPosYFile.setText(String(root.lockPositionY))
+  }
+
   function setLockPosition(x, y) {
     root.lockPosition = "custom"
     root.lockPositionX = root.clamp01(x)

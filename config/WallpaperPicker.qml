@@ -277,10 +277,13 @@ Scope {
     if (!entry)
       return
     root.selectedImage = entry.filePath
-    if (tab === 1)
+    if (tab === 1) {
+      WallpaperState.resetLockPosition()
       WallpaperState.setLock(entry.filePath)
-    else
+    } else {
+      WallpaperState.resetPosition()
       WallpaperState.set(entry.filePath)
+    }
   }
 
   function posXFor(tab) {
@@ -523,9 +526,206 @@ Scope {
         }
       }
 
+    Column {
+      id: topCol
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.top: parent.top
+      anchors.margins: 8
+      spacing: 6
+
+      Row {
+        width: parent.width
+        spacing: 6
+
+        Rectangle {
+          width: 30
+          height: 26
+          radius: Theme.rounding
+          readonly property bool backEnabled: root.navPos > 0
+          color: backMa.containsMouse ? Theme.fg : "transparent"
+          border.color: backEnabled ? Theme.outline : Theme.border
+          border.width: 1
+          Text {
+            anchors.centerIn: parent
+            text: "<"
+            color: backMa.containsMouse ? Theme.bg : (parent.backEnabled ? Theme.fg : Theme.muted3)
+            font.family: root.fontFamily
+            font.pixelSize: 13
+            font.bold: true
+          }
+          MouseArea {
+            id: backMa
+            anchors.fill: parent
+            enabled: parent.backEnabled
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.navBack()
+          }
+        }
+        Rectangle {
+          width: 30
+          height: 26
+          radius: Theme.rounding
+          readonly property bool fwdEnabled: root.navPos < root.navHistory.length - 1
+          color: fwdMa.containsMouse ? Theme.fg : "transparent"
+          border.color: fwdEnabled ? Theme.outline : Theme.border
+          border.width: 1
+          Text {
+            anchors.centerIn: parent
+            text: ">"
+            color: fwdMa.containsMouse ? Theme.bg : (parent.fwdEnabled ? Theme.fg : Theme.muted3)
+            font.family: root.fontFamily
+            font.pixelSize: 13
+            font.bold: true
+          }
+          MouseArea {
+            id: fwdMa
+            anchors.fill: parent
+            enabled: parent.fwdEnabled
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.navFwd()
+          }
+        }
+        Rectangle {
+          width: 30
+          height: 26
+          radius: Theme.rounding
+          color: homeMa.containsMouse ? Theme.fg : "transparent"
+          border.color: Theme.outline
+          border.width: 1
+          QIcon { anchors.centerIn: parent; name: "home"; size: 16; color: homeMa.containsMouse ? Theme.bg : Theme.fg }
+          MouseArea { id: homeMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.goHome() }
+        }
+      }
+
+      Rectangle {
+        width: parent.width
+        height: 22
+        color: root.editingDir ? Theme.fg : "transparent"
+        border.color: Theme.outline
+        border.width: 1
+
+        TextInput {
+          id: dirInput
+          anchors.fill: parent
+          anchors.margins: 4
+          clip: true
+          verticalAlignment: TextInput.AlignVCenter
+          font.family: root.fontFamily
+          font.pixelSize: 9
+          color: root.editingDir ? Theme.bg : Theme.fg
+          text: root.navDir
+          readOnly: !root.editingDir
+
+          function open() {
+            root.editingDir = true
+            text = root.navDir
+            forceActiveFocus()
+            cursorPosition = text.length
+          }
+
+          function commit() {
+            root.editingDir = false
+            root.grabFocus()
+            const next = text.trim().replace(/^~(?=\/|$)/, Quickshell.env("HOME") || "")
+            if (next !== "" && next !== root.navDir) {
+              root.navigate(next)
+            } else {
+              text = root.navDir
+            }
+          }
+
+          Keys.onReturnPressed: commit()
+          Keys.onEnterPressed: commit()
+          Keys.onEscapePressed: {
+            root.editingDir = false
+            text = root.navDir
+            root.grabFocus()
+          }
+        }
+
+        MouseArea {
+          anchors.fill: parent
+          enabled: !root.editingDir
+          cursorShape: Qt.PointingHandCursor
+          onClicked: dirInput.open()
+        }
+      }
+
+      ListView {
+        id: folderView
+        width: parent.width
+        visible: root.folderResults.length > 0
+        height: visible ? Math.min(root.visibleCount, root.folderResults.length) * (root.browseRowH + root.thumbSpacing) : 0
+        clip: true
+        spacing: root.thumbSpacing
+        model: root.folderResults
+        highlightMoveDuration: 120
+        highlightMoveVelocity: -1
+
+        delegate: Rectangle {
+          required property var modelData
+          required property int index
+          width: folderView.width
+          height: root.browseRowH
+          color: root.browseSel === index ? Theme.fg : (folderMa.containsMouse ? Theme.hover : "transparent")
+
+          RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 8
+            anchors.rightMargin: 8
+            spacing: 10
+            Item {
+              Layout.preferredWidth: 26
+              Layout.preferredHeight: 26
+              QIcon {
+                anchors.centerIn: parent
+                name: "folder"
+                size: 20
+                color: root.browseSel === index ? Theme.bg : Theme.fg
+              }
+            }
+            Text {
+              Layout.fillWidth: true
+              text: modelData.name
+              color: root.browseSel === index ? Theme.bg : Theme.fg
+              font.family: root.fontFamily
+              font.pixelSize: 11
+              elide: Text.ElideRight
+            }
+          }
+
+          MouseArea {
+            id: folderMa
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: { root.browseSel = index; root.descend(index) }
+          }
+        }
+      }
+
+      Text {
+        visible: root.filterText !== "" && !root.editingDir
+        width: parent.width
+        text: "filter: " + root.filterText
+        color: Theme.fg
+        opacity: 0.6
+        font.family: root.fontFamily
+        font.pixelSize: 10
+        elide: Text.ElideRight
+      }
+    }
+
     Flickable {
       id: pageFlick
-      anchors.fill: parent
+      anchors.top: topCol.bottom
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.bottom: parent.bottom
+      anchors.topMargin: 4
       clip: true
       interactive: false
       contentWidth: panel.width * 2
