@@ -537,8 +537,6 @@ PanelWindow {
                         Rectangle {
                           anchors.fill: parent
                           color: Theme.bg
-                          border.color: Theme.border
-                          border.width: 1
                         }
                         IconImage {
                           anchors.fill: parent; anchors.margins: 3
@@ -578,8 +576,6 @@ PanelWindow {
                       Rectangle {
                         Layout.preferredWidth: 16; Layout.preferredHeight: 16; Layout.alignment: Qt.AlignTop
                         color: dMa.containsMouse || dMa.pressed ? Theme.fg : "transparent"
-                        border.color: dMa.containsMouse || dMa.pressed ? Theme.fg : Theme.border
-                        border.width: 1
                         Text { anchors.centerIn: parent; text: "x"; color: dMa.containsMouse || dMa.pressed ? Theme.bg : Theme.muted2; font.family: Theme.fontFamily; font.pixelSize: 9; font.bold: true }
                         MouseArea { id: dMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: NotificationServer.dismissById(model.notifId) }
                       }

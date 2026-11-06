@@ -107,8 +107,6 @@ Rectangle {
         Layout.preferredHeight: 34
         Layout.alignment: Qt.AlignTop
         color: Theme.bgAlt
-        border.color: Theme.border
-        border.width: 1
         visible: iconImg.visible
 
         Image {
@@ -160,8 +158,6 @@ Rectangle {
             implicitWidth: 20
             implicitHeight: 20
             color: closeMa.containsMouse || closeMa.pressed ? Theme.fg : "transparent"
-            border.color: closeMa.containsMouse || closeMa.pressed ? Theme.fg : Theme.border
-            border.width: 1
             Text {
               anchors.centerIn: parent
               text: "✕"
@@ -216,8 +212,6 @@ Rectangle {
           implicitWidth: Math.min(150, actMetrics.implicitWidth + 20)
           implicitHeight: 22
           color: actMa.containsMouse ? Theme.fg : Theme.bgAlt
-          border.color: Theme.border
-          border.width: 1
 
           TextMetrics {
             id: actMetrics
