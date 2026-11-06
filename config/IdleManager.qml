@@ -2,7 +2,6 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Quickshell.Power
 import Quickshell.Services.Mpris
 import Quickshell.Wayland
 
@@ -68,9 +67,14 @@ Item {
         id: screenProc
         running: false
         onExited: exitCode => {
-            if (exitCode === 10)
-                outputPower.setAllPower(!root.screenIsOff)
+            if (exitCode === 10 && powerBridge.item)
+                powerBridge.item.setAllPower(!root.screenIsOff)
         }
+    }
+
+    Loader {
+        id: powerBridge
+        source: "OutputPowerBridge.qml"
     }
 
     function markActive() {
@@ -256,10 +260,6 @@ Item {
                 root.suspendStageArmed = false
             }
         }
-    }
-
-    OutputPower {
-        id: outputPower
     }
 
     Process { id: suspendProc; command: ["systemctl", "suspend"] }

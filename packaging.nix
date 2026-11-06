@@ -48,7 +48,7 @@ let
       mkdir -p "$out/lib/qt-6/qml/Quickshell"
       ln -sfn ${outputPower}/lib/qt-6/qml/Quickshell/Power "$out/lib/qt-6/qml/Quickshell/Power"
       wrapProgram "$out/bin/quickshell" \
-        --prefix PATH : "${lib.makeBinPath [ pkgs.imagemagick pkgs.cliphist ]}" \
+        --prefix PATH : "${lib.makeBinPath [ pkgs.imagemagick pkgs.cliphist pkgs.coreutils pkgs.xdg-utils ]}" \
         --prefix QT_PLUGIN_PATH : "${pkgs.qt6Packages.qtimageformats}/${pkgs.qt6.qtbase.qtPluginPrefix}" \
         --prefix NIXPKGS_QT6_QML_IMPORT_PATH : "$out/lib/qt-6/qml" \
         --prefix QML2_IMPORT_PATH : "$out/lib/qt-6/qml" \

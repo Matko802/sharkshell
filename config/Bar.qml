@@ -105,7 +105,7 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        onClicked: Quickshell.execDetached(["/run/current-system/sw/bin/niri", "msg", "action", "switch-layout", "next"])
+        onClicked: Env.switchLayout()
       }
     }
 

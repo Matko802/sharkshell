@@ -36,7 +36,7 @@ Scope {
     if (now - lastSound < 150)
       return
     lastSound = now
-    Quickshell.execDetached(["pw-play", "/run/current-system/sw/share/sounds/freedesktop/stereo/audio-volume-change.oga"])
+    Env.playVolumeSound()
   }
 
   Process {

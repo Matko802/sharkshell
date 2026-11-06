@@ -73,7 +73,7 @@ Scope {
     wifiPendingTimer.restart()
     if (target === "off")
       root.expanded = false
-    toggleProc.command = ["/run/current-system/sw/bin/nmcli", "radio", "wifi", target]
+    toggleProc.command = ["nmcli", "radio", "wifi", target]
     toggleProc.running = true
     if (target === "on")
       scanTimer.restart()

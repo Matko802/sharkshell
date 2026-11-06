@@ -12,9 +12,9 @@ Scope {
   readonly property string soundRelPath: "sounds/freedesktop/stereo/audio-volume-change.oga"
   readonly property string logoutScript:
     "if command -v niri >/dev/null 2>&1; then niri msg action quit --skip-confirmation; "
-    + "elif command -v mmsg >/dev/null 2>&1; then mmsg dispatch quit; "
-    + "elif command -v loginctl >/dev/null 2>&1; then loginctl terminate-user \"\"; "
-    + "elif command -v systemctl >/dev/null 2>&1; then systemctl --user exit; fi"
+    + "elif command -v mmsg >/dev/null 2>&1; then mmsg dispatch quit 2>/dev/null; "
+    + "elif command -v loginctl >/dev/null 2>&1; then loginctl terminate-user \"\" 2>/dev/null; "
+    + "elif command -v systemctl >/dev/null 2>&1; then systemctl --user exit 2>/dev/null; fi"
 
   Process {
     running: root.compositor === ""
