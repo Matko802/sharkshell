@@ -586,7 +586,7 @@ PanelWindow {
                       property real pressX: 0
                       property real dragOff: 0
                       preventStealing: dragOff !== 0
-                      onPressed: mouse => { pressX = mouse.x; dragOff = 0 }
+                      onPressed: mouse => { pressX = mouse.x; dragOff = 0; dCard.dragOff = 0 }
                       onPositionChanged: mouse => {
                         if (!pressed)
                           return
@@ -597,15 +597,17 @@ PanelWindow {
                         }
                       }
                       onReleased: {
-                        if (Math.abs(dCard.dragOff) > dCard.width * 0.3) {
+                        if (Math.abs(dCard.dragOff) > dCard.width * 0.3)
                           NotificationServer.dismissById(model.notifId)
-                        } else {
+                        else
                           dCard.dragOff = 0
-                        }
-                        dragOff = 0
                       }
+                      onCanceled: { dragOff = 0; dCard.dragOff = 0 }
                       onClicked: {
-                        if (Math.abs(dCard.dragOff) > 10)
+                        const wasSwipe = Math.abs(dCard.dragOff) > 4
+                        dragOff = 0
+                        dCard.dragOff = 0
+                        if (wasSwipe)
                           return
                         NotificationServer.activate(model.notifId)
                         ClockState.close()
