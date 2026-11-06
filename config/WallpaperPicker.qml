@@ -436,14 +436,16 @@ Scope {
         }
       }
 
-      ColumnLayout {
-        id: navCol
-        anchors.fill: parent
+      Column {
+        id: topCol
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
         anchors.margins: 8
         spacing: 6
 
         Row {
-          Layout.fillWidth: true
+          width: parent.width
           height: 26
           spacing: 4
 
@@ -478,7 +480,7 @@ Scope {
 
         Text {
           visible: root.isLockTab
-          Layout.fillWidth: true
+          width: parent.width
           text: WallpaperState.lockPath === "" ? "following desktop" : "custom lockscreen"
           color: Theme.fg
           opacity: 0.6
@@ -488,13 +490,13 @@ Scope {
           elide: Text.ElideRight
         }
 
-        RowLayout {
-          Layout.fillWidth: true
+        Row {
+          width: parent.width
           spacing: 6
 
           Rectangle {
-            Layout.preferredWidth: 30
-            Layout.preferredHeight: 26
+            width: 30
+            height: 26
             radius: Theme.rounding
             color: upMa.containsMouse ? Theme.fg : "transparent"
             border.color: Theme.outline
@@ -503,8 +505,8 @@ Scope {
             MouseArea { id: upMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.ascend() }
           }
           Rectangle {
-            Layout.preferredWidth: 30
-            Layout.preferredHeight: 26
+            width: 30
+            height: 26
             radius: Theme.rounding
             color: rootMa.containsMouse ? Theme.fg : "transparent"
             border.color: Theme.outline
@@ -519,8 +521,8 @@ Scope {
             MouseArea { id: rootMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.goRoot() }
           }
           Rectangle {
-            Layout.preferredWidth: 30
-            Layout.preferredHeight: 26
+            width: 30
+            height: 26
             radius: Theme.rounding
             color: homeMa.containsMouse ? Theme.fg : "transparent"
             border.color: Theme.outline
@@ -528,10 +530,9 @@ Scope {
             QIcon { anchors.centerIn: parent; name: "home"; size: 16; color: homeMa.containsMouse ? Theme.bg : Theme.fg }
             MouseArea { id: homeMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.goHome() }
           }
-          Item { Layout.fillWidth: true }
           Rectangle {
-            Layout.preferredWidth: 30
-            Layout.preferredHeight: 26
+            width: 30
+            height: 26
             radius: Theme.rounding
             color: dirMa.containsMouse ? Theme.fg : "transparent"
             border.color: Theme.outline
@@ -548,7 +549,7 @@ Scope {
         }
 
         Text {
-          Layout.fillWidth: true
+          width: parent.width
           text: root.navDir
           color: Theme.fg
           opacity: 0.7
@@ -560,10 +561,9 @@ Scope {
 
         ListView {
           id: folderView
-          Layout.fillWidth: true
+          width: parent.width
           visible: root.folderResults.length > 0
-          Layout.preferredHeight: visible ? Math.min(root.visibleCount, root.folderResults.length) * (root.browseRowH + root.thumbSpacing) : 0
-          Layout.maximumHeight: Layout.preferredHeight
+          height: visible ? Math.min(root.visibleCount, root.folderResults.length) * (root.browseRowH + root.thumbSpacing) : 0
           clip: true
           spacing: root.thumbSpacing
           model: root.folderResults
@@ -623,7 +623,7 @@ Scope {
 
         Text {
           visible: root.filterText !== "" && !root.editingDir
-          Layout.fillWidth: true
+          width: parent.width
           text: "filter: " + root.filterText
           color: Theme.fg
           opacity: 0.6
@@ -632,12 +632,17 @@ Scope {
           elide: Text.ElideRight
         }
 
-        GridView {
-          id: navGrid
-          Layout.fillWidth: true
-          property int totalRows: root.imageResults.length
-          Layout.fillHeight: true
-          Layout.minimumHeight: 118
+      }
+
+      GridView {
+        id: navGrid
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: topCol.bottom
+        anchors.topMargin: 6
+        anchors.bottom: bottomCol.top
+        anchors.bottomMargin: 6
+        property int totalRows: root.imageResults.length
           clip: true
           cellWidth: width
           cellHeight: 118
@@ -687,12 +692,20 @@ Scope {
           }
         }
 
+      Column {
+        id: bottomCol
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 8
+        spacing: 6
+
         Column {
-          Layout.fillWidth: true
+          width: parent.width
           spacing: 4
 
           Row {
-            Layout.fillWidth: true
+            width: parent.width
             spacing: 6
             Text {
               width: 12
@@ -722,7 +735,7 @@ Scope {
           }
 
           Row {
-            Layout.fillWidth: true
+            width: parent.width
             spacing: 6
             Text {
               width: 12
@@ -754,7 +767,7 @@ Scope {
 
         Item {
           visible: root.isLockTab && WallpaperState.lockPath !== ""
-          Layout.fillWidth: true
+          width: parent.width
           height: 26
 
           Rectangle {
@@ -788,7 +801,7 @@ Scope {
         }
 
         Item {
-          Layout.fillWidth: true
+          width: parent.width
           height: 22
           visible: root.editingDir
 
