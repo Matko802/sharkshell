@@ -10,37 +10,14 @@ Item {
 
   property var picker
   property int tab: 0
-  property real monitorW: 0
-  property real monitorH: 0
-  readonly property bool isLock: tab === 1
-  readonly property string imgPath: isLock ? WallpaperState.effectiveLockPath : WallpaperState.path
-  readonly property real posX: isLock ? WallpaperState.lockPositionX : WallpaperState.positionX
-  readonly property real posY: isLock ? WallpaperState.lockPositionY : WallpaperState.positionY
-  readonly property int imgW: probe.status === Image.Ready ? probe.implicitWidth : 0
-  readonly property int imgH: probe.status === Image.Ready ? probe.implicitHeight : 0
-  readonly property real imgAspect: imgW > 0 && imgH > 0 ? imgW / imgH : 0
-  readonly property real monAspect: picker.monitorW > 0 && picker.monitorH > 0 ? picker.monitorW / picker.monitorH : 0
-  readonly property bool aspectKnown: imgAspect > 0 && monAspect > 0
-  readonly property bool xCanPan: !aspectKnown || imgAspect > monAspect * 1.001
-  readonly property bool yCanPan: !aspectKnown || imgAspect < monAspect * 0.999
   readonly property string fontFamily: Theme.fontFamily
-
-  Image {
-    id: probe
-    asynchronous: true
-    cache: false
-    visible: false
-    width: 0
-    height: 0
-    source: page.imgPath === "" ? "" : Util.fileUrl(page.imgPath)
-  }
 
   GridView {
     id: navGrid
     anchors.left: parent.left
     anchors.right: parent.right
     anchors.top: parent.top
-    anchors.bottom: bottomCol.top
+    anchors.bottom: parent.bottom
     anchors.bottomMargin: 6
     clip: true
     cellWidth: width
@@ -77,7 +54,28 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        onClicked: page.picker.chooseImage(page.tab, index)
+        property bool dragStarted: false
+        property point pressPos
+        onPressed: mouse => {
+          dragStarted = false
+          pressPos = Qt.point(mouse.x, mouse.y)
+        }
+        onPositionChanged: mouse => {
+          if (!pressed || dragStarted)
+            return
+          if (Math.abs(mouse.x - pressPos.x) > 6 || Math.abs(mouse.y - pressPos.y) > 6) {
+            dragStarted = true
+            page.picker.startPanDrag(page.tab, index, gridMa.mapToItem(null, mouse.x, mouse.y))
+          }
+        }
+        onReleased: mouse => {
+          if (dragStarted) {
+            page.picker.endPanDrag()
+          } else {
+            page.picker.chooseImage(page.tab, index)
+          }
+        }
+        onCanceled: page.picker.endPanDrag()
       }
 
       Rectangle {
@@ -108,79 +106,4 @@ Item {
     }
   }
 
-  Column {
-    id: bottomCol
-    anchors.left: parent.left
-    anchors.right: parent.right
-    anchors.bottom: parent.bottom
-    anchors.margins: 8
-    spacing: 6
-
-    Column {
-      width: parent.width
-      spacing: 4
-
-      Row {
-        visible: page.xCanPan || ControlState.sliderDrags > 0
-        width: parent.width
-        spacing: 6
-        Text {
-          width: 12
-          text: "X"
-          color: Theme.fg
-          opacity: 0.6
-          font.family: page.fontFamily
-          font.pixelSize: 10
-          anchors.verticalCenter: parent.verticalCenter
-        }
-        CSlider {
-          width: parent.width - 44
-          anchors.verticalCenter: parent.verticalCenter
-          value: page.posX
-          onUserSet: v => page.picker.setPosFor(page.tab, v, page.posY)
-        }
-        Text {
-          width: 26
-          text: Math.round(page.posX * 100)
-          color: Theme.fg
-          opacity: 0.6
-          font.family: page.fontFamily
-          font.pixelSize: 10
-          anchors.verticalCenter: parent.verticalCenter
-          horizontalAlignment: Text.AlignRight
-        }
-      }
-
-      Row {
-        visible: page.yCanPan || ControlState.sliderDrags > 0
-        width: parent.width
-        spacing: 6
-        Text {
-          width: 12
-          text: "Y"
-          color: Theme.fg
-          opacity: 0.6
-          font.family: page.fontFamily
-          font.pixelSize: 10
-          anchors.verticalCenter: parent.verticalCenter
-        }
-        CSlider {
-          width: parent.width - 44
-          anchors.verticalCenter: parent.verticalCenter
-          value: page.posY
-          onUserSet: v => page.picker.setPosFor(page.tab, page.posX, v)
-        }
-        Text {
-          width: 26
-          text: Math.round(page.posY * 100)
-          color: Theme.fg
-          opacity: 0.6
-          font.family: page.fontFamily
-          font.pixelSize: 10
-          anchors.verticalCenter: parent.verticalCenter
-          horizontalAlignment: Text.AlignRight
-        }
-      }
-    }
-  }
 }

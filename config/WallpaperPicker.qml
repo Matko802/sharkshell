@@ -22,6 +22,12 @@ Scope {
   property int browseSel: 0
   property int activeTab: 0
   readonly property bool isLockTab: activeTab === 1
+  property bool panMode: false
+  property bool panDragging: false
+  property real panStartX: 0
+  property real panStartY: 0
+  property real panStartPx: 0.5
+  property real panStartPy: 0.5
 
   readonly property string fontFamily: Theme.fontFamily
   readonly property int browseRowH: 34
@@ -31,6 +37,8 @@ Scope {
   function requestClose() {
     if (!root.opened || root.closePending)
       return
+    root.panMode = false
+    root.panDragging = false
     root.closePending = true
     closeTimer.restart()
   }
@@ -82,6 +90,7 @@ Scope {
   function openPickerWithTab(tab) {
     closeTimer.stop()
     root.closePending = false
+    root.panMode = false
     root.editingDir = false
     root.filterText = ""
     root.activeTab = tab === 1 ? 1 : 0
@@ -286,6 +295,50 @@ Scope {
     }
   }
 
+  function startPanDrag(tab, i, scenePos) {
+    const entry = root.imageResults[i]
+    if (!entry)
+      return
+    root.selectedImage = entry.filePath
+    if (tab === 1)
+      WallpaperState.setLock(entry.filePath)
+    else
+      WallpaperState.set(entry.filePath)
+    root.panMode = true
+    root.panDragging = true
+    root.panStartX = scenePos.x
+    root.panStartY = scenePos.y
+    root.panStartPx = root.currentPosX()
+    root.panStartPy = root.currentPosY()
+  }
+
+  function panOverflow() {
+    const s = pickWindow.screen
+    const mw = (s && s.width) || 1920
+    const mh = (s && s.height) || 1080
+    const iw = panProbe.implicitWidth
+    const ih = panProbe.implicitHeight
+    if (iw <= 0 || ih <= 0)
+      return null
+    const scale = Math.max(mw / iw, mh / ih)
+    return { "ow": Math.max(1, iw * scale - mw), "oh": Math.max(1, ih * scale - mh) }
+  }
+
+  function panMoveTo(scenePos) {
+    if (!root.panDragging)
+      return
+    const o = root.panOverflow()
+    if (!o)
+      return
+    const dx = scenePos.x - root.panStartX
+    const dy = scenePos.y - root.panStartY
+    root.setCurrentPosition(root.panStartPx - dx / o.ow, root.panStartPy - dy / o.oh)
+  }
+
+  function endPanDrag() {
+    root.panDragging = false
+  }
+
   function posXFor(tab) {
     return tab === 1 ? WallpaperState.lockPositionX : WallpaperState.positionX
   }
@@ -394,7 +447,7 @@ Scope {
       Region { item: tabsPill }
     }
     mask: Region {
-      item: panel
+      Region { item: root.panMode ? panLayer : panel }
       Region { item: tabsPill }
     }
     WlrLayershell.layer: WlrLayer.Overlay
@@ -448,7 +501,7 @@ Scope {
       anchors.left: parent.left
       anchors.top: parent.top
       anchors.topMargin: 50
-      anchors.leftMargin: root.opened ? 20 : -width
+      anchors.leftMargin: root.panMode ? -width : (root.opened ? 20 : -width)
       anchors.bottom: parent.bottom
       anchors.bottomMargin: 10
       width: 176
@@ -464,6 +517,22 @@ Scope {
 
       Keys.priority: Keys.BeforeItem
       Keys.onPressed: function(event) {
+        if (root.panMode) {
+          if (event.key === Qt.Key_Left) {
+            root.setCurrentPosition(root.currentPosX() - 0.05, root.currentPosY())
+          } else if (event.key === Qt.Key_Right) {
+            root.setCurrentPosition(root.currentPosX() + 0.05, root.currentPosY())
+          } else if (event.key === Qt.Key_Up) {
+            root.setCurrentPosition(root.currentPosX(), root.currentPosY() - 0.05)
+          } else if (event.key === Qt.Key_Down) {
+            root.setCurrentPosition(root.currentPosX(), root.currentPosY() + 0.05)
+          } else {
+            event.accepted = false
+            return
+          }
+          event.accepted = true
+          return
+        }
         if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Left) {
           root.setCurrentPosition(root.currentPosX() - 0.05, root.currentPosY())
           event.accepted = true
@@ -486,7 +555,9 @@ Scope {
           root.switchTab(root.activeTab === 0 ? 1 : 0)
           event.accepted = true
         } else if (event.key === Qt.Key_Escape) {
-          if (root.editingDir) {
+          if (root.panMode) {
+            root.panMode = false
+          } else if (root.editingDir) {
             root.editingDir = false
             panel.forceActiveFocus()
           } else {
@@ -743,8 +814,6 @@ Scope {
           height: pageFlick.height
           tab: 0
           picker: root
-          monitorW: (pickWindow.screen && pickWindow.screen.width) || 0
-          monitorH: (pickWindow.screen && pickWindow.screen.height) || 0
         }
 
         WallpaperBrowsePage {
@@ -752,11 +821,58 @@ Scope {
           height: pageFlick.height
           tab: 1
           picker: root
-          monitorW: (pickWindow.screen && pickWindow.screen.width) || 0
-          monitorH: (pickWindow.screen && pickWindow.screen.height) || 0
         }
       }
     }
+    }
+
+    Item {
+      id: panLayer
+      anchors.fill: parent
+      visible: root.panMode
+
+      Image {
+        id: panProbe
+        asynchronous: true
+        cache: false
+        visible: false
+        width: 0
+        height: 0
+        source: root.panMode ? Util.fileUrl(root.isLockTab ? WallpaperState.effectiveLockPath : WallpaperState.path) : ""
+      }
+
+      MouseArea {
+        id: panDrag
+        anchors.fill: parent
+        enabled: root.panMode
+        hoverEnabled: false
+        cursorShape: Qt.ClosedHandCursor
+        property bool moved: false
+        onPressed: mouse => {
+          root.panDragging = true
+          root.panStartX = mouse.x
+          root.panStartY = mouse.y
+          root.panStartPx = root.currentPosX()
+          root.panStartPy = root.currentPosY()
+          moved = false
+        }
+        onPositionChanged: mouse => {
+          if (!pressed)
+            return
+          const dx = mouse.x - root.panStartX
+          const dy = mouse.y - root.panStartY
+          if (!moved && Math.abs(dx) < 3 && Math.abs(dy) < 3)
+            return
+          moved = true
+          root.panMoveTo({ "x": mouse.x, "y": mouse.y })
+        }
+        onReleased: {
+          root.panDragging = false
+          if (!moved)
+            root.panMode = false
+        }
+        onCanceled: root.panDragging = false
+      }
     }
   }
 }
