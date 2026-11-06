@@ -632,10 +632,10 @@ Scope {
         GridView {
           id: navGrid
           width: parent.width
-          property int totalRows: Math.ceil(root.imageResults.length / 2)
+          property int totalRows: root.imageResults.length
           height: 118
           clip: true
-          cellWidth: Math.floor(width / 2)
+          cellWidth: width
           cellHeight: 118
           model: root.imageResults
           interactive: totalRows > 1
