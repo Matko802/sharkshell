@@ -941,9 +941,7 @@ PanelWindow {
                         QIcon { name: modelData.icon; size: 18; color: Theme.muted }
                         ColumnLayout {
                           Layout.fillWidth: true
-                          Layout.fillHeight: true
-                          Layout.topMargin: 6
-                          Layout.bottomMargin: 6
+                          Layout.alignment: Qt.AlignVCenter
                           spacing: 2
                           Text {
                             text: modelData.label
