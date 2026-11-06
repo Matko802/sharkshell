@@ -1100,8 +1100,8 @@ PanelWindow {
                       anchors.rightMargin: 12
                       spacing: 10
                       Text {
-                        text: modelData.label.toUpperCase()
-                        color: Theme.muted2
+                        text: modelData.label
+                        color: Theme.fg
                         font.family: root.fontFamily
                         font.pixelSize: 9
                         font.letterSpacing: 2
