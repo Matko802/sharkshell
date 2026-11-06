@@ -22,8 +22,9 @@ Scope {
   property int browseSel: 0
   property int activeTab: 0
   readonly property bool isLockTab: activeTab === 1
-  property bool panMode: false
+  property bool panning: false
   property bool panDragging: false
+  property bool panMoved: false
   property real panStartX: 0
   property real panStartY: 0
   property real panStartPx: 0.5
@@ -37,7 +38,7 @@ Scope {
   function requestClose() {
     if (!root.opened || root.closePending)
       return
-    root.panMode = false
+    root.panning = false
     root.panDragging = false
     root.closePending = true
     closeTimer.restart()
@@ -90,7 +91,8 @@ Scope {
   function openPickerWithTab(tab) {
     closeTimer.stop()
     root.closePending = false
-    root.panMode = false
+    root.panning = false
+    root.panDragging = false
     root.editingDir = false
     root.filterText = ""
     root.activeTab = tab === 1 ? 1 : 0
@@ -304,12 +306,17 @@ Scope {
       WallpaperState.setLock(entry.filePath)
     else
       WallpaperState.set(entry.filePath)
-    root.panMode = true
+    root.panning = true
     root.panDragging = true
     root.panStartX = scenePos.x
     root.panStartY = scenePos.y
     root.panStartPx = root.currentPosX()
     root.panStartPy = root.currentPosY()
+  }
+
+  function endPanDrag() {
+    root.panDragging = false
+    root.panning = false
   }
 
   function panOverflow() {
@@ -333,10 +340,6 @@ Scope {
     const dx = scenePos.x - root.panStartX
     const dy = scenePos.y - root.panStartY
     root.setCurrentPosition(root.panStartPx - dx / o.ow, root.panStartPy - dy / o.oh)
-  }
-
-  function endPanDrag() {
-    root.panDragging = false
   }
 
   function posXFor(tab) {
@@ -447,7 +450,7 @@ Scope {
       Region { item: tabsPill }
     }
     mask: Region {
-      Region { item: root.panMode ? panLayer : panel }
+      Region { item: panLayer }
       Region { item: tabsPill }
     }
     WlrLayershell.layer: WlrLayer.Overlay
@@ -501,7 +504,7 @@ Scope {
       anchors.left: parent.left
       anchors.top: parent.top
       anchors.topMargin: 50
-      anchors.leftMargin: root.panMode ? -width : (root.opened ? 20 : -width)
+      anchors.leftMargin: root.panning ? -width : (root.opened ? 20 : -width)
       anchors.bottom: parent.bottom
       anchors.bottomMargin: 10
       width: 176
@@ -517,7 +520,7 @@ Scope {
 
       Keys.priority: Keys.BeforeItem
       Keys.onPressed: function(event) {
-        if (root.panMode) {
+        if (root.panning) {
           if (event.key === Qt.Key_Left) {
             root.setCurrentPosition(root.currentPosX() - 0.05, root.currentPosY())
           } else if (event.key === Qt.Key_Right) {
@@ -555,9 +558,7 @@ Scope {
           root.switchTab(root.activeTab === 0 ? 1 : 0)
           event.accepted = true
         } else if (event.key === Qt.Key_Escape) {
-          if (root.panMode) {
-            root.panMode = false
-          } else if (root.editingDir) {
+          if (root.editingDir) {
             root.editingDir = false
             panel.forceActiveFocus()
           } else {
@@ -829,7 +830,7 @@ Scope {
     Item {
       id: panLayer
       anchors.fill: parent
-      visible: root.panMode
+      z: -1
 
       Image {
         id: panProbe
@@ -838,40 +839,44 @@ Scope {
         visible: false
         width: 0
         height: 0
-        source: root.panMode ? Util.fileUrl(root.isLockTab ? WallpaperState.effectiveLockPath : WallpaperState.path) : ""
+        source: root.opened ? Util.fileUrl(root.isLockTab ? WallpaperState.effectiveLockPath : WallpaperState.path) : ""
       }
 
       MouseArea {
         id: panDrag
         anchors.fill: parent
-        enabled: root.panMode
+        enabled: root.opened && !root.closePending
         hoverEnabled: false
-        cursorShape: Qt.ClosedHandCursor
-        property bool moved: false
+        cursorShape: Qt.OpenHandCursor
         onPressed: mouse => {
           root.panDragging = true
+          root.panMoved = false
           root.panStartX = mouse.x
           root.panStartY = mouse.y
           root.panStartPx = root.currentPosX()
           root.panStartPy = root.currentPosY()
-          moved = false
         }
         onPositionChanged: mouse => {
           if (!pressed)
             return
           const dx = mouse.x - root.panStartX
           const dy = mouse.y - root.panStartY
-          if (!moved && Math.abs(dx) < 3 && Math.abs(dy) < 3)
+          if (!root.panMoved && Math.abs(dx) < 6 && Math.abs(dy) < 6)
             return
-          moved = true
+          root.panMoved = true
+          root.panning = true
           root.panMoveTo({ "x": mouse.x, "y": mouse.y })
         }
         onReleased: {
           root.panDragging = false
-          if (!moved)
-            root.panMode = false
+          root.panning = false
+          if (!root.panMoved)
+            root.requestClose()
         }
-        onCanceled: root.panDragging = false
+        onCanceled: {
+          root.panDragging = false
+          root.panning = false
+        }
       }
     }
   }
