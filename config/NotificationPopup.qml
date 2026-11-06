@@ -117,12 +117,17 @@ Rectangle {
           source: {
             if (root.image && root.image.length > 0) {
               const v = String(root.image)
-              if (v.startsWith("file://") || v.startsWith("/")) return v
-              if (v.indexOf("://") >= 0) return v
-              return Quickshell.iconPath(v, true)
+              if (v.startsWith("file://") || v.startsWith("/") || v.indexOf("://") >= 0) return v
             }
-            if (root.appIcon && root.appIcon.length > 0) return Quickshell.iconPath(root.appIcon, true)
-            return ""
+            const ic = root.appIcon || ""
+            if (ic !== "") return Quickshell.iconPath(ic, "dialog-information")
+            const de = root.desktopEntry || ""
+            if (de !== "") {
+              const e = DesktopEntries.heuristicLookup(de)
+              if (e && e.icon) return Quickshell.iconPath(e.icon, "dialog-information")
+              return Quickshell.iconPath(de, "dialog-information")
+            }
+            return Quickshell.iconPath("dialog-information", "dialog-information")
           }
           visible: status === Image.Ready
           fillMode: Image.PreserveAspectFit
