@@ -384,8 +384,14 @@ Scope {
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     WlrLayershell.namespace: "quickshell-modal"
-    BackgroundEffect.blurRegion: Region { item: TransparencyState.transparent ? panel : null }
-    mask: Region { item: panel }
+    BackgroundEffect.blurRegion: Region {
+      item: TransparencyState.transparent ? panel : null
+      Region { item: tabsPill }
+    }
+    mask: Region {
+      item: panel
+      Region { item: tabsPill }
+    }
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
