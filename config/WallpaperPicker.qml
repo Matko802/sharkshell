@@ -235,10 +235,6 @@ Scope {
     root.navigate("/" + parts.join("/"))
   }
 
-  function goRoot() {
-    root.navigate(root.rootDir)
-  }
-
   function goHome() {
     root.navigate(Quickshell.env("HOME") || "/home/matko")
   }
@@ -351,6 +347,48 @@ Scope {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
     Rectangle {
+      id: tabsPill
+      anchors.horizontalCenter: panel.horizontalCenter
+      anchors.bottom: panel.top
+      anchors.bottomMargin: 8
+      width: 240
+      height: 28
+      color: Theme.bg
+      border.color: Theme.outline
+      border.width: 1
+      opacity: panel.opacity
+
+      RowLayout {
+        anchors.fill: parent
+        spacing: 0
+        Repeater {
+          model: [
+            { label: "Desktop", idx: 0 },
+            { label: "Lockscreen", idx: 1 }
+          ]
+          delegate: Item {
+            required property var modelData
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            property bool active: root.activeTab === modelData.idx
+            Text {
+              anchors.centerIn: parent
+              text: modelData.label
+              color: parent.active ? Theme.fg : Theme.muted2
+              font.family: root.fontFamily
+              font.pixelSize: 11
+            }
+            MouseArea {
+              anchors.fill: parent
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.switchTab(modelData.idx)
+            }
+          }
+        }
+      }
+    }
+
+    Rectangle {
       id: panel
       anchors.left: parent.left
       anchors.top: parent.top
@@ -393,10 +431,7 @@ Scope {
         } else if (event.key === Qt.Key_Escape) {
           if (root.editingDir) {
             root.editingDir = false
-          } else if (root.filterText) {
-            root.filterText = ""
-          } else if (root.navDir !== root.rootDir) {
-            root.ascend()
+            panel.forceActiveFocus()
           } else {
             root.requestClose()
           }
@@ -427,9 +462,6 @@ Scope {
         } else if (event.key === Qt.Key_PageDown && !root.editingDir) {
           root.moveSel(root.visibleCount)
           event.accepted = true
-        } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_D) {
-          dirEditInput.open()
-          event.accepted = true
         } else if (!root.editingDir && event.text && event.text.length === 1 && event.text.charCodeAt(0) >= 32 && event.text.charCodeAt(0) !== 127 && (event.modifiers === Qt.NoModifier || event.modifiers === Qt.ShiftModifier)) {
           root.filterText += event.text
           event.accepted = true
@@ -446,35 +478,37 @@ Scope {
 
         Row {
           width: parent.width
-          height: 26
-          spacing: 4
+          spacing: 6
 
-          Repeater {
-            model: 2
-            delegate: Rectangle {
-              required property int index
-              width: (parent.width - 4) / 2
-              height: 26
-              radius: Theme.rounding
-              color: root.activeTab === index ? Theme.fg : "transparent"
-              border.color: Theme.outline
-              border.width: 1
-
-              Text {
-                anchors.centerIn: parent
-                text: parent.index === 0 ? "Desktop" : "Lockscreen"
-                color: root.activeTab === parent.index ? Theme.bg : Theme.fg
-                font.family: root.fontFamily
-                font.pixelSize: 11
-              }
-
-              MouseArea {
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: root.switchTab(index)
-              }
-            }
+          Rectangle {
+            width: 30
+            height: 26
+            radius: Theme.rounding
+            color: backMa.containsMouse ? Theme.fg : "transparent"
+            border.color: Theme.outline
+            border.width: 1
+            QIcon { anchors.centerIn: parent; name: "arrow-left"; size: 16; color: backMa.containsMouse ? Theme.bg : Theme.fg }
+            MouseArea { id: backMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.ascend() }
+          }
+          Rectangle {
+            width: 30
+            height: 26
+            radius: Theme.rounding
+            color: fwdMa.containsMouse ? Theme.fg : "transparent"
+            border.color: Theme.outline
+            border.width: 1
+            QIcon { anchors.centerIn: parent; name: "arrow-right"; size: 16; color: fwdMa.containsMouse ? Theme.bg : Theme.fg }
+            MouseArea { id: fwdMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.descend(root.browseSel) }
+          }
+          Rectangle {
+            width: 30
+            height: 26
+            radius: Theme.rounding
+            color: homeMa.containsMouse ? Theme.fg : "transparent"
+            border.color: Theme.outline
+            border.width: 1
+            QIcon { anchors.centerIn: parent; name: "home"; size: 16; color: homeMa.containsMouse ? Theme.bg : Theme.fg }
+            MouseArea { id: homeMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.goHome() }
           }
         }
 
@@ -490,73 +524,55 @@ Scope {
           elide: Text.ElideRight
         }
 
-        Row {
+        Rectangle {
           width: parent.width
-          spacing: 6
+          height: 22
+          color: root.editingDir ? Theme.fg : "transparent"
+          border.color: Theme.outline
+          border.width: 1
 
-          Rectangle {
-            width: 30
-            height: 26
-            radius: Theme.rounding
-            color: upMa.containsMouse ? Theme.fg : "transparent"
-            border.color: Theme.outline
-            border.width: 1
-            QIcon { anchors.centerIn: parent; name: "arrow-up"; size: 16; color: upMa.containsMouse ? Theme.bg : Theme.fg }
-            MouseArea { id: upMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.ascend() }
-          }
-          Rectangle {
-            width: 30
-            height: 26
-            radius: Theme.rounding
-            color: rootMa.containsMouse ? Theme.fg : "transparent"
-            border.color: Theme.outline
-            border.width: 1
-            Text {
-              anchors.centerIn: parent
-              text: "root"
-              color: rootMa.containsMouse ? Theme.bg : Theme.fg
-              font.family: root.fontFamily
-              font.pixelSize: 9
-            }
-            MouseArea { id: rootMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.goRoot() }
-          }
-          Rectangle {
-            width: 30
-            height: 26
-            radius: Theme.rounding
-            color: homeMa.containsMouse ? Theme.fg : "transparent"
-            border.color: Theme.outline
-            border.width: 1
-            QIcon { anchors.centerIn: parent; name: "home"; size: 16; color: homeMa.containsMouse ? Theme.bg : Theme.fg }
-            MouseArea { id: homeMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.goHome() }
-          }
-          Rectangle {
-            width: 30
-            height: 26
-            radius: Theme.rounding
-            color: dirMa.containsMouse ? Theme.fg : "transparent"
-            border.color: Theme.outline
-            border.width: 1
-            Text {
-              anchors.centerIn: parent
-              text: "edit"
-              color: dirMa.containsMouse ? Theme.bg : Theme.fg
-              font.family: root.fontFamily
-              font.pixelSize: 9
-            }
-            MouseArea { id: dirMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dirEditInput.open() }
-          }
-        }
+          TextInput {
+            id: dirInput
+            anchors.fill: parent
+            anchors.margins: 4
+            clip: true
+            verticalAlignment: TextInput.AlignVCenter
+            font.family: root.fontFamily
+            font.pixelSize: 9
+            color: root.editingDir ? Theme.bg : Theme.fg
+            text: root.navDir
+            readOnly: !root.editingDir
 
-        Text {
-          width: parent.width
-          text: root.navDir
-          color: Theme.fg
-          opacity: 0.7
-          font.family: root.fontFamily
-          font.pixelSize: 9
-          elide: Text.ElideMiddle
-          horizontalAlignment: Text.AlignHCenter
+            function open() {
+              root.editingDir = true
+              text = root.navDir
+              forceActiveFocus()
+              cursorPosition = text.length
+            }
+
+            function commit() {
+              root.editingDir = false
+              panel.forceActiveFocus()
+              const next = text.trim().replace(/^~(?=\/|$)/, Quickshell.env("HOME") || "")
+              if (next !== "" && next !== root.navDir)
+                root.navigate(next)
+            }
+
+            Keys.onReturnPressed: commit()
+            Keys.onEnterPressed: commit()
+            Keys.onEscapePressed: {
+              root.editingDir = false
+              text = root.navDir
+              panel.forceActiveFocus()
+            }
+          }
+
+          MouseArea {
+            anchors.fill: parent
+            enabled: !root.editingDir
+            cursorShape: Qt.PointingHandCursor
+            onClicked: dirInput.open()
+          }
         }
 
         ListView {
@@ -796,56 +812,6 @@ Scope {
                 WallpaperState.clearLock()
                 root.selectedImage = WallpaperState.effectiveLockPath
               }
-            }
-          }
-        }
-
-        Item {
-          width: parent.width
-          height: 22
-          visible: root.editingDir
-
-          Rectangle {
-            anchors.fill: parent
-            color: Theme.bg
-            border.color: Theme.outline
-            border.width: 1
-
-            TextInput {
-              id: dirEditInput
-              anchors.fill: parent
-              anchors.margins: 4
-              verticalAlignment: TextInput.AlignVCenter
-              font.family: root.fontFamily
-              font.pixelSize: 9
-              color: Theme.fg
-
-              function open() {
-                root.editingDir = true
-                text = root.rootDir
-                forceActiveFocus()
-                cursorPosition = text.length
-              }
-
-              function commit() {
-                const next = text.trim()
-                root.editingDir = false
-                if (next === "" || next === root.rootDir) {
-                  panel.forceActiveFocus()
-                  return
-                }
-                dirsFile.setText(next + "\n")
-                root.rootDir = next
-                root.navigate(next)
-                panel.forceActiveFocus()
-              }
-
-              Keys.onEscapePressed: {
-                root.editingDir = false
-                panel.forceActiveFocus()
-              }
-              Keys.onReturnPressed: commit()
-              Keys.onEnterPressed: commit()
             }
           }
         }
