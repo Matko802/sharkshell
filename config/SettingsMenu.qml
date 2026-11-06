@@ -442,7 +442,7 @@ PanelWindow {
                 Rectangle {
                   Layout.fillWidth: true
                   Layout.preferredHeight: 48
-                  color: Theme.bgAlt
+                  color: "transparent"
                   border.color: Theme.border
                   border.width: 1
                   RowLayout {
@@ -541,7 +541,7 @@ PanelWindow {
                 Rectangle {
                   Layout.fillWidth: true
                   Layout.preferredHeight: 44
-                  color: Theme.bgAlt
+                  color: "transparent"
                   border.color: Theme.border
                   border.width: 1
                   RowLayout {
@@ -1041,7 +1041,7 @@ PanelWindow {
                 Rectangle {
                   Layout.fillWidth: true
                   Layout.preferredHeight: 128
-                  color: Theme.bgAlt
+                  color: "transparent"
                   border.color: Theme.border
                   border.width: 1
 
@@ -1050,6 +1050,27 @@ PanelWindow {
                     anchors.leftMargin: 16
                     anchors.rightMargin: 16
                     spacing: 20
+
+                    ColumnLayout {
+                      Layout.fillWidth: true
+                      Layout.fillHeight: true
+                      Layout.alignment: Qt.AlignVCenter
+                      spacing: 4
+
+                      Text {
+                        text: "SharkShell"
+                        color: Theme.fg
+                        font.family: root.fontFamily
+                        font.pixelSize: 20
+                        font.bold: true
+                      }
+                      Text {
+                        text: "v" + shellVersion
+                        color: Theme.muted
+                        font.family: root.fontFamily
+                        font.pixelSize: 11
+                      }
+                    }
 
                     Image {
                       Layout.preferredWidth: 104
@@ -1061,35 +1082,6 @@ PanelWindow {
                       asynchronous: true
                       mipmap: true
                     }
-
-                    ColumnLayout {
-                      Layout.fillWidth: true
-                      Layout.fillHeight: true
-                      Layout.alignment: Qt.AlignVCenter
-                      spacing: 4
-
-                      Text {
-                        text: "SHARKSHELL"
-                        color: Theme.fg
-                        font.family: root.fontFamily
-                        font.pixelSize: 20
-                        font.letterSpacing: 6
-                        font.bold: true
-                      }
-                      Text {
-                        text: "v" + shellVersion
-                        color: Theme.muted
-                        font.family: root.fontFamily
-                        font.pixelSize: 11
-                      }
-                      Text {
-                        text: "desktop shell for wayland"
-                        color: Theme.muted2
-                        font.family: root.fontFamily
-                        font.pixelSize: 9
-                        font.letterSpacing: 2
-                      }
-                    }
                   }
                 }
 
@@ -1099,7 +1091,7 @@ PanelWindow {
                     required property var modelData
                     Layout.fillWidth: true
                     Layout.preferredHeight: 28
-                    color: Theme.bgAlt
+                    color: "transparent"
                     border.color: Theme.border
                     border.width: 1
                     RowLayout {
