@@ -1,6 +1,7 @@
 import QtQuick
-import Quickshell
 import QtQuick.Layouts
+import Quickshell
+import Quickshell.Widgets
 
 Rectangle {
   id: root
@@ -20,6 +21,18 @@ Rectangle {
   signal cardClicked()
   signal actionClicked(string actId)
   signal dismissed()
+
+  readonly property string iconSource: {
+    const ic = root.appIcon || ""
+    if (ic !== "") return Quickshell.iconPath(ic, "dialog-information")
+    const de = root.desktopEntry || ""
+    if (de !== "") {
+      const e = DesktopEntries.heuristicLookup(de)
+      if (e && e.icon) return Quickshell.iconPath(e.icon, "dialog-information")
+      return Quickshell.iconPath(de, "dialog-information")
+    }
+    return Quickshell.iconPath("dialog-information", "dialog-information")
+  }
 
   color: Theme.bg
   radius: Theme.rounding
@@ -101,39 +114,39 @@ Rectangle {
       width: parent.width
       spacing: 10
 
-      Rectangle {
+      Item {
         id: iconBox
         Layout.preferredWidth: 34
         Layout.preferredHeight: 34
         Layout.alignment: Qt.AlignTop
-        color: "transparent"
-        visible: iconImg.visible
+        visible: {
+          const im = root.image ? String(root.image) : ""
+          return im !== "" || root.appIcon !== "" || root.desktopEntry !== ""
+        }
+
+        IconImage {
+          id: iconImg
+          anchors.fill: parent
+          anchors.margins: 5
+          visible: {
+            const im = root.image ? String(root.image) : ""
+            return !(im !== "" && (im.startsWith("/") || im.startsWith("file://") || im.startsWith("image://")))
+          }
+          source: root.iconSource
+          implicitSize: 24
+          onStatusChanged: if (status === Image.Error) console.log("[toast] icon failed:", root.iconSource, "appIcon:", root.appIcon, "entry:", root.desktopEntry)
+        }
 
         Image {
-          id: iconImg
-          anchors.centerIn: parent
-          width: 24
-          height: 24
-          source: {
-            if (root.image && root.image.length > 0) {
-              const v = String(root.image)
-              if (v.startsWith("file://") || v.startsWith("/") || v.indexOf("://") >= 0) return v
-            }
-            const ic = root.appIcon || ""
-            if (ic !== "") return Quickshell.iconPath(ic, "dialog-information")
-            const de = root.desktopEntry || ""
-            if (de !== "") {
-              const e = DesktopEntries.heuristicLookup(de)
-              if (e && e.icon) return Quickshell.iconPath(e.icon, "dialog-information")
-              return Quickshell.iconPath(de, "dialog-information")
-            }
-            return Quickshell.iconPath("dialog-information", "dialog-information")
+          anchors.fill: parent
+          anchors.margins: 5
+          visible: {
+            const im = root.image ? String(root.image) : ""
+            return im !== "" && (im.startsWith("/") || im.startsWith("file://") || im.startsWith("image://"))
           }
-          visible: status === Image.Ready
+          source: root.image ? String(root.image) : ""
           fillMode: Image.PreserveAspectFit
-          asynchronous: true
           smooth: true
-          onStatusChanged: if (status === Image.Error) visible = false
         }
       }
 
