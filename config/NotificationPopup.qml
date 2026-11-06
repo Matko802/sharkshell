@@ -194,7 +194,7 @@ Rectangle {
           text: root.body
           color: Theme.muted
           font.family: root.fontFamily
-          font.pixelSize: 10.5
+          font.pixelSize: 10
           wrapMode: Text.WordWrap
           maximumLineCount: 5
           elide: Text.ElideRight
