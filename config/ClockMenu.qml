@@ -342,7 +342,7 @@ PanelWindow {
           id: swipeRow
           x: root.activeTab * -(swipeContainer.width)
           Behavior on x {
-            NumberAnimation { duration: 130; easing.type: Theme.easingOut }
+            NumberAnimation { duration: Theme.animSwipe; easing.type: Theme.easingSwipe }
           }
 
           Item {
@@ -649,7 +649,7 @@ PanelWindow {
                   required property var modelData
                   Layout.fillWidth: true
                   Layout.fillHeight: true
-                  color: Theme.bgAlt
+                  color: "transparent"
                   border.color: Theme.border
                   border.width: 1
                   ColumnLayout {
