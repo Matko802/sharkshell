@@ -512,6 +512,11 @@ Scope {
       color: Theme.bg
       opacity: (panel.anchors.leftMargin + panel.width) / (20 + panel.width)
       border.color: Theme.outline
+
+      MouseArea {
+        anchors.fill: parent
+        hoverEnabled: false
+      }
       border.width: 1
       Behavior on anchors.leftMargin { NumberAnimation { duration: 170; easing.type: Easing.OutExpo } }
       Behavior on scale { NumberAnimation { duration: 170; easing.type: Easing.OutExpo } }
