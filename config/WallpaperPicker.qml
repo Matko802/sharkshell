@@ -356,8 +356,9 @@ Scope {
       anchors.top: parent.top
       anchors.topMargin: 50
       anchors.leftMargin: root.opened ? 20 : -width
-      width: 400
-      height: navCol.implicitHeight + 16
+      anchors.bottom: parent.bottom
+      anchors.bottomMargin: 10
+      width: 176
       color: Theme.bg
       opacity: (panel.anchors.leftMargin + panel.width) / (20 + panel.width)
       border.color: Theme.outline
@@ -435,16 +436,14 @@ Scope {
         }
       }
 
-      Column {
+      ColumnLayout {
         id: navCol
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
+        anchors.fill: parent
         anchors.margins: 8
         spacing: 6
 
         Row {
-          width: parent.width
+          Layout.fillWidth: true
           height: 26
           spacing: 4
 
@@ -479,7 +478,7 @@ Scope {
 
         Text {
           visible: root.isLockTab
-          width: parent.width
+          Layout.fillWidth: true
           text: WallpaperState.lockPath === "" ? "following desktop" : "custom lockscreen"
           color: Theme.fg
           opacity: 0.6
@@ -490,7 +489,7 @@ Scope {
         }
 
         RowLayout {
-          width: parent.width
+          Layout.fillWidth: true
           spacing: 6
 
           Rectangle {
@@ -529,15 +528,7 @@ Scope {
             QIcon { anchors.centerIn: parent; name: "home"; size: 16; color: homeMa.containsMouse ? Theme.bg : Theme.fg }
             MouseArea { id: homeMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.goHome() }
           }
-          Text {
-            Layout.fillWidth: true
-            text: root.navDir
-            color: Theme.fg
-            opacity: 0.7
-            font.family: root.fontFamily
-            font.pixelSize: 10
-            elide: Text.ElideMiddle
-          }
+          Item { Layout.fillWidth: true }
           Rectangle {
             Layout.preferredWidth: 30
             Layout.preferredHeight: 26
@@ -556,11 +547,23 @@ Scope {
           }
         }
 
+        Text {
+          Layout.fillWidth: true
+          text: root.navDir
+          color: Theme.fg
+          opacity: 0.7
+          font.family: root.fontFamily
+          font.pixelSize: 9
+          elide: Text.ElideMiddle
+          horizontalAlignment: Text.AlignHCenter
+        }
+
         ListView {
           id: folderView
-          width: parent.width
+          Layout.fillWidth: true
           visible: root.folderResults.length > 0
-          height: visible ? Math.min(root.visibleCount, root.folderResults.length) * (root.browseRowH + root.thumbSpacing) : 0
+          Layout.preferredHeight: visible ? Math.min(root.visibleCount, root.folderResults.length) * (root.browseRowH + root.thumbSpacing) : 0
+          Layout.maximumHeight: Layout.preferredHeight
           clip: true
           spacing: root.thumbSpacing
           model: root.folderResults
@@ -620,7 +623,7 @@ Scope {
 
         Text {
           visible: root.filterText !== "" && !root.editingDir
-          width: parent.width
+          Layout.fillWidth: true
           text: "filter: " + root.filterText
           color: Theme.fg
           opacity: 0.6
@@ -631,14 +634,15 @@ Scope {
 
         GridView {
           id: navGrid
-          width: parent.width
+          Layout.fillWidth: true
           property int totalRows: root.imageResults.length
-          height: 118
+          Layout.fillHeight: true
+          Layout.minimumHeight: 118
           clip: true
           cellWidth: width
           cellHeight: 118
           model: root.imageResults
-          interactive: totalRows > 1
+          interactive: true
 
           delegate: Item {
             required property var modelData
@@ -684,11 +688,11 @@ Scope {
         }
 
         Column {
-          width: parent.width
+          Layout.fillWidth: true
           spacing: 4
 
           Row {
-            width: parent.width
+            Layout.fillWidth: true
             spacing: 6
             Text {
               width: 12
@@ -718,7 +722,7 @@ Scope {
           }
 
           Row {
-            width: parent.width
+            Layout.fillWidth: true
             spacing: 6
             Text {
               width: 12
@@ -750,7 +754,7 @@ Scope {
 
         Item {
           visible: root.isLockTab && WallpaperState.lockPath !== ""
-          width: parent.width
+          Layout.fillWidth: true
           height: 26
 
           Rectangle {
@@ -784,7 +788,7 @@ Scope {
         }
 
         Item {
-          width: parent.width
+          Layout.fillWidth: true
           height: 22
           visible: root.editingDir
 
