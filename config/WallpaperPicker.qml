@@ -378,6 +378,8 @@ Scope {
   }
 
   PanelWindow {
+    id: pickWindow
+
     visible: root.opened || root.closePending
     anchors.top: true
     anchors.bottom: true
@@ -741,6 +743,8 @@ Scope {
           height: pageFlick.height
           tab: 0
           picker: root
+          monitorW: (pickWindow.screen && pickWindow.screen.width) || 0
+          monitorH: (pickWindow.screen && pickWindow.screen.height) || 0
         }
 
         WallpaperBrowsePage {
@@ -748,6 +752,8 @@ Scope {
           height: pageFlick.height
           tab: 1
           picker: root
+          monitorW: (pickWindow.screen && pickWindow.screen.width) || 0
+          monitorH: (pickWindow.screen && pickWindow.screen.height) || 0
         }
       }
     }

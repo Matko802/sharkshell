@@ -10,12 +10,30 @@ Item {
 
   property var picker
   property int tab: 0
+  property real monitorW: 0
+  property real monitorH: 0
   readonly property bool isLock: tab === 1
+  readonly property string imgPath: isLock ? WallpaperState.effectiveLockPath : WallpaperState.path
   readonly property real posX: isLock ? WallpaperState.lockPositionX : WallpaperState.positionX
   readonly property real posY: isLock ? WallpaperState.lockPositionY : WallpaperState.positionY
-  readonly property bool xCentered: Math.abs(page.posX - 0.5) < 0.001
-  readonly property bool yCentered: Math.abs(page.posY - 0.5) < 0.001
+  readonly property int imgW: probe.status === Image.Ready ? probe.implicitWidth : 0
+  readonly property int imgH: probe.status === Image.Ready ? probe.implicitHeight : 0
+  readonly property real imgAspect: imgW > 0 && imgH > 0 ? imgW / imgH : 0
+  readonly property real monAspect: picker.monitorW > 0 && picker.monitorH > 0 ? picker.monitorW / picker.monitorH : 0
+  readonly property bool aspectKnown: imgAspect > 0 && monAspect > 0
+  readonly property bool xCanPan: !aspectKnown || imgAspect > monAspect * 1.001
+  readonly property bool yCanPan: !aspectKnown || imgAspect < monAspect * 0.999
   readonly property string fontFamily: Theme.fontFamily
+
+  Image {
+    id: probe
+    asynchronous: true
+    cache: false
+    visible: false
+    width: 0
+    height: 0
+    source: page.imgPath === "" ? "" : Util.fileUrl(page.imgPath)
+  }
 
   GridView {
     id: navGrid
@@ -103,7 +121,7 @@ Item {
       spacing: 4
 
       Row {
-        visible: !page.xCentered || ControlState.sliderDrags > 0
+        visible: page.xCanPan || ControlState.sliderDrags > 0
         width: parent.width
         spacing: 6
         Text {
@@ -134,7 +152,7 @@ Item {
       }
 
       Row {
-        visible: !page.yCentered || ControlState.sliderDrags > 0
+        visible: page.yCanPan || ControlState.sliderDrags > 0
         width: parent.width
         spacing: 6
         Text {
