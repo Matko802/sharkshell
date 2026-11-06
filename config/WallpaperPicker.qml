@@ -115,6 +115,11 @@ Scope {
     panel.forceActiveFocus()
   }
 
+  onActiveTabChanged: {
+    tabSwitchAnim.from = root.activeTab === 1 ? 60 : -60
+    tabSwitchAnim.restart()
+  }
+
   function currentPosX() {
     return root.isLockTab ? WallpaperState.lockPositionX : WallpaperState.positionX
   }
@@ -373,7 +378,7 @@ Scope {
       anchors.horizontalCenter: panel.horizontalCenter
       anchors.bottom: panel.top
       anchors.bottomMargin: 8
-      width: 240
+      width: panel.width
       height: 28
       color: Theme.bg
       border.color: Theme.outline
@@ -495,6 +500,10 @@ Scope {
           event.accepted = true
         }
       }
+
+    Item {
+      id: contentWrap
+      anchors.fill: parent
 
       Column {
         id: topCol
@@ -861,6 +870,14 @@ Scope {
             }
           }
         }
+      }
+      }
+
+      SequentialAnimation {
+        id: tabSwitchAnim
+        property int from: 0
+        PropertyAction { target: contentWrap; property: "x"; value: tabSwitchAnim.from }
+        NumberAnimation { target: contentWrap; property: "x"; to: 0; duration: 180; easing.type: Easing.OutCubic }
       }
     }
   }
