@@ -930,7 +930,7 @@ PanelWindow {
                     Rectangle {
                       Layout.fillWidth: true
                       Layout.preferredHeight: 44
-                      color: Theme.bgAlt
+                      color: "transparent"
                       border.color: root.hoverIdx === -30 - rowIdx ? Theme.borderStrong : Theme.border
                       border.width: 1
                       RowLayout {
@@ -959,11 +959,22 @@ PanelWindow {
                             elide: Text.ElideRight
                           }
                         }
-                        Text {
-                          text: root.expandedApp === rowIdx ? "Hide" : "Change"
-                          color: root.hoverIdx === -30 - rowIdx ? Theme.bg : Theme.fg
-                          font.family: root.fontFamily
-                          font.pixelSize: 10
+                        Item {
+                          Layout.preferredWidth: 48
+                          Layout.preferredHeight: 22
+                          Rectangle {
+                            anchors.fill: parent
+                            color: root.hoverIdx === -30 - rowIdx ? Theme.fg : "transparent"
+                            border.color: Theme.outline
+                            border.width: 1
+                            Text {
+                              anchors.centerIn: parent
+                              text: root.expandedApp === rowIdx ? "Hide" : "Change"
+                              color: root.hoverIdx === -30 - rowIdx ? Theme.bg : Theme.fg
+                              font.family: root.fontFamily
+                              font.pixelSize: 10
+                            }
+                          }
                         }
                       }
                       MouseArea {
@@ -987,7 +998,7 @@ PanelWindow {
                           required property int index
                           Layout.fillWidth: true
                           Layout.preferredHeight: 30
-                          color: DefaultApps.currentIdOf(rowCat) === modelData.id ? Theme.bgAlt : "transparent"
+                          color: DefaultApps.currentIdOf(rowCat) === modelData.id ? Theme.hover : "transparent"
                           border.color: root.hoverIdx === -40 - index ? Theme.borderStrong : Theme.border
                           border.width: 1
                           RowLayout {
