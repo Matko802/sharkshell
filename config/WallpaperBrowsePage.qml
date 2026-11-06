@@ -11,6 +11,10 @@ Item {
   property var picker
   property int tab: 0
   readonly property bool isLock: tab === 1
+  readonly property real posX: isLock ? WallpaperState.lockPositionX : WallpaperState.positionX
+  readonly property real posY: isLock ? WallpaperState.lockPositionY : WallpaperState.positionY
+  readonly property bool xCentered: Math.abs(page.posX - 0.5) < 0.001
+  readonly property bool yCentered: Math.abs(page.posY - 0.5) < 0.001
   readonly property string fontFamily: Theme.fontFamily
   readonly property int browseRowH: 34
   readonly property int thumbSpacing: 6
@@ -279,6 +283,7 @@ Item {
       spacing: 4
 
       Row {
+        visible: !page.xCentered
         width: parent.width
         spacing: 6
         Text {
@@ -293,12 +298,12 @@ Item {
         CSlider {
           width: parent.width - 44
           anchors.verticalCenter: parent.verticalCenter
-          value: page.isLock ? WallpaperState.lockPositionX : WallpaperState.positionX
-          onUserSet: v => page.picker.setPosFor(page.tab, v, page.isLock ? WallpaperState.lockPositionY : WallpaperState.positionY)
+          value: page.posX
+          onUserSet: v => page.picker.setPosFor(page.tab, v, page.posY)
         }
         Text {
           width: 26
-          text: Math.round((page.isLock ? WallpaperState.lockPositionX : WallpaperState.positionX) * 100)
+          text: Math.round(page.posX * 100)
           color: Theme.fg
           opacity: 0.6
           font.family: page.fontFamily
@@ -309,6 +314,7 @@ Item {
       }
 
       Row {
+        visible: !page.yCentered
         width: parent.width
         spacing: 6
         Text {
@@ -323,53 +329,18 @@ Item {
         CSlider {
           width: parent.width - 44
           anchors.verticalCenter: parent.verticalCenter
-          value: page.isLock ? WallpaperState.lockPositionY : WallpaperState.positionY
-          onUserSet: v => page.picker.setPosFor(page.tab, page.isLock ? WallpaperState.lockPositionX : WallpaperState.positionX, v)
+          value: page.posY
+          onUserSet: v => page.picker.setPosFor(page.tab, page.posX, v)
         }
         Text {
           width: 26
-          text: Math.round((page.isLock ? WallpaperState.lockPositionY : WallpaperState.positionY) * 100)
+          text: Math.round(page.posY * 100)
           color: Theme.fg
           opacity: 0.6
           font.family: page.fontFamily
           font.pixelSize: 10
           anchors.verticalCenter: parent.verticalCenter
           horizontalAlignment: Text.AlignRight
-        }
-      }
-    }
-
-    Item {
-      visible: page.isLock && WallpaperState.lockPath !== ""
-      width: parent.width
-      height: 26
-
-      Rectangle {
-        anchors.centerIn: parent
-        width: 130
-        height: 24
-        radius: Theme.rounding
-        color: useDesktopMa.containsMouse ? Theme.fg : "transparent"
-        border.color: Theme.outline
-        border.width: 1
-
-        Text {
-          anchors.centerIn: parent
-          text: "Use desktop"
-          color: useDesktopMa.containsMouse ? Theme.bg : Theme.fg
-          font.family: page.fontFamily
-          font.pixelSize: 11
-        }
-
-        MouseArea {
-          id: useDesktopMa
-          anchors.fill: parent
-          hoverEnabled: true
-          cursorShape: Qt.PointingHandCursor
-          onClicked: {
-            WallpaperState.clearLock()
-            page.picker.selectedImage = WallpaperState.effectiveLockPath
-          }
         }
       }
     }
