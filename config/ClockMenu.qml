@@ -517,7 +517,7 @@ PanelWindow {
                     id: dCard
                     width: notifList.width
                     height: nRow.implicitHeight + 20
-                    color: "transparent"
+                    color: Theme.bgAlt
                     border.color: Theme.border
                     border.width: 1
                     opacity: 1 - Math.min(0.8, Math.abs(dCard.dragOff) / dCard.width)

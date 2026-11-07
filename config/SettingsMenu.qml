@@ -930,7 +930,7 @@ PanelWindow {
                     Rectangle {
                       Layout.fillWidth: true
                       Layout.preferredHeight: 44
-                      color: "transparent"
+                      color: root.hoverIdx === -30 - rowIdx ? Theme.hover : "transparent"
                       border.color: root.hoverIdx === -30 - rowIdx ? Theme.borderStrong : Theme.border
                       border.width: 1
                       RowLayout {
@@ -996,7 +996,7 @@ PanelWindow {
                           required property int index
                           Layout.fillWidth: true
                           Layout.preferredHeight: 30
-                          color: DefaultApps.currentIdOf(rowCat) === modelData.id ? Theme.hover : "transparent"
+                          color: root.hoverIdx === -40 - index ? Theme.hover : (DefaultApps.currentIdOf(rowCat) === modelData.id ? Theme.bgAlt : "transparent")
                           border.color: root.hoverIdx === -40 - index ? Theme.borderStrong : Theme.border
                           border.width: 1
                           RowLayout {
@@ -1054,42 +1054,39 @@ PanelWindow {
                   border.color: Theme.border
                   border.width: 1
 
-                  RowLayout {
-                    anchors.fill: parent
+                  Image {
+                    id: logoImg
+                    anchors.right: parent.right
+                    anchors.rightMargin: 10
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 104
+                    height: 104
+                    source: Qt.resolvedUrl("assets/watchshark.png")
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
+                    asynchronous: true
+                    mipmap: true
+                  }
+
+                  Column {
+                    id: logoCol
+                    anchors.left: parent.left
                     anchors.leftMargin: 16
-                    anchors.rightMargin: 16
-                    spacing: 20
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 4
 
-                    ColumnLayout {
-                      Layout.fillWidth: true
-                      Layout.fillHeight: true
-                      Layout.alignment: Qt.AlignVCenter
-                      spacing: 4
-
-                      Text {
-                        text: "SharkShell"
-                        color: Theme.fg
-                        font.family: root.fontFamily
-                        font.pixelSize: 20
-                        font.bold: true
-                      }
-                      Text {
-                        text: "v" + shellVersion
-                        color: Theme.muted
-                        font.family: root.fontFamily
-                        font.pixelSize: 11
-                      }
+                    Text {
+                      text: "SharkShell"
+                      color: Theme.fg
+                      font.family: root.fontFamily
+                      font.pixelSize: 20
+                      font.bold: true
                     }
-
-                    Image {
-                      Layout.preferredWidth: 104
-                      Layout.preferredHeight: 104
-                      Layout.alignment: Qt.AlignVCenter
-                      source: Qt.resolvedUrl("assets/watchshark.png")
-                      fillMode: Image.PreserveAspectFit
-                      smooth: true
-                      asynchronous: true
-                      mipmap: true
+                    Text {
+                      text: "v" + shellVersion
+                      color: Theme.muted
+                      font.family: root.fontFamily
+                      font.pixelSize: 11
                     }
                   }
                 }
