@@ -584,34 +584,40 @@ PanelWindow {
                       hoverEnabled: true
                       anchors.fill: parent; cursorShape: Qt.PointingHandCursor; z: -1
                       property real pressX: 0
-                      property real dragOff: 0
-                      preventStealing: dragOff !== 0
-                      onPressed: mouse => { pressX = mouse.x; dragOff = 0; dCard.dragOff = 0 }
+                      property bool moved: false
+                      onPressed: mouse => {
+                        pressX = mouse.x
+                        moved = false
+                        dCard.dragOff = 0
+                      }
                       onPositionChanged: mouse => {
                         if (!pressed)
                           return
                         const dx = mouse.x - pressX
-                        if (Math.abs(dx) > 4) {
-                          dragOff = Math.max(-dCard.width, Math.min(dCard.width, dx))
-                          dCard.dragOff = dragOff
+                        if (!moved && Math.abs(dx) > 6) {
+                          moved = true
+                          notifList.interactive = false
                         }
+                        if (moved)
+                          dCard.dragOff = Math.max(-dCard.width, Math.min(dCard.width, dx))
                       }
                       onReleased: {
-                        if (Math.abs(dCard.dragOff) > dCard.width * 0.3)
+                        notifList.interactive = true
+                        if (moved && Math.abs(dCard.dragOff) > dCard.width * 0.3)
                           NotificationServer.dismissById(model.notifId)
                         else
                           dCard.dragOff = 0
+                        if (!moved) {
+                          NotificationServer.activate(model.notifId)
+                          ClockState.close()
+                          NotificationServer.dismissById(model.notifId)
+                        }
+                        moved = false
                       }
-                      onCanceled: { dragOff = 0; dCard.dragOff = 0 }
-                      onClicked: {
-                        const wasSwipe = Math.abs(dCard.dragOff) > 4
-                        dragOff = 0
+                      onCanceled: {
+                        notifList.interactive = true
                         dCard.dragOff = 0
-                        if (wasSwipe)
-                          return
-                        NotificationServer.activate(model.notifId)
-                        ClockState.close()
-                        NotificationServer.dismissById(model.notifId)
+                        moved = false
                       }
                     }
                   }
