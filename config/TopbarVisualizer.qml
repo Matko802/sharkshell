@@ -7,12 +7,12 @@ import "Util.js" as Util
 
 Item {
   id: root
-  Layout.preferredWidth: 31
+  Layout.preferredWidth: VisualizerState.bars * 2 - 1
   Layout.preferredHeight: 14
   Layout.alignment: Qt.AlignVCenter
 
   property var levels: []
-  readonly property int topBars: 16
+  readonly property int topBars: VisualizerState.bars
   readonly property int idleMs: 20000
 
   property bool hasAudio: false
