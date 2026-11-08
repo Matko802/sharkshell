@@ -101,7 +101,7 @@ ShellRoot {
           anchors.top: parent.top
           anchors.left: parent.left
           width: Math.ceil(parent.width * barWindow.blurProg)
-          height: Math.ceil(parent.height * barWindow.blurProg)
+          height: Math.ceil(barBg.height * barWindow.blurProg)
           color: "transparent"
         }
         ControlCenterCard {
