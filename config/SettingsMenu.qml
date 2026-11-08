@@ -139,7 +139,8 @@ PanelWindow {
       if (i === 0) VisualizerState.cycleMode()
       else if (i === 1) VisualizerState.cycleBars()
       else if (i === 2) VisualizerState.cycleBackend()
-      else VisualizerState.toggleTopbar()
+      else if (i === 3) VisualizerState.toggleTopbar()
+      else VisualizerState.cycleThickness()
     } else {
       root.selIdx = i
       if (item.type === "source")
@@ -811,6 +812,54 @@ PanelWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     checked: VisualizerState.topbar
                     onToggled: v => VisualizerState.setTopbar(v)
+                  }
+                }
+
+                Rectangle {
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: 32
+                  color: root.selIdx === 4 ? Theme.fg
+                       : (root.hoverIdx === -14 ? Theme.bgAlt : "transparent")
+                  border.color: root.selIdx === 4 ? Theme.outline
+                       : (root.hoverIdx === -14 ? Theme.borderStrong : Theme.border)
+                  border.width: 1
+                  MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onEntered: root.hoverIdx = -14
+                    onExited: { if (root.hoverIdx === -14) root.hoverIdx = -1 }
+                    onClicked: { root.selIdx = 4; VisualizerState.cycleThickness() }
+                  }
+                  RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    spacing: 10
+                    Item {
+                      Layout.preferredWidth: 20
+                      Layout.preferredHeight: 20
+                      QIcon {
+                        anchors.centerIn: parent
+                        name: "chart-bar"
+                        size: 18
+                        color: root.selIdx === 4 ? Theme.bg : Theme.fg
+                      }
+                    }
+                    Text {
+                      Layout.fillWidth: true
+                      text: "Bar thickness"
+                      color: root.selIdx === 4 ? Theme.bg : Theme.fg
+                      font.family: root.fontFamily
+                      font.pixelSize: 12
+                      font.weight: Font.DemiBold
+                    }
+                    Text {
+                      text: VisualizerState.thickness + "px"
+                      color: root.selIdx === 4 ? Theme.bg : Theme.muted
+                      font.family: root.fontFamily
+                      font.pixelSize: 11
+                    }
                   }
                 }
               }

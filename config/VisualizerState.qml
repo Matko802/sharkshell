@@ -8,10 +8,12 @@ Scope {
 
   property string mode: "bars"
   property int bars: 48
+  property int thickness: 1
   property bool topbar: false
   property string backend: "sharkvis"
   readonly property var modes: ["bars", "wave", "oscilloscope"]
   readonly property var barOptions: [24, 32, 48, 64]
+  readonly property var thicknessOptions: [1, 2, 3, 4]
   readonly property var backends: ["sharkvis", "cava"]
   readonly property string cacheDir: Quickshell.env("HOME") + "/.cache/sharkshell"
 
@@ -24,6 +26,10 @@ Scope {
   function cycleBars() {
     var i = root.barOptions.indexOf(root.bars)
     root.bars = root.barOptions[(i + 1) % root.barOptions.length]
+  }
+  function cycleThickness() {
+    var i = root.thicknessOptions.indexOf(root.thickness)
+    root.thickness = root.thicknessOptions[(i + 1) % root.thicknessOptions.length]
   }
   function modeLabel() {
     if (root.mode === "wave") return "Wave"
@@ -79,6 +85,17 @@ Scope {
     onFileChanged: reload()
   }
   FileView {
+    id: thicknessFile
+    path: root.cacheDir + "/visualizer-thickness"
+    watchChanges: true
+    printErrors: false
+    onLoaded: {
+      var t = parseInt(text().trim(), 10)
+      if (!isNaN(t) && root.thicknessOptions.indexOf(t) >= 0) root.thickness = t
+    }
+    onFileChanged: reload()
+  }
+  FileView {
     id: topbarFile
     path: root.cacheDir + "/visualizer-topbar"
     watchChanges: true
@@ -116,6 +133,7 @@ Scope {
     barsFile.setText(String(root.bars))
     cavaConfFile.setText(root.cavaConf)
   }
+  onThicknessChanged: thicknessFile.setText(String(root.thickness))
   onTopbarChanged: topbarFile.setText(root.topbar ? "1" : "0")
   onBackendChanged: backendFile.setText(root.backend)
 }

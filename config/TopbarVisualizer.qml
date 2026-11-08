@@ -7,7 +7,7 @@ import "Util.js" as Util
 
 Item {
   id: root
-  Layout.preferredWidth: VisualizerState.bars * 2 - 1
+  Layout.preferredWidth: VisualizerState.bars * (VisualizerState.thickness + 1) - 1
   Layout.preferredHeight: 14
   Layout.alignment: Qt.AlignVCenter
 
@@ -98,7 +98,7 @@ Item {
       model: root.topBars
       delegate: Item {
         required property int index
-        width: Math.max(1, Math.round((barRow.width - (root.topBars - 1) * barRow.spacing) / root.topBars))
+        width: Math.max(1, Math.min(VisualizerState.thickness, Math.round((barRow.width - (root.topBars - 1) * barRow.spacing) / root.topBars)))
         height: barRow.height
         Rectangle {
           anchors.bottom: parent.bottom
@@ -140,7 +140,7 @@ Item {
       ctx.lineJoin = "round"
       ctx.lineCap = "round"
       ctx.strokeStyle = Theme.fg
-      ctx.lineWidth = 1
+      ctx.lineWidth = Math.max(1, VisualizerState.thickness)
       ctx.beginPath()
       if (VisualizerState.mode === "oscilloscope") {
         if (n < 4) return
