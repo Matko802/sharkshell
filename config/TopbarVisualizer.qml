@@ -7,8 +7,8 @@ import "Util.js" as Util
 
 Item {
   id: root
-  Layout.preferredWidth: 46
-  Layout.preferredHeight: 18
+  Layout.preferredWidth: 31
+  Layout.preferredHeight: 14
   Layout.alignment: Qt.AlignVCenter
 
   property var levels: []
@@ -92,19 +92,19 @@ Item {
   Row {
     id: barRow
     anchors.fill: parent
-    spacing: 2
+    spacing: 1
     visible: VisualizerState.mode === "bars"
     Repeater {
       model: root.topBars
       delegate: Item {
         required property int index
-        width: Math.max(1, (barRow.width - (root.topBars - 1) * barRow.spacing) / root.topBars)
+        width: Math.max(1, Math.round((barRow.width - (root.topBars - 1) * barRow.spacing) / root.topBars))
         height: barRow.height
         Rectangle {
           anchors.bottom: parent.bottom
           anchors.left: parent.left
           anchors.right: parent.right
-          height: Math.max(2, parent.height * ((root.levels[index] || 0) / 100))
+          height: Math.min(parent.height, Math.max(2, Math.round(parent.height * ((root.levels[index] || 0) / 100))))
           color: Theme.fg
           Behavior on height {
             NumberAnimation {
@@ -140,22 +140,22 @@ Item {
       ctx.lineJoin = "round"
       ctx.lineCap = "round"
       ctx.strokeStyle = Theme.fg
-      ctx.lineWidth = 1.5
+      ctx.lineWidth = 1
       ctx.beginPath()
       if (VisualizerState.mode === "oscilloscope") {
         if (n < 4) return
         const m = Math.floor(n / 2)
         for (let i = 0; i < m; i++) {
-          const x = Util.clampPct(pts[2 * i] || 0) / 100 * width
-          const y = height - Util.clampPct(pts[2 * i + 1] || 0) / 100 * height
+          const x = Math.round((Util.clampPct(pts[2 * i] || 0) / 100) * (width - 1))
+          const y = Math.round(height - (Util.clampPct(pts[2 * i + 1] || 0) / 100) * (height - 1))
           if (i === 0) ctx.moveTo(x, y)
           else ctx.lineTo(x, y)
         }
       } else {
         if (n < 2) return
         for (let i = 0; i < n; i++) {
-          const x = (i / (n - 1)) * width
-          const y = height - Util.clampPct(pts[i] || 0) / 100 * height
+          const x = Math.round((i / (n - 1)) * (width - 1))
+          const y = Math.round(height - (Util.clampPct(pts[i] || 0) / 100) * (height - 1))
           if (i === 0) ctx.moveTo(x, y)
           else ctx.lineTo(x, y)
         }

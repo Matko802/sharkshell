@@ -102,7 +102,7 @@ ShellRoot {
           anchors.right: parent.right
           anchors.bottom: parent.bottom
           height: 1
-          opacity: barBg.opacity * 0.55
+          opacity: barBg.opacity * 0.9
           visible: opacity > 0.01
           gradient: Gradient {
             orientation: Gradient.Horizontal
