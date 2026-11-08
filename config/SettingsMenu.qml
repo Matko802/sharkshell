@@ -936,7 +936,7 @@ PanelWindow {
                       RowLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 12
-                        anchors.rightMargin: 12
+                        anchors.rightMargin: 64
                         spacing: 10
                         QIcon { name: modelData.icon; size: 18; color: Theme.muted }
                         ColumnLayout {
@@ -957,21 +957,23 @@ PanelWindow {
                             elide: Text.ElideRight
                           }
                         }
-                        Item {
-                          Layout.preferredWidth: 48
-                          Layout.preferredHeight: 22
-                          Rectangle {
-                            anchors.fill: parent
-                            color: root.hoverIdx === -30 - rowIdx ? Theme.fg : "transparent"
-                            border.color: Theme.outline
-                            border.width: 1
-                            Text {
-                              anchors.centerIn: parent
-                              text: root.expandedApp === rowIdx ? "Hide" : "Change"
-                              color: root.hoverIdx === -30 - rowIdx ? Theme.bg : Theme.fg
-                              font.family: root.fontFamily
-                              font.pixelSize: 10
-                            }
+                      }
+                      Item {
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 48
+                        height: 22
+                        Rectangle {
+                          anchors.fill: parent
+                          color: root.hoverIdx === -30 - rowIdx ? Theme.fg : "transparent"
+                          border.color: Theme.outline
+                          border.width: 1
+                          Text {
+                            anchors.centerIn: parent
+                            text: root.expandedApp === rowIdx ? "Hide" : "Change"
+                            color: root.hoverIdx === -30 - rowIdx ? Theme.bg : Theme.fg
+                            font.family: root.fontFamily
+                            font.pixelSize: 10
                           }
                         }
                       }
