@@ -97,29 +97,6 @@ ShellRoot {
           Bar { anchors.fill: parent }
         }
         Rectangle {
-          id: barLine
-          anchors.left: parent.left
-          anchors.right: parent.right
-          anchors.bottom: parent.bottom
-          height: 1
-          opacity: barBg.opacity
-          visible: opacity > 0.01
-          readonly property color lineCol: {
-            const g = (Theme.border.r + Theme.border.g + Theme.border.b) / 3
-            const d = 0.55
-            return Qt.rgba(Theme.border.r + (g - Theme.border.r) * d, Theme.border.g + (g - Theme.border.g) * d, Theme.border.b + (g - Theme.border.b) * d, 1)
-          }
-          gradient: Gradient {
-            orientation: Gradient.Horizontal
-            stops: [
-              GradientStop { position: 0.0; color: Qt.rgba(barLine.lineCol.r, barLine.lineCol.g, barLine.lineCol.b, 0) },
-              GradientStop { position: 0.12; color: barLine.lineCol },
-              GradientStop { position: 0.88; color: barLine.lineCol },
-              GradientStop { position: 1.0; color: Qt.rgba(barLine.lineCol.r, barLine.lineCol.g, barLine.lineCol.b, 0) }
-            ]
-          }
-        }
-        Rectangle {
           id: blurTracker
           anchors.top: parent.top
           anchors.left: parent.left
