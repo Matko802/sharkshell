@@ -28,6 +28,12 @@ var FILES_RES = [
   /\branger\b/i, /\byazi\b/i, /\blf\b/i, /\bnnn\b/i, /vifm/i
 ];
 var FILES_NAME_RES = [/file manager/i, /^files$/i];
+var FILES_EXCLUDE_RES = [/baobab/i, /gnome-disk-utility/i];
+var FILE_MANAGER_PREF = [
+  /^org\.gnome\.Nautilus\.desktop$/i, /nautilus/i,
+  /^org\.kde\.dolphin\.desktop$/i, /dolphin/i,
+  /nemo/i, /thunar/i, /caja/i, /pcmanfm/i, /krusader/i, /spacefm/i
+];
 
 var MAIL_RES = [
   /thunderbird/i, /betterbird/i, /evolution/i, /geary/i, /mailspring/i,
@@ -202,6 +208,17 @@ function closestIds(stem, ids) {
   }
   hit.sort(function(a, b) { return a.length - b.length });
   return hit;
+}
+
+function preferredId(entries) {
+  var ids = [];
+  for (var i = 0; i < (entries || []).length; i++) ids.push(String(entries[i].id || ""));
+  for (var p = 0; p < FILE_MANAGER_PREF.length; p++) {
+    for (var j = 0; j < ids.length; j++) {
+      if (FILE_MANAGER_PREF[p].test(ids[j])) return ids[j];
+    }
+  }
+  return ids.length > 0 ? ids[0] : "";
 }
 
 var KGSCRIPT = [

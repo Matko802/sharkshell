@@ -14,6 +14,8 @@ Scope {
 
   property string mimeText: ""
   property string termChoice: ""
+  property var systemDefaults: ({})
+  property bool mimeLoaded: false
 
   readonly property var allEntries: DesktopEntries.applications.values.filter(function(e) { return e && !e.noDisplay })
 
@@ -37,24 +39,59 @@ Scope {
     return s
   }
 
+  function effectiveDefault(key) {
+    var v = String(root.mimeDefaults[key] || "")
+    if (v !== "" && root.hasEntry(root.fullId(v))) return root.fullId(v)
+    var s = String(root.systemDefaults[key] || "")
+    if (s !== "") return root.fullId(s)
+    return v
+  }
+
+  function knownId(id, list) {
+    var s = root.fullId(id)
+    if (s === "") return false
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === s) return true
+    }
+    return false
+  }
+
+  function preferredFileManager() {
+    return Apps.preferredId(root.fileManagers)
+  }
+
   function healIds() {
-    var b = root.fullId(root.mimeDefaults["x-scheme-handler/http"] || "")
-    if (b !== "" && b !== (root.mimeDefaults["x-scheme-handler/http"] || "")) root.setBrowser(b)
-    else if (b !== "" && !root.hasEntry(b)) {
+    if (!root.mimeLoaded) return
+    var rawB = String(root.mimeDefaults["x-scheme-handler/http"] || "")
+    var b = root.fullId(root.effectiveDefault("x-scheme-handler/http"))
+    if (b !== "" && !root.hasEntry(b)) {
       var bh = Apps.closestIds(b, root.idsOf(root.browsers))
       if (bh && bh.length === 1) root.setBrowser(bh[0])
+    } else if (b !== "" && b !== rawB) {
+      root.setBrowser(b)
     }
-    var f = root.fullId(root.mimeDefaults["inode/directory"] || "")
-    if (f !== "" && f !== (root.mimeDefaults["inode/directory"] || "")) root.setFiles(f)
+    var rawF = String(root.mimeDefaults["inode/directory"] || "")
+    var f = root.fullId(root.effectiveDefault("inode/directory"))
     if (f !== "" && !root.hasEntry(f)) {
       var fh = Apps.closestIds(f, root.idsOf(root.fileManagers))
       if (fh && fh.length === 1) root.setFiles(fh[0])
+      else {
+        var fp = root.preferredFileManager()
+        if (fp !== "") root.setFiles(fp)
+      }
+    } else if (f === "" || !root.knownId(f, root.fileManagers)) {
+      var pref = root.preferredFileManager()
+      if (pref !== "" && pref !== f) root.setFiles(pref)
+    } else if (f !== rawF) {
+      root.setFiles(f)
     }
-    var m = root.fullId(root.mimeDefaults["x-scheme-handler/mailto"] || "")
-    if (m !== "" && m !== (root.mimeDefaults["x-scheme-handler/mailto"] || "")) root.setMail(m)
+    var rawM = String(root.mimeDefaults["x-scheme-handler/mailto"] || "")
+    var m = root.fullId(root.effectiveDefault("x-scheme-handler/mailto"))
     if (m !== "" && !root.hasEntry(m)) {
       var mh = Apps.closestIds(m, root.idsOf(root.mailClients))
       if (mh && mh.length === 1) root.setMail(mh[0])
+    } else if (m !== "" && m !== rawM) {
+      root.setMail(m)
     }
     var t = root.fullId(root.termChoice)
     if (t !== "" && t !== root.termChoice) root.setTerminal(t)
@@ -67,15 +104,16 @@ Scope {
   }
 
   readonly property var browsers: Apps.matchEntries(root.plainEntries(), Apps.BROWSER_RES, Apps.BROWSER_NAME_RES, [/^chrome-.+\.desktop$/i])
-  readonly property var fileManagers: Apps.matchEntries(root.plainEntries(), Apps.FILES_RES, Apps.FILES_NAME_RES)
+  readonly property var fileManagers: Apps.matchEntries(root.plainEntries(), Apps.FILES_RES, Apps.FILES_NAME_RES, Apps.FILES_EXCLUDE_RES)
+  onFileManagersChanged: root.healIds()
   readonly property var mailClients: Apps.matchEntries(root.plainEntries(), Apps.MAIL_RES, Apps.MAIL_NAME_RES)
   readonly property var terminals: Apps.matchEntries(root.plainEntries(), Apps.TERM_RES, Apps.TERM_NAME_RES)
 
   readonly property var mimeDefaults: Apps.parseMimeapps(root.mimeText)
 
-  readonly property string browserId: root.fullId(root.mimeDefaults["x-scheme-handler/http"] || "")
-  readonly property string filesId: root.fullId(root.mimeDefaults["inode/directory"] || "")
-  readonly property string mailId: root.fullId(root.mimeDefaults["x-scheme-handler/mailto"] || "")
+  readonly property string browserId: root.fullId(root.effectiveDefault("x-scheme-handler/http"))
+  readonly property string filesId: root.fullId(root.effectiveDefault("inode/directory"))
+  readonly property string mailId: root.fullId(root.effectiveDefault("x-scheme-handler/mailto"))
 
   function displayName(id) {
     if (!id) return ""
@@ -189,6 +227,7 @@ Scope {
     printErrors: false
     onLoaded: {
       root.mimeText = text()
+      root.mimeLoaded = true
       root.healIds()
     }
     onFileChanged: reload()
@@ -196,6 +235,33 @@ Scope {
 
   Process {
     id: mimeProc
+  }
+
+  Process {
+    id: defaultQueryProc
+    running: true
+    command: ["sh", "-c",
+      "for k in x-scheme-handler/http inode/directory x-scheme-handler/mailto; do "
+      + "printf '%s\\t%s\\n' \"$k\" \"$(xdg-mime query default \"$k\" 2>/dev/null)\"; done"]
+    stdout: StdioCollector {
+      id: defaultQueryOut
+      waitForEnd: true
+    }
+    onExited: {
+      var map = {}
+      var lines = String(defaultQueryOut.text || "").split("\n")
+      for (var i = 0; i < lines.length; i++) {
+        var t = lines[i].trim()
+        if (t === "") continue
+        var tab = t.indexOf("\t")
+        if (tab < 0) continue
+        var key = t.slice(0, tab)
+        var val = t.slice(tab + 1).trim()
+        if (key !== "" && val !== "") map[key] = val
+      }
+      root.systemDefaults = map
+      root.healIds()
+    }
   }
 
   Process {
