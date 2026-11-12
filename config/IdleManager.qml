@@ -44,10 +44,14 @@ Item {
     property bool audioActive: false
     property bool gameMode: false
     property bool fullscreenActive: false
+    property bool gameLatched: false
     readonly property bool gaming: gameMode || fullscreenActive
+    readonly property bool gameSession: gameLatched || gameMode || (fullscreenActive && !mediaPlaying)
     property bool stayAwake: false
     property bool taskRunning: false
-    readonly property bool _inhibited: mediaPlaying || gameMode || stayAwake || (audioActive && !mediaPaused)
+    readonly property bool _inhibited: stayAwake || (!root.gameSession && (mediaPlaying || (audioActive && !mediaPaused)))
+
+    onGamingChanged: if (root.gaming) root.markActive()
 
     onTaskRunningChanged: {
         if (!root.taskRunning && root.suspendStageArmed && root.suspendTimeout > 0 && root._idleSeconds >= root.suspendTimeout)
@@ -175,10 +179,12 @@ Item {
         target: LockState
         function onLockedChanged() {
             if (LockState.locked) {
+                root.gameLatched = root.gameSession
                 root._idleSeconds = 0
                 root.lockStageArmed = true
                 root.screenOffStageArmed = true
             } else {
+                root.gameLatched = false
                 root._setScreen(false)
                 root.screenOffStageArmed = true
             }
@@ -195,7 +201,7 @@ Item {
             if (!root.mediaPlaying)
                 audioCheck.running = true
             taskCheck.running = true
-            if (root.mediaPlaying)
+            if (root.mediaPlaying && !root.gameSession)
                 root.markActive()
         }
     }
@@ -211,9 +217,9 @@ Item {
         command: ["sh", "-c", "command -v gamemoded >/dev/null 2>&1 && gamemoded -s 2>/dev/null | grep -qi 'is active'"]
         onExited: (exitCode) => {
             const active = exitCode === 0
-            root.gameMode = active
-            if (active)
+            if (active && !root.gameMode)
                 root.markActive()
+            root.gameMode = active
         }
     }
 
@@ -222,7 +228,7 @@ Item {
         command: ["sh", "-c", "pw-dump 2>/dev/null | awk '/^  \\{$/ { b=\"\"; f=1; next } /^  \\},?$/ { if (f && b ~ /\"media.class\"[[:space:]]*:[[:space:]]*\"Stream\\/Output\\/Audio\"/ && b ~ /\"state\"[[:space:]]*:[[:space:]]*\"running\"/ && b !~ /\"pulse.corked\"[[:space:]]*:[[:space:]]*true/ && b !~ /\"node.name\"[[:space:]]*:[[:space:]]*\"alsa_(playback|capture)\\./) { print \"P\"; exit } f=0; next } f { b = b \"\\n\" $0 }' | grep -q P"]
         onExited: (exitCode) => {
             root.audioActive = (exitCode === 0)
-            if (exitCode === 0)
+            if (exitCode === 0 && !root.gameSession)
                 root.markActive()
         }
     }
@@ -255,7 +261,7 @@ Item {
                 root._setScreen(true)
                 root.screenOffStageArmed = false
             }
-            if (root.suspendStageArmed && !root.taskRunning && root.suspendTimeout > 0 && root._idleSeconds >= root.suspendTimeout) {
+            if (!root.gameSession && root.suspendStageArmed && !root.taskRunning && root.suspendTimeout > 0 && root._idleSeconds >= root.suspendTimeout) {
                 suspendProc.running = true
                 root.suspendStageArmed = false
             }
