@@ -175,6 +175,92 @@ Item {
         }
     }
 
+    property string gamepadWatchScript: [
+        "declare -A readers",
+        "declare -A kinds",
+        "declare -A axes",
+        "",
+        "emit_activity() {",
+        "  echo active",
+        "  sleep 0.2",
+        "}",
+        "",
+        "filter_events() {",
+        "  local line type code low high value key base delta",
+        "",
+        "  while read -r line; do",
+        "    set -- $line",
+        "    [ $# -ge 12 ] || continue",
+        "    type=$9",
+        "    code=${10}",
+        "    low=${11}",
+        "    high=${12}",
+        "    value=$(( low + high * 65536 ))",
+        "    [ \"$value\" -ge 2147483648 ] && value=$(( value - 4294967296 ))",
+        "    key=$code",
+        "",
+        "    if [ \"$type\" -eq 1 ]; then",
+        "      if [ \"$value\" -gt 0 ]; then",
+        "        emit_activity",
+        "      fi",
+        "    elif [ \"$type\" -eq 3 ]; then",
+        "      if [ \"$code\" -eq 16 ] || [ \"$code\" -eq 17 ]; then",
+        "        if [ \"$value\" -ne \"${axes[$key]:-99}\" ]; then",
+        "          axes[$key]=$value",
+        "          emit_activity",
+        "        fi",
+        "      elif [ -z \"${axes[$key]+set}\" ]; then",
+        "        axes[$key]=$value",
+        "      else",
+        "        base=${axes[$key]}",
+        "        delta=$(( value - base ))",
+        "        [ \"$delta\" -lt 0 ] && delta=$(( -delta ))",
+        "        if [ \"$delta\" -ge 128 ]; then",
+        "          axes[$key]=$value",
+        "          emit_activity",
+        "        fi",
+        "      fi",
+        "    fi",
+        "  done",
+        "}",
+        "",
+        "is_joystick() {",
+        "  udevadm info --query=property --name=\"$1\" 2>/dev/null | grep -qx 'ID_INPUT_JOYSTICK=1'",
+        "}",
+        "",
+        "while :; do",
+        "  for dev in /dev/input/event*; do",
+        "    [ -e \"$dev\" ] || continue",
+        "    if [ -z \"${kinds[$dev]}\" ]; then",
+        "      if is_joystick \"$dev\"; then",
+        "        kinds[$dev]=1",
+        "      else",
+        "        kinds[$dev]=0",
+        "      fi",
+        "    fi",
+        "    [ \"${kinds[$dev]}\" = 1 ] || continue",
+        "    if [ -n \"${readers[$dev]}\" ] && kill -0 \"${readers[$dev]}\" 2>/dev/null; then",
+        "      continue",
+        "    fi",
+        "    (",
+        "      exec 2>/dev/null",
+        "      dd if=\"$dev\" bs=24 iflag=fullblock status=none | stdbuf -oL od -An -tu2 -w24 | filter_events",
+        "    ) &",
+        "    readers[$dev]=$!",
+        "  done",
+        "  sleep 5",
+        "done",
+    ].join("\n")
+
+    Process {
+        id: gamepadWatch
+        running: root.enabled
+        command: ["bash", "-c", root.gamepadWatchScript]
+        stdout: SplitParser {
+            onRead: _ => root.markActive()
+        }
+    }
+
     Connections {
         target: LockState
         function onLockedChanged() {
