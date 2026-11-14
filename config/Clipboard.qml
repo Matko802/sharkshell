@@ -342,10 +342,9 @@ Scope {
       anchors.bottomMargin: 8
       width: 240
       height: 28
-      color: Theme.surfaceLowBg
-      radius: Theme.radiusXXL
-      clip: true
-      border.width: 0
+      color: Theme.bg
+      border.color: Theme.outline
+      border.width: 1
       opacity: root.open ? Math.min(1, card.cardProg * 1.6) : 1
       scale: card.cardProg
 
@@ -362,20 +361,12 @@ Scope {
             Layout.fillWidth: true
             Layout.fillHeight: true
             property bool active: root.tab === (modelData.idx === 0 ? "text" : "images")
-            Rectangle {
-              anchors.centerIn: parent
-              width: Math.max(0, Math.min(parent.width - 8, 72))
-              height: 24
-              radius: Theme.radiusFull
-              color: parent.active ? Theme.secondaryContainer : "transparent"
-            }
             Text {
               anchors.centerIn: parent
               text: modelData.label
-              color: parent.active ? Theme.onSecondaryContainer : Theme.onSurfaceVariant
+              color: parent.active ? Theme.fg : Theme.muted2
               font.family: root.fontFamily
               font.pixelSize: 11
-              font.weight: parent.active ? Font.Medium : Font.Normal
             }
             MouseArea {
               anchors.fill: parent
@@ -412,10 +403,9 @@ Scope {
       scale: cardProg
       width: root.boxWidth
       height: col.implicitHeight + 16
-      color: Theme.surfaceLowBg
-      radius: Theme.radiusXXL
-      clip: true
-      border.width: 0
+      color: Theme.bg
+      border.color: Theme.outline
+      border.width: 1
       opacity: root.open ? Math.min(1, cardProg * 1.6) : 1
       Behavior on cardProg { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
@@ -433,9 +423,9 @@ Scope {
         Rectangle {
           Layout.fillWidth: true
           Layout.preferredHeight: 28
-          color: Theme.surfaceContainer
-          radius: Theme.radiusFull
-          border.width: 0
+          color: "transparent"
+          border.color: Theme.outline
+          border.width: 1
           RowLayout {
             anchors.fill: parent
             anchors.leftMargin: 6
@@ -551,7 +541,7 @@ Scope {
                 spacing: 0
                 model: root.textEntries
                 currentIndex: root.selIdx
-                highlight: Rectangle { radius: Theme.radiusM; color: Theme.primaryContainer }
+                highlight: Rectangle { color: Theme.fg }
                 highlightMoveDuration: 120
 
                 delegate: Rectangle {
@@ -561,7 +551,7 @@ Scope {
                   height: 28
                   readonly property bool isKeyboardSelected: root.selIdx === index
                   readonly property bool isHovered: root.hoverIdx === index
-                  color: isHovered ? Theme.surfaceHigh : "transparent"
+                  color: isHovered ? Theme.hover : "transparent"
 
                   Text {
                     anchors.fill: parent
@@ -570,7 +560,7 @@ Scope {
                     verticalAlignment: Text.AlignVCenter
                     textFormat: Text.RichText
                     text: root.hl(modelData)
-                    color: isKeyboardSelected ? Theme.onPrimaryContainer : Theme.onSurface
+                    color: isKeyboardSelected ? Theme.bg : Theme.fg
                     font.family: root.fontFamily
                     font.pointSize: 12
                     elide: Text.ElideRight
@@ -603,7 +593,7 @@ Scope {
                 cellHeight: root.imgCellH
                 model: root.imageEntries
                 currentIndex: root.selIdx
-                highlight: Rectangle { radius: Theme.radiusM; color: "transparent"; border.color: Theme.primary; border.width: 2 }
+                highlight: Rectangle { color: "transparent"; border.color: Theme.outline; border.width: 2 }
                 highlightMoveDuration: 120
 
                 delegate: Rectangle {
@@ -631,9 +621,9 @@ Scope {
                   Rectangle {
                     anchors.fill: parent
                     anchors.margins: 4
-                    radius: Theme.radiusM
-                    color: isHover ? Qt.rgba(Theme.onSurface.r, Theme.onSurface.g, Theme.onSurface.b, 0.08) : "transparent"
+                    color: isHover ? Theme.hover : "transparent"
                     border.width: 0
+                    border.color: Theme.outline
                   }
 
                   MouseArea {

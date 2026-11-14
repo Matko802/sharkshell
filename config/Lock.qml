@@ -342,10 +342,9 @@ Scope {
               selectionColor: Theme.fg
 
               background: Rectangle {
-                radius: Theme.radiusFull
-                color: Theme.surfaceContainer
-                border.color: lockContext.showFailure ? Theme.error : "transparent"
-                border.width: lockContext.showFailure ? 1 : 0
+                color: Theme.bg
+                border.color: lockContext.showFailure ? Theme.error : Theme.outline
+                border.width: 1
               }
 
               focus: true

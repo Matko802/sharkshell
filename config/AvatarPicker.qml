@@ -276,11 +276,10 @@ Scope {
       anchors.leftMargin: root.opened ? 20 : -width
       width: 400
       height: listViewCol.implicitHeight + 16
-      color: Theme.surfaceLowBg
-      radius: Theme.radiusXXL
-      clip: true
+      color: Theme.bg
       opacity: (panel.anchors.leftMargin + panel.width) / (20 + panel.width)
-      border.width: 0
+      border.color: Theme.outline
+      border.width: 1
       Behavior on anchors.leftMargin { NumberAnimation { duration: 170; easing.type: Easing.OutExpo } }
 
       Column {
@@ -292,7 +291,7 @@ Scope {
         Text {
           width: parent.width
           text: "Profile picture — pick an image"
-          color: Theme.onSurface
+          color: Theme.fg
           font.family: root.fontFamily
           font.pixelSize: 11
         }
@@ -321,7 +320,7 @@ Scope {
           Text {
             Layout.fillWidth: true
             text: root.currentDir
-            color: Theme.onSurface
+            color: Theme.fg
             opacity: 0.7
             font.family: root.fontFamily
             font.pixelSize: 10
@@ -330,13 +329,14 @@ Scope {
           Rectangle {
             Layout.preferredWidth: 60
             Layout.preferredHeight: 26
-            radius: Theme.radiusFull
-            color: clearMa.containsMouse ? Theme.primaryContainer : Theme.secondaryContainer
-            border.width: 0
+            radius: 3
+            color: clearMa.containsMouse ? Theme.fg : "transparent"
+            border.color: Theme.outline
+            border.width: 1
             Text {
               anchors.centerIn: parent
               text: "Clear"
-              color: clearMa.containsMouse ? Theme.onPrimaryContainer : Theme.onSecondaryContainer
+              color: clearMa.containsMouse ? Theme.bg : Theme.fg
               font.family: root.fontFamily
               font.pixelSize: 11
             }
@@ -403,8 +403,7 @@ Scope {
             required property int index
             width: listView.width
             height: root.rowH
-            radius: Theme.radiusM
-            color: root.selIdx === index ? Theme.primaryContainer : (rowMa.containsMouse ? Theme.surfaceHigh : "transparent")
+            color: root.selIdx === index ? Theme.fg : (rowMa.containsMouse ? Theme.hover : "transparent")
 
             RowLayout {
               anchors.fill: parent
@@ -419,7 +418,7 @@ Scope {
                   visible: modelData.isDir
                   name: "folder"
                   size: 20
-                  color: root.selIdx === index ? Theme.onPrimaryContainer : Theme.onSurface
+                  color: root.selIdx === index ? Theme.bg : Theme.fg
                 }
                 Rectangle {
                   anchors.centerIn: parent
@@ -427,8 +426,7 @@ Scope {
                   width: 26
                   height: 26
                   clip: true
-                  radius: Theme.radiusS
-                  color: Theme.surfaceHighest
+                  color: Theme.bgAlt
                   Image {
                     anchors.fill: parent
                     source: !modelData.isDir ? Util.fileUrl(modelData.fullPath) : ""
@@ -443,7 +441,7 @@ Scope {
               Text {
                 Layout.fillWidth: true
                 text: modelData.name
-                color: root.selIdx === index ? Theme.onPrimaryContainer : Theme.onSurface
+                color: root.selIdx === index ? Theme.bg : Theme.fg
                 font.family: root.fontFamily
                 font.pixelSize: 11
                 elide: Text.ElideRight
@@ -463,7 +461,7 @@ Scope {
             visible: root.results.length === 0
             anchors.centerIn: parent
             text: "no images here"
-            color: Theme.onSurfaceVariant
+            color: Theme.muted
             font.family: root.fontFamily
             font.pointSize: 11
           }
@@ -473,7 +471,7 @@ Scope {
           visible: root.filterText !== ""
           width: parent.width
           text: "filter: " + root.filterText
-          color: Theme.onSurface
+          color: Theme.fg
           opacity: 0.6
           font.family: root.fontFamily
           font.pixelSize: 10

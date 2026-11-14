@@ -19,15 +19,15 @@ Rectangle {
   readonly property bool checked: root.entry.checkState === Qt.Checked
 
   height: root.entry.isSeparator ? 9 : 28
-  radius: Theme.radiusS
-  color: rowMa.containsMouse && !root.entry.isSeparator && root.entry.enabled ? Theme.surfaceHigh : "transparent"
+  color: rowMa.containsMouse && !root.entry.isSeparator && root.entry.enabled ? Theme.fg : "transparent"
 
   Rectangle {
     visible: root.entry.isSeparator
     anchors.centerIn: parent
     width: parent.width - 16
     height: 1
-    color: Theme.outlineVariant
+    color: Theme.muted
+    opacity: 0.4
   }
 
   RowLayout {
@@ -47,7 +47,7 @@ Rectangle {
         visible: root.checkable && root.checked
         name: "check"
         size: 14
-        color: rowMa.containsMouse && root.entry.enabled ? Theme.onSurface : Theme.onSurface
+        color: rowMa.containsMouse && root.entry.enabled ? Theme.bg : Theme.fg
       }
 
       Rectangle {
@@ -56,7 +56,7 @@ Rectangle {
         width: 8
         height: 8
         color: "transparent"
-        border.color: Theme.onSurfaceVariant
+        border.color: rowMa.containsMouse && root.entry.enabled ? Theme.bg : Theme.muted
         border.width: 1
       }
 
@@ -77,8 +77,8 @@ Rectangle {
       Layout.fillWidth: true
       Layout.alignment: Qt.AlignVCenter
       text: root.cleanLabel(root.entry.text)
-      color: !root.entry.enabled ? Theme.onSurfaceVariant
-        : Theme.onSurface
+      color: !root.entry.enabled ? Theme.muted
+        : (rowMa.containsMouse ? Theme.bg : Theme.fg)
       font.family: Theme.fontFamily
       font.pixelSize: 12
       elide: Text.ElideRight
@@ -93,7 +93,7 @@ Rectangle {
         anchors.centerIn: parent
         name: "chevron-right"
         size: 14
-        color: rowMa.containsMouse && root.entry.enabled ? Theme.onSurface : Theme.onSurface
+        color: rowMa.containsMouse && root.entry.enabled ? Theme.bg : Theme.fg
       }
     }
   }

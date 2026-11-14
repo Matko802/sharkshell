@@ -44,9 +44,9 @@ ColumnLayout {
     Layout.fillWidth: true
     Text {
       text: "Quick Settings"
-      color: Theme.onSurface
-      font.pixelSize: 13
-      font.weight: Font.Medium
+      color: Theme.fg
+      font.pixelSize: 12
+      font.letterSpacing: 1
     }
     Item {
       Layout.fillWidth: true
@@ -257,12 +257,12 @@ ColumnLayout {
             anchors.centerIn: parent
             name: "network-wired"
             size: 20
-            color: Network.ethChecked(modelData.name) ? Theme.fg : Theme.onSurfaceVariant
+            color: Network.ethChecked(modelData.name) ? Theme.fg : Theme.muted2
           }
         }
         Text {
           text: modelData.name
-          color: Network.ethChecked(modelData.name) ? Theme.fg : Theme.onSurfaceVariant
+          color: Network.ethChecked(modelData.name) ? Theme.fg : Theme.muted2
           font.pixelSize: 12
           elide: Text.ElideRight
           Layout.maximumWidth: 220
@@ -305,12 +305,12 @@ ColumnLayout {
             anchors.centerIn: parent
             name: Network.wifiToggleChecked ? Network.sigIcon(Network.sig) : "wifi-off"
             size: 20
-            color: Network.wifiToggleChecked ? Theme.fg : Theme.onSurfaceVariant
+            color: Network.wifiToggleChecked ? Theme.fg : Theme.muted2
           }
         }
         Text {
           text: Network.kind === "wifi" ? Network.ssid : (Network.wifiToggleChecked ? "Wi-Fi on" : "Wi-Fi off")
-          color: Network.wifiToggleChecked ? Theme.fg : Theme.onSurfaceVariant
+          color: Network.wifiToggleChecked ? Theme.fg : Theme.muted2
           font.pixelSize: 12
           elide: Text.ElideRight
           Layout.maximumWidth: 220
@@ -354,13 +354,13 @@ ColumnLayout {
           Layout.fillWidth: true
           Text {
             text: "Networks"
-            color: Theme.onSurfaceVariant
+            color: Theme.muted2
             font.pixelSize: 10
             font.letterSpacing: 1
           }
           Text {
             text: Network.connecting !== "" ? "connecting to " + Network.connecting : (Network.scanning ? "scanning" : "")
-            color: Theme.onSurfaceVariant
+            color: Theme.muted2
             font.pixelSize: 10
             Layout.leftMargin: 6
             Layout.fillWidth: text !== ""
@@ -399,9 +399,9 @@ ColumnLayout {
           Rectangle {
             Layout.fillWidth: true
             implicitHeight: 22
-            radius: Theme.radiusM
-            color: Theme.surfaceHighest
-            border.width: 0
+            color: Theme.bgAlt
+            border.color: Theme.outline
+            border.width: 1
             TextInput {
               id: pwInput
               anchors.fill: parent
@@ -430,13 +430,13 @@ ColumnLayout {
             Rectangle {
               implicitWidth: 54
               implicitHeight: 20
-              radius: Theme.radiusFull
-              color: pwOkMa.pressed ? Theme.primaryContainer : Theme.primary
-              border.width: 0
+              color: pwOkMa.pressed ? Theme.fg : Theme.bg
+              border.color: Theme.outline
+              border.width: 1
               Text {
                 anchors.centerIn: parent
                 text: "connect"
-                color: pwOkMa.pressed ? Theme.onPrimaryContainer : Theme.onPrimary
+                color: pwOkMa.pressed ? Theme.bg : Theme.fg
                 font.pixelSize: 9
               }
               MouseArea {
@@ -449,13 +449,13 @@ ColumnLayout {
             Rectangle {
               implicitWidth: 48
               implicitHeight: 20
-              radius: Theme.radiusFull
-              color: pwNoMa.pressed ? Theme.surfaceHighest : Theme.secondaryContainer
-              border.width: 0
+              color: pwNoMa.pressed ? Theme.fg : Theme.bg
+              border.color: Theme.outline
+              border.width: 1
               Text {
                 anchors.centerIn: parent
                 text: "cancel"
-                color: pwNoMa.pressed ? Theme.onSurface : Theme.onSecondaryContainer
+                color: pwNoMa.pressed ? Theme.bg : Theme.fg
                 font.pixelSize: 9
               }
               MouseArea {
@@ -517,12 +517,12 @@ ColumnLayout {
                       anchors.centerIn: parent
                       name: isConnecting ? Network.sigIcon(connAnim.step * 25) : Network.sigIcon(modelData.sig)
                       size: 13
-                      color: (isActive || isConnecting) ? Theme.fg : Theme.onSurfaceVariant
+                      color: (isActive || isConnecting) ? Theme.fg : Theme.muted2
                     }
                   }
                   Text {
                     text: modelData.ssid
-                    color: (isActive || isConnecting) ? Theme.fg : Theme.onSurfaceVariant
+                    color: (isActive || isConnecting) ? Theme.fg : Theme.muted2
                     font.pixelSize: 11
                     elide: Text.ElideRight
                     Layout.fillWidth: true
@@ -535,7 +535,7 @@ ColumnLayout {
                       anchors.centerIn: parent
                       name: isActive ? "check" : (needsPw ? "wifi-lock" : "")
                       size: 12
-                      color: isActive ? Theme.fg : Theme.onSurfaceVariant
+                      color: isActive ? Theme.fg : Theme.muted2
                     }
                   }
                   IconBtn {

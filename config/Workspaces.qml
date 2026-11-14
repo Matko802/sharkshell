@@ -78,16 +78,13 @@ Row {
       property bool hovered: workspaceMa.containsMouse
       width: 20
       height: 20
-      radius: Theme.radiusFull
-      color: modelData.urgent ? Theme.error : (modelData.active ? Theme.primary : (hovered ? Theme.surfaceHigh : "transparent"))
-      Behavior on color { ColorAnimation { duration: Theme.animFast; easing.type: Theme.easingOut } }
+      color: modelData.urgent ? Theme.error : (modelData.active ? Theme.outline : (hovered ? Theme.borderStrong : "transparent"))
 
       Text {
         anchors.centerIn: parent
         text: modelData.index
-        color: modelData.urgent ? Theme.onError : (modelData.active ? Theme.onPrimary : (hovered ? Theme.onSurface : Theme.onSurfaceVariant))
+        color: modelData.urgent || modelData.active ? Theme.bg : (hovered ? Theme.fg : Theme.muted2)
         font.pixelSize: 11
-        font.weight: modelData.active ? Font.Medium : Font.Normal
       }
 
       MouseArea {

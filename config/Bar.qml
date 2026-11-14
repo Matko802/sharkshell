@@ -37,15 +37,14 @@ Item {
     anchors.centerIn: parent
     implicitWidth: clockCenterRow.implicitWidth + 14
     implicitHeight: 22
-    radius: Theme.radiusFull
-    color: clockCenterMa.containsMouse ? Theme.surfaceHigh : "transparent"
+    color: clockCenterMa.containsMouse ? Theme.fg : "transparent"
     RowLayout {
       id: clockCenterRow
       anchors.centerIn: parent
       spacing: Theme.spacingS
       Text {
         id: clockCenterLabel
-        color: clockCenterMa.containsMouse ? Theme.onSurface : Theme.onSurface
+        color: clockCenterMa.containsMouse ? Theme.bg : Theme.fg
         font.family: Theme.fontFamily
         font.pixelSize: 12
         property int notifCount: NotificationServer.meaningfulCount
@@ -68,7 +67,7 @@ Item {
         Layout.alignment: Qt.AlignVCenter
         radius: 3
         visible: clockCenterLabel.notifCount > 0
-        color: clockCenterMa.containsMouse ? Theme.onSurface : Theme.onSurface
+        color: clockCenterMa.containsMouse ? Theme.bg : Theme.fg
       }
     }
     MouseArea {
@@ -117,8 +116,8 @@ Item {
       Layout.bottomMargin: 4
       implicitWidth: quickSettingsRow.implicitWidth + 14
       Behavior on implicitWidth { NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut } }
-      radius: Theme.radiusFull
-      color: (root.qsHover && !root.menuOpen) ? Theme.surfaceHigh : "transparent"
+      radius: Theme.rounding
+      color: (root.qsHover && !root.menuOpen) ? Theme.fg : "transparent"
 
       Battery { id: bat }
 
@@ -127,12 +126,12 @@ Item {
         anchors.centerIn: parent
         spacing: Theme.spacingS
 
-        Item { Layout.preferredWidth: 18; Layout.preferredHeight: 18; QIcon { anchors.centerIn: parent; name: Audio.icon; size: 18; color: (root.qsHover && !root.menuOpen) ? Theme.onSurface : Theme.onSurfaceVariant } }
-        Item { Layout.preferredWidth: 18; Layout.preferredHeight: 18; QIcon { anchors.centerIn: parent; name: Network.online ? Network.icon : "wifi-off"; size: 18; color: (root.qsHover && !root.menuOpen) ? Theme.onSurface : (Network.online ? Theme.onSurfaceVariant : Theme.onSurfaceVariant) } }
+        Item { Layout.preferredWidth: 18; Layout.preferredHeight: 18; QIcon { anchors.centerIn: parent; name: Audio.icon; size: 18; color: (root.qsHover && !root.menuOpen) ? Theme.bg : Theme.fg } }
+        Item { Layout.preferredWidth: 18; Layout.preferredHeight: 18; QIcon { anchors.centerIn: parent; name: Network.online ? Network.icon : "wifi-off"; size: 18; color: (root.qsHover && !root.menuOpen) ? Theme.bg : (Network.online ? Theme.fg : Theme.muted2) } }
         Item {
           Layout.preferredWidth: 18; Layout.preferredHeight: 18
           visible: bat.batName !== ""
-          QIcon { anchors.centerIn: parent; name: bat.batName; size: 18; color: (root.qsHover && !root.menuOpen) ? Theme.onSurface : Theme.onSurfaceVariant }
+          QIcon { anchors.centerIn: parent; name: bat.batName; size: 18; color: (root.qsHover && !root.menuOpen) ? Theme.bg : Theme.fg }
         }
       }
 

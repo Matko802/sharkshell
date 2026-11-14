@@ -800,9 +800,9 @@ PanelWindow {
     height: menuCol.implicitHeight + 8
     x: Math.max(8, Math.min(root.menuX, root.width - width - 8))
     y: Math.max(8, Math.min(root.menuY, root.height - height - 8))
-    radius: Theme.radiusL
-    color: Theme.surfaceLowBg
-    border.width: 0
+    color: root.withAlpha(Theme.bgBase, Math.min(Theme.bg.a, 0.8))
+    border.width: 1
+    border.color: Theme.outline
     z: 100
 
     MouseArea {
@@ -823,8 +823,7 @@ PanelWindow {
 
           width: menuCol.width
           height: 30
-          radius: Theme.radiusS
-          color: rowMa.containsMouse ? Theme.surfaceHigh : "transparent"
+          color: rowMa.containsMouse ? Theme.outline : "transparent"
           Behavior on color {
             ColorAnimation { duration: Theme.animFast }
           }

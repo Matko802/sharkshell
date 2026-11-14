@@ -463,10 +463,9 @@ Scope {
       anchors.bottomMargin: 8
       width: panel.width
       height: 28
-      color: Theme.surfaceLowBg
-      radius: Theme.radiusXXL
-      clip: true
-      border.width: 0
+      color: Theme.bg
+      border.color: Theme.outline
+      border.width: 1
       opacity: panel.opacity
       scale: panel.slideProg
 
@@ -483,20 +482,12 @@ Scope {
             Layout.fillWidth: true
             Layout.fillHeight: true
             property bool active: root.activeTab === modelData.idx
-            Rectangle {
-              anchors.centerIn: parent
-              width: Math.max(0, Math.min(parent.width - 8, 84))
-              height: 22
-              radius: Theme.radiusFull
-              color: parent.active ? Theme.secondaryContainer : "transparent"
-            }
             Text {
               anchors.centerIn: parent
               text: modelData.label
-              color: parent.active ? Theme.onSecondaryContainer : Theme.onSurfaceVariant
+              color: parent.active ? Theme.fg : Theme.muted2
               font.family: root.fontFamily
               font.pixelSize: 11
-              font.weight: parent.active ? Font.Medium : Font.Normal
             }
             MouseArea {
               anchors.fill: parent
@@ -518,16 +509,15 @@ Scope {
       anchors.bottomMargin: 10
       width: 176
       readonly property real slideProg: (panel.anchors.leftMargin + panel.width) / (20 + panel.width)
-      color: Theme.surfaceLowBg
-      radius: Theme.radiusXXL
-      clip: true
+      color: Theme.bg
       opacity: (panel.anchors.leftMargin + panel.width) / (20 + panel.width)
-      border.width: 0
+      border.color: Theme.outline
 
       MouseArea {
         anchors.fill: parent
         hoverEnabled: false
       }
+      border.width: 1
       Behavior on anchors.leftMargin { NumberAnimation { duration: 170; easing.type: Easing.OutExpo } }
       Behavior on scale { NumberAnimation { duration: 170; easing.type: Easing.OutExpo } }
 
@@ -632,12 +622,13 @@ Scope {
           height: 26
           radius: Theme.rounding
           readonly property bool backEnabled: root.navPos > 0
-          color: backMa.containsMouse ? Theme.surfaceHigh : "transparent"
-          border.width: 0
+          color: backMa.containsMouse ? Theme.fg : "transparent"
+          border.color: backEnabled ? Theme.outline : Theme.border
+          border.width: 1
           Text {
             anchors.centerIn: parent
             text: "<"
-            color: backMa.containsMouse ? Theme.onSurface : (parent.backEnabled ? Theme.onSurfaceVariant : Theme.onSurfaceVariant)
+            color: backMa.containsMouse ? Theme.bg : (parent.backEnabled ? Theme.fg : Theme.muted3)
             font.family: root.fontFamily
             font.pixelSize: 13
             font.bold: true
@@ -656,12 +647,13 @@ Scope {
           height: 26
           radius: Theme.rounding
           readonly property bool fwdEnabled: root.navPos < root.navHistory.length - 1
-          color: fwdMa.containsMouse ? Theme.surfaceHigh : "transparent"
-          border.width: 0
+          color: fwdMa.containsMouse ? Theme.fg : "transparent"
+          border.color: fwdEnabled ? Theme.outline : Theme.border
+          border.width: 1
           Text {
             anchors.centerIn: parent
             text: ">"
-            color: fwdMa.containsMouse ? Theme.onSurface : (parent.fwdEnabled ? Theme.onSurfaceVariant : Theme.onSurfaceVariant)
+            color: fwdMa.containsMouse ? Theme.bg : (parent.fwdEnabled ? Theme.fg : Theme.muted3)
             font.family: root.fontFamily
             font.pixelSize: 13
             font.bold: true
@@ -679,9 +671,10 @@ Scope {
           width: 30
           height: 26
           radius: Theme.rounding
-          color: homeMa.containsMouse ? Theme.surfaceHigh : "transparent"
-          border.width: 0
-          QIcon { anchors.centerIn: parent; name: "home"; size: 16; color: homeMa.containsMouse ? Theme.onSurface : Theme.onSurfaceVariant }
+          color: homeMa.containsMouse ? Theme.fg : "transparent"
+          border.color: Theme.outline
+          border.width: 1
+          QIcon { anchors.centerIn: parent; name: "home"; size: 16; color: homeMa.containsMouse ? Theme.bg : Theme.fg }
           MouseArea { id: homeMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.goHome() }
         }
       }
@@ -689,9 +682,9 @@ Scope {
       Rectangle {
         width: parent.width
         height: 22
-        radius: Theme.radiusFull
-        color: root.editingDir ? Theme.primaryContainer : Theme.surfaceContainer
-        border.width: 0
+        color: root.editingDir ? Theme.fg : "transparent"
+        border.color: Theme.outline
+        border.width: 1
 
         TextInput {
           id: dirInput
@@ -701,7 +694,7 @@ Scope {
           verticalAlignment: TextInput.AlignVCenter
           font.family: root.fontFamily
           font.pixelSize: 9
-          color: root.editingDir ? Theme.onPrimaryContainer : Theme.onSurface
+          color: root.editingDir ? Theme.bg : Theme.fg
           text: root.navDir
           readOnly: !root.editingDir
 
@@ -756,8 +749,7 @@ Scope {
           required property int index
           width: folderView.width
           height: root.browseRowH
-          radius: Theme.radiusM
-          color: root.browseSel === index ? Theme.primaryContainer : (folderMa.containsMouse ? Theme.surfaceHigh : "transparent")
+          color: root.browseSel === index ? Theme.fg : (folderMa.containsMouse ? Theme.hover : "transparent")
 
           RowLayout {
             anchors.fill: parent
@@ -771,13 +763,13 @@ Scope {
                 anchors.centerIn: parent
                 name: "folder"
                 size: 20
-                color: root.browseSel === index ? Theme.onPrimaryContainer : Theme.onSurface
+                color: root.browseSel === index ? Theme.bg : Theme.fg
               }
             }
             Text {
               Layout.fillWidth: true
               text: modelData.name
-              color: root.browseSel === index ? Theme.onPrimaryContainer : Theme.onSurface
+              color: root.browseSel === index ? Theme.bg : Theme.fg
               font.family: root.fontFamily
               font.pixelSize: 11
               elide: Text.ElideRight

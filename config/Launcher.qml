@@ -442,7 +442,7 @@ Scope {
       else
         ranges.push([positions[i], positions[i]])
     }
-    const c = selected ? Theme.onPrimaryContainer : root.matchColor
+    const c = selected ? Theme.bg : root.matchColor
     let out = ""
     let last = 0
     for (let i = 0; i < ranges.length; i++) {
@@ -582,10 +582,9 @@ Scope {
       anchors.centerIn: parent
       width: root.boxWidth
       height: col.implicitHeight + 16
-      color: Theme.surfaceLowBg
-      radius: Theme.radiusXXL
-      clip: true
-      border.width: 0
+      color: Theme.bg
+      border.color: Theme.outline
+      border.width: 1
       property real cardProg: root.open ? 1 : 0
       scale: cardProg
       opacity: root.open ? Math.min(1, cardProg * 1.6) : 1
@@ -605,9 +604,9 @@ Scope {
         Rectangle {
           Layout.fillWidth: true
           Layout.preferredHeight: 28
-          color: Theme.surfaceContainer
-          radius: Theme.radiusFull
-          border.width: 0
+          color: "transparent"
+          border.color: Theme.outline
+          border.width: 1
           RowLayout {
             anchors.fill: parent
             anchors.leftMargin: 6
@@ -726,7 +725,7 @@ Scope {
           spacing: 0
           model: root.results
           currentIndex: root.selIdx
-          highlight: Rectangle { radius: Theme.radiusM; color: Theme.primaryContainer }
+          highlight: Rectangle { color: Theme.fg }
           highlightMoveDuration: 120
 
           delegate: Rectangle {
@@ -738,7 +737,7 @@ Scope {
             readonly property bool isHovered: root.hoverIdx === index
             readonly property bool pinned: root.isPinned(modelData)
             readonly property bool holding: root.holdIdx === index && (root.holdSource === "kbd" || root.holdSource === "mouse")
-            color: isHovered ? Theme.surfaceHigh : "transparent"
+            color: isHovered ? Theme.hover : "transparent"
 
             RowLayout {
               anchors.fill: parent
@@ -753,7 +752,7 @@ Scope {
               Text {
                 textFormat: Text.RichText
                 text: root.hl(modelData, isKeyboardSelected)
-                color: isKeyboardSelected ? Theme.onPrimaryContainer : Theme.onSurface
+                color: isKeyboardSelected ? Theme.bg : Theme.fg
                 font.family: root.fontFamily
                 font.pointSize: 12
                 clip: true
@@ -768,7 +767,7 @@ Scope {
                   anchors.centerIn: parent
                   name: "push_pin"
                   size: 14
-                  color: isKeyboardSelected ? Theme.onPrimaryContainer : Theme.onSurface
+                  color: isKeyboardSelected ? Theme.bg : Theme.fg
                 }
               }
             }
@@ -779,7 +778,7 @@ Scope {
               height: 2
               width: holding ? parent.width * root.holdProgress : 0
               visible: holding && (Date.now() - root.holdStartMs) > 150 && root.holdProgress > 0
-              color: isKeyboardSelected ? Theme.onPrimaryContainer : Theme.onSurface
+              color: isKeyboardSelected ? Theme.bg : Theme.fg
             }
 
             MouseArea {
@@ -815,9 +814,9 @@ Scope {
           Layout.fillWidth: true
           Layout.preferredHeight: root.query.trim() !== "" && root.results.length === 0 ? 28 : 0
           visible: height > 0
-          color: Theme.surfaceContainer
-          radius: Theme.radiusFull
-          border.width: 0
+          color: "transparent"
+          border.color: Theme.outline
+          border.width: 1
           RowLayout {
             anchors.fill: parent
             anchors.leftMargin: 6
