@@ -16,7 +16,7 @@ Scope {
   readonly property var modes: ["bars", "wave", "oscilloscope"]
   readonly property var barOptions: [24, 32, 48, 64]
   readonly property var thicknessOptions: [1, 2, 3, 4]
-  readonly property var fpsOptions: [10, 15, 20, 30, 45, 60]
+  readonly property var fpsOptions: [10, 15, 20, 30, 45, 60, 90, 120, 144, 165, 240]
   readonly property var waveSmoothOptions: [0, 0.25, 0.5, 0.75, 0.9, 0.95]
   readonly property var backends: ["sharkvis", "cava"]
   readonly property string cacheDir: Quickshell.env("HOME") + "/.cache/sharkshell"
