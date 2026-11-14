@@ -7,9 +7,13 @@ import "Util.js" as Util
 
 Item {
   id: root
-  readonly property int squareSize: 14
+  readonly property int barHeight: 14
+  readonly property int squareSize: {
+    const maxSize = Math.max(16, Math.min(30, root.parent ? root.parent.height - 4 : 26))
+    return Math.max(16, Math.min(maxSize, Math.round(VisualizerState.bars / 2)))
+  }
   Layout.preferredWidth: VisualizerState.mode === "bars" ? VisualizerState.bars * (VisualizerState.thickness + 1) - 1 : squareSize
-  Layout.preferredHeight: squareSize
+  Layout.preferredHeight: VisualizerState.mode === "bars" ? barHeight : squareSize
   Layout.alignment: Qt.AlignVCenter
 
   property var levels: []
