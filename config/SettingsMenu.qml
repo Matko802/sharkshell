@@ -1198,78 +1198,109 @@ PanelWindow {
 
                 Rectangle {
                   Layout.fillWidth: true
-                  Layout.preferredHeight: 128
+                  Layout.preferredHeight: infoCol.implicitHeight
                   color: "transparent"
                   border.color: Theme.border
                   border.width: 1
 
-                  Image {
-                    id: logoImg
-                    anchors.right: parent.right
-                    anchors.rightMargin: 10
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 104
-                    height: 104
-                    source: Qt.resolvedUrl("assets/watchshark.png")
-                    fillMode: Image.PreserveAspectFit
-                    smooth: true
-                    asynchronous: true
-                    mipmap: true
-                  }
+                  ColumnLayout {
+                    id: infoCol
+                    anchors.fill: parent
+                    spacing: 0
 
-                  Column {
-                    id: logoCol
-                    anchors.left: parent.left
-                    anchors.leftMargin: 16
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 4
+                    Rectangle {
+                      Layout.fillWidth: true
+                      Layout.preferredHeight: 128
+                      color: "transparent"
 
-                    Text {
-                      text: "SharkShell"
-                      color: Theme.fg
-                      font.family: root.fontFamily
-                      font.pixelSize: 20
-                      font.bold: true
-                    }
-                    Text {
-                      text: "v" + shellVersion
-                      color: Theme.muted
-                      font.family: root.fontFamily
-                      font.pixelSize: 11
-                    }
-                  }
-                }
-
-                Repeater {
-                  model: root.infoRows
-                  delegate: Rectangle {
-                    required property var modelData
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 28
-                    color: "transparent"
-                    border.color: Theme.border
-                    border.width: 1
-                    RowLayout {
-                      anchors.fill: parent
-                      anchors.leftMargin: 12
-                      anchors.rightMargin: 12
-                      spacing: 10
-                      Text {
-                        text: modelData.label
-                        color: Theme.fg
-                        font.family: root.fontFamily
-                        font.pixelSize: 9
-                        font.letterSpacing: 2
-                        Layout.preferredWidth: 100
+                      Image {
+                        id: logoImg
+                        anchors.right: parent.right
+                        anchors.rightMargin: 10
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 104
+                        height: 104
+                        source: Qt.resolvedUrl("assets/watchshark.png")
+                        fillMode: Image.PreserveAspectFit
+                        smooth: true
+                        asynchronous: true
+                        mipmap: true
                       }
-                      Text {
+
+                      Column {
+                        id: logoCol
+                        anchors.left: parent.left
+                        anchors.leftMargin: 16
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 4
+
+                        Text {
+                          text: "SharkShell"
+                          color: Theme.fg
+                          font.family: root.fontFamily
+                          font.pixelSize: 20
+                          font.bold: true
+                        }
+                        Text {
+                          text: "v" + shellVersion
+                          color: Theme.muted
+                          font.family: root.fontFamily
+                          font.pixelSize: 11
+                        }
+                      }
+                    }
+
+                    Rectangle {
+                      Layout.alignment: Qt.AlignHCenter
+                      Layout.preferredWidth: 40
+                      Layout.preferredHeight: 1
+                      color: Theme.border
+                    }
+
+                    Repeater {
+                      model: root.infoRows
+                      delegate: ColumnLayout {
+                        required property var modelData
+                        required property int index
                         Layout.fillWidth: true
-                        text: modelData.value
-                        color: Theme.fg
-                        font.family: root.fontFamily
-                        font.pixelSize: 11
-                        elide: Text.ElideRight
-                        horizontalAlignment: Text.AlignRight
+                        spacing: 0
+
+                        Rectangle {
+                          Layout.fillWidth: true
+                          Layout.preferredHeight: 28
+                          color: "transparent"
+                          RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            spacing: 10
+                            Text {
+                              text: modelData.label
+                              color: Theme.fg
+                              font.family: root.fontFamily
+                              font.pixelSize: 9
+                              font.letterSpacing: 2
+                              Layout.preferredWidth: 100
+                            }
+                            Text {
+                              Layout.fillWidth: true
+                              text: modelData.value
+                              color: Theme.fg
+                              font.family: root.fontFamily
+                              font.pixelSize: 11
+                              elide: Text.ElideRight
+                              horizontalAlignment: Text.AlignRight
+                            }
+                          }
+                        }
+
+                        Rectangle {
+                          visible: index < root.infoRows.length - 1
+                          Layout.alignment: Qt.AlignHCenter
+                          Layout.preferredWidth: 40
+                          Layout.preferredHeight: index < root.infoRows.length - 1 ? 1 : 0
+                          color: Theme.border
+                        }
                       }
                     }
                   }
