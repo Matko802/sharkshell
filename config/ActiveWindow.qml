@@ -29,7 +29,7 @@ RowLayout {
   Text {
     id: windowLabel
     text: root.appTitle
-    color: Theme.fg
+    color: Theme.onSurface
     font.pixelSize: 12
     font.family: Theme.fontFamily
     elide: Text.ElideRight

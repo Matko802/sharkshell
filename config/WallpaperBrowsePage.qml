@@ -44,9 +44,10 @@ Item {
       Rectangle {
         anchors.fill: parent
         anchors.margins: 3
-        color: modelData.filePath === page.picker.selectedImage ? Theme.hover : "transparent"
+        radius: Theme.radiusM
+        color: modelData.filePath === page.picker.selectedImage ? Theme.primaryContainer : (gridMa.containsMouse ? Qt.rgba(Theme.onSurface.r, Theme.onSurface.g, Theme.onSurface.b, 0.08) : "transparent")
         border.width: gridMa.containsMouse ? 2 : (modelData.filePath === page.picker.selectedImage ? 2 : 0)
-        border.color: Theme.outline
+        border.color: Theme.primary
       }
 
       MouseArea {

@@ -79,9 +79,10 @@ Item {
       opacity: root.showProg
       width: root.cardW
       height: Math.min(380, flick.contentHeight + 16)
-      color: Theme.bg
-      border.color: Theme.outline
-      border.width: 1
+      color: Theme.surfaceLowBg
+      radius: Theme.radiusXXL
+      clip: true
+      border.width: 0
 
       Flickable {
         id: flick

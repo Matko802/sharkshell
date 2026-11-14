@@ -24,9 +24,9 @@ Rectangle {
 
   width: root.entries.length * root.tile + Math.max(0, root.entries.length - 1) * root.tileSpacing + 32
   height: root.tile + 32
-  color: Theme.bg
-  border.color: Theme.outline
-  border.width: 1
+  color: Theme.surfaceLowBg
+  radius: Theme.radiusXXL
+  border.width: 0
 
   onOpenChanged: {
     if (open) {
@@ -94,9 +94,9 @@ Rectangle {
         readonly property bool isSel: root.selIdx === index
         readonly property bool isHover: root.hoverIdx === index
         readonly property bool active: isSel || isHover
-        color: active ? Theme.outline : Theme.bg
-        border.color: Theme.outline
-        border.width: 1
+        radius: Theme.radiusXL
+        color: isSel ? Theme.primaryContainer : (isHover ? Theme.surfaceHigh : Theme.surfaceContainer)
+        border.width: 0
 
         Column {
           anchors.centerIn: parent
@@ -106,13 +106,13 @@ Rectangle {
             anchors.horizontalCenter: parent.horizontalCenter
             name: modelData.icon
             size: 34
-            color: parent.parent.active ? Theme.bg : Theme.fg
+            color: parent.parent.isSel ? Theme.onPrimaryContainer : Theme.onSurface
           }
 
           Text {
             anchors.horizontalCenter: parent.horizontalCenter
             text: modelData.name
-            color: parent.parent.active ? Theme.bg : Theme.fg
+            color: parent.parent.isSel ? Theme.onPrimaryContainer : Theme.onSurface
             font.family: root.fontFamily
             font.pixelSize: 10
             font.letterSpacing: 2

@@ -259,9 +259,9 @@ PanelWindow {
     height: 424
     clip: true
     anchors.horizontalCenter: parent.horizontalCenter
-    color: Theme.bg
-    border.color: Theme.outline
-    border.width: 1
+    color: Theme.surfaceLowBg
+    radius: Theme.radiusXXL
+    border.width: 0
     focus: true
     Keys.onTabPressed: root.activeTab = (root.activeTab + 1) % 3
     Keys.onBacktabPressed: root.activeTab = (root.activeTab + 2) % 3
@@ -292,14 +292,25 @@ PanelWindow {
           delegate: Item {
             required property var modelData
             Layout.preferredWidth: 80
-            Layout.preferredHeight: 28
+            Layout.preferredHeight: 32
             property bool active: root.activeTab === modelData.idx
+            Rectangle {
+              anchors.centerIn: parent
+              width: 68
+              height: 26
+              radius: Theme.radiusFull
+              color: parent.active ? Theme.secondaryContainer : "transparent"
+              Behavior on color {
+                ColorAnimation { duration: Theme.animFast; easing.type: Theme.easingOut }
+              }
+            }
             Text {
               anchors.centerIn: parent
               text: modelData.label
-              color: parent.active ? Theme.fg : Theme.muted2
+              color: parent.active ? Theme.onSecondaryContainer : Theme.onSurfaceVariant
               font.family: Theme.fontFamily
               font.pixelSize: 12
+              font.weight: parent.active ? Font.Medium : Font.Normal
             }
             MouseArea {
               anchors.fill: parent
@@ -404,7 +415,7 @@ PanelWindow {
                     model: ["Su","Mo","Tu","We","Th","Fr","Sa"]
                     delegate: Text {
                       text: modelData
-                      color: Theme.muted2
+                      color: Theme.onSurfaceVariant
                       font.family: Theme.fontFamily
                       font.pixelSize: 9
                       Layout.fillWidth: true
@@ -430,12 +441,12 @@ PanelWindow {
                     Rectangle {
                       anchors.centerIn: parent
                       width: 24; height: 24
-                      color: model.today ? Theme.fg : "transparent"
+                      color: model.today ? Theme.primary : "transparent"
                     }
                     Text {
                       anchors.centerIn: parent
                       text: grid.locale.toString(model.date, "d")
-                      color: model.today ? Theme.bg : (model.month === grid.month ? Theme.fg : Theme.muted3)
+                      color: model.today ? Theme.onPrimary : (model.month === grid.month ? Theme.onSurface : Theme.onSurfaceVariant)
                       font.family: Theme.fontFamily
                       font.pixelSize: 11
                     }
@@ -517,9 +528,9 @@ PanelWindow {
                     id: dCard
                     width: notifList.width
                     height: nRow.implicitHeight + 20
-                    color: Theme.bgAlt
-                    border.color: Theme.border
-                    border.width: 1
+                    radius: Theme.radiusL
+                    color: Theme.surfaceContainer
+                    border.width: 0
                     opacity: 1 - Math.min(0.8, Math.abs(dCard.dragOff) / dCard.width)
                     transform: Translate { x: dCard.dragOff }
                     RowLayout {
@@ -560,7 +571,7 @@ PanelWindow {
                           spacing: 6
                           Text {
                             text: (model.appName || model.desktopEntry || "").toUpperCase()
-                            color: Theme.muted2; font.pixelSize: 8; font.letterSpacing: 1
+                            color: Theme.onSurfaceVariant; font.pixelSize: 8; font.letterSpacing: 1
                             elide: Text.ElideRight; Layout.fillWidth: true; visible: text !== ""
                           }
                           Text {
@@ -574,8 +585,8 @@ PanelWindow {
                       }
                       Rectangle {
                         Layout.preferredWidth: 16; Layout.preferredHeight: 16; Layout.alignment: Qt.AlignTop
-                        color: dMa.containsMouse || dMa.pressed ? Theme.fg : "transparent"
-                        Text { anchors.centerIn: parent; text: "x"; color: dMa.containsMouse || dMa.pressed ? Theme.bg : Theme.muted2; font.pixelSize: 9; font.bold: true }
+                        color: dMa.containsMouse || dMa.pressed ? Theme.primaryContainer : "transparent"
+                        Text { anchors.centerIn: parent; text: "x"; color: dMa.containsMouse || dMa.pressed ? Theme.onPrimaryContainer : Theme.onSurfaceVariant; font.pixelSize: 9; font.bold: true }
                         MouseArea { id: dMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: NotificationServer.dismissById(model.notifId) }
                       }
                     }
@@ -627,7 +638,7 @@ PanelWindow {
                 Text {
                   anchors.centerIn: parent
                   text: "no notifications"
-                  color: Theme.muted2
+                  color: Theme.onSurfaceVariant
                   font.family: Theme.fontFamily
                   font.pixelSize: 10
                    visible: NotificationServer.meaningfulCount === 0
@@ -657,9 +668,9 @@ PanelWindow {
                   required property var modelData
                   Layout.fillWidth: true
                   Layout.fillHeight: true
-                  color: "transparent"
-                  border.color: Theme.border
-                  border.width: 1
+                  radius: Theme.radiusL
+                  color: Theme.surfaceContainer
+                  border.width: 0
                   ColumnLayout {
                     anchors.fill: parent
                     anchors.margins: 8
@@ -854,7 +865,8 @@ PanelWindow {
                           Canvas {
                             id: waveCanvas
                             anchors.centerIn: parent
-                            width: Math.max(0, Math.min(parent.width, parent.height) - 16)
+                            readonly property int maxSide: Math.max(0, Math.min(parent.width, parent.height) - 16)
+                            width: Math.min(maxSide, Math.max(48, VisualizerState.bars * 2))
                             height: width
                             visible: VisualizerState.mode !== "bars"
                             property var pts: VisualizerState.mode === "oscilloscope" ? mediaSingle.levels : mediaSingle.waveLevels
@@ -923,9 +935,9 @@ PanelWindow {
                           Layout.topMargin: -4
                           implicitWidth: 148
                           implicitHeight: 36
-                          color: Theme.bgAlt
-                          border.color: Theme.border
-                          border.width: 1
+                          radius: Theme.radiusFull
+                          color: Theme.surfaceContainer
+                          border.width: 0
                           RowLayout {
                             anchors.fill: parent
                             spacing: 0
@@ -934,13 +946,13 @@ PanelWindow {
                               Layout.fillHeight: true
                               Rectangle {
                                 anchors.fill: parent
-                                color: mPrevMa.pressed ? Theme.fg : "transparent"
+                                color: mPrevMa.pressed ? Theme.primaryContainer : "transparent"
                               }
                               QIcon {
                                 anchors.centerIn: parent
                                 name: "player-skip-back"
                                 size: 18
-                                color: mPrevMa.pressed ? Theme.bg : Theme.fg
+                                color: mPrevMa.pressed ? Theme.onPrimaryContainer : Theme.onSurface
                               }
                               MouseArea {
                                 id: mPrevMa
@@ -956,13 +968,13 @@ PanelWindow {
                               Layout.fillHeight: true
                               Rectangle {
                                 anchors.fill: parent
-                                color: mPlayMa.pressed ? Theme.fg : "transparent"
+                                color: mPlayMa.pressed ? Theme.primaryContainer : "transparent"
                               }
                               QIcon {
                                 anchors.centerIn: parent
                                 name: mediaSingle.cur && mediaSingle.cur.isPlaying ? "player-pause" : "player-play"
                                 size: 22
-                                color: mPlayMa.pressed ? Theme.bg : Theme.fg
+                                color: mPlayMa.pressed ? Theme.onPrimaryContainer : Theme.onSurface
                               }
                               MouseArea {
                                 id: mPlayMa
@@ -978,13 +990,13 @@ PanelWindow {
                               Layout.fillHeight: true
                               Rectangle {
                                 anchors.fill: parent
-                                color: mNextMa.pressed ? Theme.fg : "transparent"
+                                color: mNextMa.pressed ? Theme.primaryContainer : "transparent"
                               }
                               QIcon {
                                 anchors.centerIn: parent
                                 name: "player-skip-forward"
                                 size: 18
-                                color: mNextMa.pressed ? Theme.bg : Theme.fg
+                                color: mNextMa.pressed ? Theme.onPrimaryContainer : Theme.onSurface
                               }
                               MouseArea {
                                 id: mNextMa
@@ -1023,9 +1035,9 @@ PanelWindow {
                             anchors.verticalCenter: parent.verticalCenter
                             width: progressBar.hovered ? parent.width : 200
                             height: progressBar.hovered ? 14 : 8
-                            color: progressBar.hovered ? Theme.bgAlt : Theme.border
-                            border.color: Theme.border
-                            border.width: progressBar.hovered ? 1 : 0
+                            radius: height / 2
+                            color: progressBar.hovered ? Theme.surfaceHigh : Theme.surfaceHighest
+                            border.width: 0
                             clip: true
                             property real fillW: width * Math.max(0, Math.min(1, mediaSingle.cur ? mediaSingle.cur.position / Math.max(1, mediaSingle.cur.length) : 0))
                             Behavior on width { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
@@ -1035,8 +1047,9 @@ PanelWindow {
                               anchors.left: parent.left
                               anchors.verticalCenter: parent.verticalCenter
                               height: progressBar.hovered ? 8 : 6
+                              radius: height / 2
                               width: parent.width * Math.max(0, Math.min(1, (mediaSingle.cur ? mediaSingle.cur.position / Math.max(1, mediaSingle.cur.length) : 0)))
-                              color: Theme.fg
+                              color: Theme.primary
                             }
                           }
                           Text {
@@ -1141,13 +1154,14 @@ PanelWindow {
                         }
                         Rectangle {
                           anchors.fill: parent
-                          color: Theme.bgAlt
+                          radius: Theme.radiusL
+                          color: Theme.surfaceContainer
                           visible: !artImg.visible
                           QIcon {
                             anchors.centerIn: parent
                             name: "music"
                             size: 48
-                            color: Theme.muted2
+                            color: Theme.onSurfaceVariant
                           }
                         }
                         Item {
@@ -1161,10 +1175,8 @@ PanelWindow {
                           Behavior on height { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
                           Rectangle {
                             anchors.fill: parent
-                            color: (tabHover.containsMouse) ? Theme.bgAlt : "transparent"
-                            border.color: Theme.border
-                            border.width: (tabHover.containsMouse) ? 1 : 0
-                            radius: 0
+                            color: (tabHover.containsMouse) ? Theme.surfaceHigh : "transparent"
+                            radius: Theme.radiusFull
                           }
                           RowLayout {
                             id: tabRow
@@ -1176,8 +1188,8 @@ PanelWindow {
                                 required property int index
                                 implicitWidth: (tabHover.containsMouse) ? (index === root.mediaIdx ? 18 : 10) : 6
                                 implicitHeight: (tabHover.containsMouse) ? 8 : 6
-                                radius: 0
-                                color: index === root.mediaIdx ? Theme.fg : Theme.muted2
+                                radius: Theme.radiusFull
+                                color: index === root.mediaIdx ? Theme.primary : Theme.surfaceHighest
                                 Behavior on implicitWidth { NumberAnimation { duration: 120 } }
                                 Behavior on implicitHeight { NumberAnimation { duration: 120 } }
                                 MouseArea {

@@ -226,9 +226,9 @@ PanelWindow {
     height: 424
     clip: true
     anchors.horizontalCenter: parent.horizontalCenter
-    color: Theme.bg
-    border.color: Theme.outline
-    border.width: 1
+    color: Theme.surfaceLowBg
+    radius: Theme.radiusXXL
+    border.width: 0
 
       ColumnLayout {
         anchors.left: parent.left
@@ -239,7 +239,7 @@ PanelWindow {
 
         RowLayout {
           Layout.fillWidth: true
-          Layout.topMargin: 16
+          Layout.topMargin: 12
           spacing: 0
           Item { Layout.fillWidth: true }
           Repeater {
@@ -248,14 +248,25 @@ PanelWindow {
               required property var modelData
               required property int index
               Layout.preferredWidth: 80
-              Layout.preferredHeight: 28
+              Layout.preferredHeight: 32
               property bool active: root.activeTab === index
+              Rectangle {
+                anchors.centerIn: parent
+                width: 68
+                height: 26
+                radius: Theme.radiusFull
+                color: parent.active ? Theme.secondaryContainer : "transparent"
+                Behavior on color {
+                  ColorAnimation { duration: Theme.animFast; easing.type: Theme.easingOut }
+                }
+              }
               Text {
                 anchors.centerIn: parent
                 text: modelData.name
-                color: parent.active ? Theme.fg : Theme.muted2
+                color: parent.active ? Theme.onSecondaryContainer : Theme.onSurfaceVariant
                 font.family: root.fontFamily
                 font.pixelSize: 12
+                font.weight: parent.active ? Font.Medium : Font.Normal
               }
               MouseArea {
                 anchors.fill: parent
@@ -294,11 +305,12 @@ PanelWindow {
                 spacing: 8
 
                 Rectangle {
+                  radius: Theme.radiusM
                   Layout.fillWidth: true
                   Layout.preferredHeight: 32
-                  color: root.hoverIdx === 0 ? Theme.bgAlt : "transparent"
+                  color: root.hoverIdx === 0 ? Theme.surfaceHigh : "transparent"
                   border.color: root.hoverIdx === 0 ? Theme.borderStrong : Theme.border
-                  border.width: 1
+                  border.width: 0
                   MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
@@ -333,18 +345,19 @@ PanelWindow {
                         color: Theme.fg
                         font.family: root.fontFamily
                         font.pixelSize: 12
-                        font.weight: Font.DemiBold
+                        font.weight: Font.Medium
                       }
                     }
                   }
                 }
 
                 Rectangle {
+                  radius: Theme.radiusM
                   Layout.fillWidth: true
                   Layout.preferredHeight: 32
-                  color: root.hoverIdx === -9 ? Theme.bgAlt : "transparent"
+                  color: root.hoverIdx === -9 ? Theme.surfaceHigh : "transparent"
                   border.color: root.hoverIdx === -9 ? Theme.borderStrong : Theme.border
-                  border.width: 1
+                  border.width: 0
                   MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
@@ -379,7 +392,7 @@ PanelWindow {
                         color: Theme.fg
                         font.family: root.fontFamily
                         font.pixelSize: 12
-                        font.weight: Font.DemiBold
+                        font.weight: Font.Medium
                       }
                     }
                   }
@@ -436,18 +449,19 @@ PanelWindow {
 
                 Text {
                   text: "PROFILE"
-                  color: Theme.muted2
+                  color: Theme.onSurfaceVariant
                   font.family: root.fontFamily
                   font.pixelSize: 9
                   font.letterSpacing: 2
                 }
 
                 Rectangle {
+                  radius: Theme.radiusM
                   Layout.fillWidth: true
                   Layout.preferredHeight: 48
                   color: "transparent"
                   border.color: Theme.border
-                  border.width: 1
+                  border.width: 0
                   RowLayout {
                     anchors.fill: parent
                     anchors.leftMargin: 12
@@ -460,7 +474,7 @@ PanelWindow {
                       clip: true
     color: Theme.bg
                       border.color: Theme.outline
-                      border.width: 1
+                      border.width: 0
                       Image {
                         anchors.fill: parent
                         source: AvatarState.path !== "" ? Util.fileUrl(AvatarState.path) : ""
@@ -494,15 +508,16 @@ PanelWindow {
                       }
                     }
                     Rectangle {
+                      radius: Theme.radiusM
                       Layout.preferredWidth: 60
                       Layout.preferredHeight: 26
-                      color: root.hoverIdx === -6 ? Theme.fg : "transparent"
+                      color: root.hoverIdx === -6 ? Theme.primaryContainer : "transparent"
                       border.color: Theme.outline
-                      border.width: 1
+                      border.width: 0
                       Text {
                         anchors.centerIn: parent
                         text: "Choose"
-                        color: root.hoverIdx === -6 ? Theme.bg : Theme.fg
+                        color: root.hoverIdx === -6 ? Theme.onPrimaryContainer : Theme.onSurface
                         font.family: root.fontFamily
                         font.pixelSize: 10
                       }
@@ -516,16 +531,17 @@ PanelWindow {
                       }
                     }
                     Rectangle {
+                      radius: Theme.radiusM
                       Layout.preferredWidth: 52
                       Layout.preferredHeight: 26
                       visible: AvatarState.path !== ""
-                      color: root.hoverIdx === -7 ? Theme.fg : "transparent"
+                      color: root.hoverIdx === -7 ? Theme.primaryContainer : "transparent"
                       border.color: Theme.outline
-                      border.width: 1
+                      border.width: 0
                       Text {
                         anchors.centerIn: parent
                         text: "Clear"
-                        color: root.hoverIdx === -7 ? Theme.bg : Theme.fg
+                        color: root.hoverIdx === -7 ? Theme.onPrimaryContainer : Theme.onSurface
                         font.family: root.fontFamily
                         font.pixelSize: 10
                       }
@@ -542,11 +558,12 @@ PanelWindow {
                 }
 
                 Rectangle {
+                  radius: Theme.radiusM
                   Layout.fillWidth: true
                   Layout.preferredHeight: 44
                   color: "transparent"
                   border.color: Theme.border
-                  border.width: 1
+                  border.width: 0
                   RowLayout {
                     anchors.fill: parent
                     anchors.leftMargin: 12
@@ -567,7 +584,7 @@ PanelWindow {
                       }
                       Text {
                         text: AvatarState.path !== "" ? AvatarState.path : "No file selected"
-                        color: Theme.muted2
+                        color: Theme.onSurfaceVariant
                         font.family: root.fontFamily
                         font.pixelSize: 9
                         elide: Text.ElideMiddle
@@ -582,13 +599,14 @@ PanelWindow {
                 spacing: 8
 
                 Rectangle {
+                  radius: Theme.radiusM
                   Layout.fillWidth: true
                   Layout.preferredHeight: 32
-                  color: root.selIdx === 0 ? Theme.fg
-                       : (root.hoverIdx === -10 ? Theme.bgAlt : "transparent")
+                  color: root.selIdx === 0 ? Theme.primaryContainer
+                       : (root.hoverIdx === -10 ? Theme.surfaceHigh : "transparent")
                   border.color: root.selIdx === 0 ? Theme.outline
                        : (root.hoverIdx === -10 ? Theme.borderStrong : Theme.border)
-                  border.width: 1
+                  border.width: 0
                   MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
@@ -609,20 +627,20 @@ PanelWindow {
                         anchors.centerIn: parent
                         name: "equalizer"
                         size: 18
-                        color: root.selIdx === 0 ? Theme.bg : Theme.fg
+                        color: root.selIdx === 0 ? Theme.onPrimaryContainer : Theme.onSurface
                       }
                     }
                     Text {
                       Layout.fillWidth: true
                       text: "Mode"
-                      color: root.selIdx === 0 ? Theme.bg : Theme.fg
+                      color: root.selIdx === 0 ? Theme.onPrimaryContainer : Theme.onSurface
                       font.family: root.fontFamily
                       font.pixelSize: 12
-                      font.weight: Font.DemiBold
+                      font.weight: Font.Medium
                     }
                     Text {
                       text: VisualizerState.modeLabel()
-                      color: root.selIdx === 0 ? Theme.bg : Theme.muted
+                      color: root.selIdx === 0 ? Theme.onPrimaryContainer : Theme.onSurfaceVariant
                       font.family: root.fontFamily
                       font.pixelSize: 11
                     }
@@ -630,13 +648,14 @@ PanelWindow {
                 }
 
                 Rectangle {
+                  radius: Theme.radiusM
                   Layout.fillWidth: true
                   Layout.preferredHeight: 32
-                  color: root.selIdx === 1 ? Theme.fg
-                       : (root.hoverIdx === -11 ? Theme.bgAlt : "transparent")
+                  color: root.selIdx === 1 ? Theme.primaryContainer
+                       : (root.hoverIdx === -11 ? Theme.surfaceHigh : "transparent")
                   border.color: root.selIdx === 1 ? Theme.outline
                        : (root.hoverIdx === -11 ? Theme.borderStrong : Theme.border)
-                  border.width: 1
+                  border.width: 0
                   MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
@@ -657,20 +676,20 @@ PanelWindow {
                         anchors.centerIn: parent
                         name: "tune"
                         size: 18
-                        color: root.selIdx === 1 ? Theme.bg : Theme.fg
+                        color: root.selIdx === 1 ? Theme.onPrimaryContainer : Theme.onSurface
                       }
                     }
                     Text {
                       Layout.fillWidth: true
                       text: "Bars"
-                      color: root.selIdx === 1 ? Theme.bg : Theme.fg
+                      color: root.selIdx === 1 ? Theme.onPrimaryContainer : Theme.onSurface
                       font.family: root.fontFamily
                       font.pixelSize: 12
-                      font.weight: Font.DemiBold
+                      font.weight: Font.Medium
                     }
                     Text {
                       text: String(VisualizerState.bars)
-                      color: root.selIdx === 1 ? Theme.bg : Theme.muted
+                      color: root.selIdx === 1 ? Theme.onPrimaryContainer : Theme.onSurfaceVariant
                       font.family: root.fontFamily
                       font.pixelSize: 11
                     }
@@ -678,13 +697,14 @@ PanelWindow {
                 }
 
                 Rectangle {
+                  radius: Theme.radiusM
                   Layout.fillWidth: true
                   Layout.preferredHeight: 32
-                  color: root.selIdx === 2 ? Theme.fg
-                       : (root.hoverIdx === -12 ? Theme.bgAlt : "transparent")
+                  color: root.selIdx === 2 ? Theme.primaryContainer
+                       : (root.hoverIdx === -12 ? Theme.surfaceHigh : "transparent")
                   border.color: root.selIdx === 2 ? Theme.outline
                        : (root.hoverIdx === -12 ? Theme.borderStrong : Theme.border)
-                  border.width: 1
+                  border.width: 0
                   MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
@@ -705,16 +725,16 @@ PanelWindow {
                         anchors.centerIn: parent
                         name: "tune"
                         size: 18
-                        color: root.selIdx === 2 ? Theme.bg : Theme.fg
+                        color: root.selIdx === 2 ? Theme.onPrimaryContainer : Theme.onSurface
                       }
                     }
                     Text {
                       Layout.fillWidth: true
                       text: "Backend"
-                      color: root.selIdx === 2 ? Theme.bg : Theme.fg
+                      color: root.selIdx === 2 ? Theme.onPrimaryContainer : Theme.onSurface
                       font.family: root.fontFamily
                       font.pixelSize: 12
-                      font.weight: Font.DemiBold
+                      font.weight: Font.Medium
                     }
                     Rectangle {
                       id: backendSlider
@@ -722,13 +742,13 @@ PanelWindow {
                       implicitHeight: 20
                       color: "transparent"
                       border.color: root.selIdx === 2 ? Theme.bg : Theme.outline
-                      border.width: 1
+                      border.width: 0
                       Rectangle {
                         width: (parent.width - 4) / 2
                         height: parent.height - 4
                         y: 2
                         x: VisualizerState.backend === "sharkvis" ? 2 : 2 + (parent.width - 4) / 2
-                        color: root.selIdx === 2 ? Theme.bg : Theme.fg
+                        color: root.selIdx === 2 ? Theme.onPrimaryContainer : Theme.onSurface
                         Behavior on x {
                           NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut }
                         }
@@ -741,7 +761,7 @@ PanelWindow {
                           text: "Sharkvis"
                           horizontalAlignment: Text.AlignHCenter
                           verticalAlignment: Text.AlignVCenter
-                          color: VisualizerState.backend === "sharkvis" ? (root.selIdx === 2 ? Theme.fg : Theme.bg) : (root.selIdx === 2 ? Theme.bg : Theme.muted2)
+                          color: VisualizerState.backend === "sharkvis" ? (root.selIdx === 2 ? Theme.primaryContainer : Theme.bg) : (root.selIdx === 2 ? Theme.onPrimaryContainer : Theme.onSurfaceVariant)
                           font.family: root.fontFamily
                           font.pixelSize: 9
                         }
@@ -751,7 +771,7 @@ PanelWindow {
                           text: "Cava"
                           horizontalAlignment: Text.AlignHCenter
                           verticalAlignment: Text.AlignVCenter
-                          color: VisualizerState.backend === "cava" ? (root.selIdx === 2 ? Theme.fg : Theme.bg) : (root.selIdx === 2 ? Theme.bg : Theme.muted2)
+                          color: VisualizerState.backend === "cava" ? (root.selIdx === 2 ? Theme.primaryContainer : Theme.bg) : (root.selIdx === 2 ? Theme.onPrimaryContainer : Theme.onSurfaceVariant)
                           font.family: root.fontFamily
                           font.pixelSize: 9
                         }
@@ -769,13 +789,14 @@ PanelWindow {
                 }
 
                 Rectangle {
+                  radius: Theme.radiusM
                   Layout.fillWidth: true
                   Layout.preferredHeight: 32
-                  color: root.selIdx === 3 ? Theme.fg
-                       : (root.hoverIdx === -13 ? Theme.bgAlt : "transparent")
+                  color: root.selIdx === 3 ? Theme.primaryContainer
+                       : (root.hoverIdx === -13 ? Theme.surfaceHigh : "transparent")
                   border.color: root.selIdx === 3 ? Theme.outline
                        : (root.hoverIdx === -13 ? Theme.borderStrong : Theme.border)
-                  border.width: 1
+                  border.width: 0
                   MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
@@ -796,16 +817,16 @@ PanelWindow {
                         anchors.centerIn: parent
                         name: "music"
                         size: 18
-                        color: root.selIdx === 3 ? Theme.bg : Theme.fg
+                        color: root.selIdx === 3 ? Theme.onPrimaryContainer : Theme.onSurface
                       }
                     }
                     Text {
                       Layout.fillWidth: true
                       text: "Show in top bar"
-                      color: root.selIdx === 3 ? Theme.bg : Theme.fg
+                      color: root.selIdx === 3 ? Theme.onPrimaryContainer : Theme.onSurface
                       font.family: root.fontFamily
                       font.pixelSize: 12
-                      font.weight: Font.DemiBold
+                      font.weight: Font.Medium
                     }
                   }
                   CToggle {
@@ -818,13 +839,14 @@ PanelWindow {
                 }
 
                 Rectangle {
+                  radius: Theme.radiusM
                   Layout.fillWidth: true
                   Layout.preferredHeight: 32
-                  color: root.selIdx === 4 ? Theme.fg
-                       : (root.hoverIdx === -14 ? Theme.bgAlt : "transparent")
+                  color: root.selIdx === 4 ? Theme.primaryContainer
+                       : (root.hoverIdx === -14 ? Theme.surfaceHigh : "transparent")
                   border.color: root.selIdx === 4 ? Theme.outline
                        : (root.hoverIdx === -14 ? Theme.borderStrong : Theme.border)
-                  border.width: 1
+                  border.width: 0
                   MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
@@ -845,20 +867,20 @@ PanelWindow {
                         anchors.centerIn: parent
                         name: "chart-bar"
                         size: 18
-                        color: root.selIdx === 4 ? Theme.bg : Theme.fg
+                        color: root.selIdx === 4 ? Theme.onPrimaryContainer : Theme.onSurface
                       }
                     }
                     Text {
                       Layout.fillWidth: true
                       text: "Bar thickness"
-                      color: root.selIdx === 4 ? Theme.bg : Theme.fg
+                      color: root.selIdx === 4 ? Theme.onPrimaryContainer : Theme.onSurface
                       font.family: root.fontFamily
                       font.pixelSize: 12
-                      font.weight: Font.DemiBold
+                      font.weight: Font.Medium
                     }
                     Text {
                       text: VisualizerState.thickness + "px"
-                      color: root.selIdx === 4 ? Theme.bg : Theme.muted
+                      color: root.selIdx === 4 ? Theme.onPrimaryContainer : Theme.onSurfaceVariant
                       font.family: root.fontFamily
                       font.pixelSize: 11
                     }
@@ -866,13 +888,14 @@ PanelWindow {
                 }
 
                 Rectangle {
+                  radius: Theme.radiusM
                   Layout.fillWidth: true
                   Layout.preferredHeight: 32
-                  color: root.selIdx === 5 ? Theme.fg
-                       : (root.hoverIdx === -15 ? Theme.bgAlt : "transparent")
+                  color: root.selIdx === 5 ? Theme.primaryContainer
+                       : (root.hoverIdx === -15 ? Theme.surfaceHigh : "transparent")
                   border.color: root.selIdx === 5 ? Theme.outline
                        : (root.hoverIdx === -15 ? Theme.borderStrong : Theme.border)
-                  border.width: 1
+                  border.width: 0
                   MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
@@ -893,20 +916,20 @@ PanelWindow {
                         anchors.centerIn: parent
                         name: "tune"
                         size: 18
-                        color: root.selIdx === 5 ? Theme.bg : Theme.fg
+                        color: root.selIdx === 5 ? Theme.onPrimaryContainer : Theme.onSurface
                       }
                     }
                     Text {
                       Layout.fillWidth: true
                       text: "Frame rate"
-                      color: root.selIdx === 5 ? Theme.bg : Theme.fg
+                      color: root.selIdx === 5 ? Theme.onPrimaryContainer : Theme.onSurface
                       font.family: root.fontFamily
                       font.pixelSize: 12
-                      font.weight: Font.DemiBold
+                      font.weight: Font.Medium
                     }
                     Text {
                       text: VisualizerState.fpsLabel()
-                      color: root.selIdx === 5 ? Theme.bg : Theme.muted
+                      color: root.selIdx === 5 ? Theme.onPrimaryContainer : Theme.onSurfaceVariant
                       font.family: root.fontFamily
                       font.pixelSize: 11
                     }
@@ -914,13 +937,14 @@ PanelWindow {
                 }
 
                 Rectangle {
+                  radius: Theme.radiusM
                   Layout.fillWidth: true
                   Layout.preferredHeight: 32
-                  color: root.selIdx === 6 ? Theme.fg
-                       : (root.hoverIdx === -16 ? Theme.bgAlt : "transparent")
+                  color: root.selIdx === 6 ? Theme.primaryContainer
+                       : (root.hoverIdx === -16 ? Theme.surfaceHigh : "transparent")
                   border.color: root.selIdx === 6 ? Theme.outline
                        : (root.hoverIdx === -16 ? Theme.borderStrong : Theme.border)
-                  border.width: 1
+                  border.width: 0
                   MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
@@ -941,20 +965,20 @@ PanelWindow {
                         anchors.centerIn: parent
                         name: "waves"
                         size: 18
-                        color: root.selIdx === 6 ? Theme.bg : Theme.fg
+                        color: root.selIdx === 6 ? Theme.onPrimaryContainer : Theme.onSurface
                       }
                     }
                     Text {
                       Layout.fillWidth: true
                       text: "Wave stabilizer"
-                      color: root.selIdx === 6 ? Theme.bg : Theme.fg
+                      color: root.selIdx === 6 ? Theme.onPrimaryContainer : Theme.onSurface
                       font.family: root.fontFamily
                       font.pixelSize: 12
-                      font.weight: Font.DemiBold
+                      font.weight: Font.Medium
                     }
                     Text {
                       text: VisualizerState.waveSmoothLabel()
-                      color: root.selIdx === 6 ? Theme.bg : Theme.muted
+                      color: root.selIdx === 6 ? Theme.onPrimaryContainer : Theme.onSurfaceVariant
                       font.family: root.fontFamily
                       font.pixelSize: 11
                     }
@@ -969,7 +993,7 @@ PanelWindow {
 
                 Text {
                   text: "POWER PROFILE"
-                  color: Theme.muted2
+                  color: Theme.onSurfaceVariant
                   font.family: root.fontFamily
                   font.pixelSize: 9
                   font.letterSpacing: 2
@@ -983,10 +1007,11 @@ PanelWindow {
                     readonly property bool available: modelData !== "performance" || PerfMode.hasPerformance
                     Layout.fillWidth: true
                     Layout.preferredHeight: 44
+                    radius: Theme.radiusM
                     opacity: available ? 1 : 0.4
-                    color: PerfMode.mode === modelData ? Theme.fg : (perfMa.containsMouse && available ? Theme.bgAlt : "transparent")
+                    color: PerfMode.mode === modelData ? Theme.primaryContainer : (perfMa.containsMouse && available ? Theme.surfaceHigh : "transparent")
                     border.color: PerfMode.mode === modelData ? Theme.outline : (perfMa.containsMouse && available ? Theme.borderStrong : Theme.border)
-                    border.width: 1
+                    border.width: 0
                     RowLayout {
                       anchors.fill: parent
                       anchors.leftMargin: 12
@@ -995,16 +1020,16 @@ PanelWindow {
                       QIcon {
                         name: PerfMode.modeIcons[index]
                         size: 18
-                        color: PerfMode.mode === modelData ? Theme.bg : Theme.fg
+                        color: PerfMode.mode === modelData ? Theme.onPrimaryContainer : Theme.onSurface
                       }
                       Text {
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignVCenter
                         text: PerfMode.modeNames[index]
-                        color: PerfMode.mode === modelData ? Theme.bg : Theme.fg
+                        color: PerfMode.mode === modelData ? Theme.onPrimaryContainer : Theme.onSurface
                         font.family: root.fontFamily
                         font.pixelSize: 12
-                        font.weight: Font.DemiBold
+                        font.weight: Font.Medium
                       }
                     }
                     MouseArea {
@@ -1018,12 +1043,13 @@ PanelWindow {
                 }
 
                 Rectangle {
+                  radius: Theme.radiusM
                   visible: PerfMode.degraded
                   Layout.fillWidth: true
                   Layout.preferredHeight: 32
                   color: Theme.error
                   border.color: Theme.error
-                  border.width: 1
+                  border.width: 0
                   Text {
                     anchors.centerIn: parent
                     text: "System reports degraded performance"
@@ -1075,11 +1101,12 @@ PanelWindow {
                     Layout.fillWidth: true
                     spacing: 0
                     Rectangle {
+                      radius: Theme.radiusM
                       Layout.fillWidth: true
                       Layout.preferredHeight: 44
-                      color: root.hoverIdx === -30 - rowIdx ? Theme.hover : "transparent"
+                      color: root.hoverIdx === -30 - rowIdx ? Theme.surfaceHigh : "transparent"
                       border.color: root.hoverIdx === -30 - rowIdx ? Theme.borderStrong : Theme.border
-                      border.width: 1
+                      border.width: 0
                       RowLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 12
@@ -1098,7 +1125,7 @@ PanelWindow {
                           }
                           Text {
                             text: modelData.current
-                            color: Theme.muted2
+                            color: Theme.onSurfaceVariant
                             font.family: root.fontFamily
                             font.pixelSize: 9
                             elide: Text.ElideRight
@@ -1112,13 +1139,13 @@ PanelWindow {
                         height: 22
                         Rectangle {
                           anchors.fill: parent
-                          color: root.hoverIdx === -30 - rowIdx ? Theme.fg : "transparent"
+                          color: root.hoverIdx === -30 - rowIdx ? Theme.primaryContainer : Theme.secondaryContainer
                           border.color: Theme.outline
-                          border.width: 1
+                          border.width: 0
                           Text {
                             anchors.centerIn: parent
                             text: root.expandedApp === rowIdx ? "Hide" : "Change"
-                            color: root.hoverIdx === -30 - rowIdx ? Theme.bg : Theme.fg
+                            color: root.hoverIdx === -30 - rowIdx ? Theme.onPrimaryContainer : Theme.onSecondaryContainer
                             font.family: root.fontFamily
                             font.pixelSize: 10
                           }
@@ -1145,9 +1172,10 @@ PanelWindow {
                           required property int index
                           Layout.fillWidth: true
                           Layout.preferredHeight: 30
-                          color: root.hoverIdx === -40 - index ? Theme.hover : (DefaultApps.currentIdOf(rowCat) === modelData.id ? Theme.bgAlt : "transparent")
-                          border.color: root.hoverIdx === -40 - index ? Theme.borderStrong : Theme.border
-                          border.width: 1
+                          radius: Theme.radiusS
+                          color: root.hoverIdx === -40 - index ? Theme.surfaceHigh : (DefaultApps.currentIdOf(rowCat) === modelData.id ? Theme.secondaryContainer : "transparent")
+                          border.color: root.hoverIdx === -40 - index ? Theme.primary : Theme.outlineVariant
+                          border.width: 0
                           RowLayout {
                             anchors.fill: parent
                             anchors.leftMargin: 12
@@ -1182,7 +1210,7 @@ PanelWindow {
                         visible: DefaultApps.optsFor(rowCat).length === 0
                         Layout.fillWidth: true
                         text: "None installed"
-                        color: Theme.muted2
+                        color: Theme.onSurfaceVariant
                         font.family: root.fontFamily
                         font.pixelSize: 10
                       }
@@ -1197,11 +1225,13 @@ PanelWindow {
                 spacing: 10
 
                 Rectangle {
+                  radius: Theme.radiusL
                   Layout.fillWidth: true
                   Layout.preferredHeight: infoCol.implicitHeight
                   color: "transparent"
-                  border.color: Theme.border
+                  border.color: Theme.outlineVariant
                   border.width: 1
+                  clip: true
 
                   ColumnLayout {
                     id: infoCol
@@ -1209,6 +1239,7 @@ PanelWindow {
                     spacing: 0
 
                     Rectangle {
+                      radius: Theme.radiusM
                       Layout.fillWidth: true
                       Layout.preferredHeight: 128
                       color: "transparent"
@@ -1251,10 +1282,11 @@ PanelWindow {
                     }
 
                     Rectangle {
+                      radius: Theme.radiusM
                       Layout.alignment: Qt.AlignHCenter
                       Layout.preferredWidth: 40
                       Layout.preferredHeight: 1
-                      color: Theme.border
+                      color: Theme.outlineVariant
                     }
 
                     Repeater {
@@ -1266,6 +1298,7 @@ PanelWindow {
                         spacing: 0
 
                         Rectangle {
+                          radius: Theme.radiusM
                           Layout.fillWidth: true
                           Layout.preferredHeight: 28
                           color: "transparent"
@@ -1295,11 +1328,12 @@ PanelWindow {
                         }
 
                         Rectangle {
+                          radius: Theme.radiusM
                           visible: index < root.infoRows.length - 1
                           Layout.alignment: Qt.AlignHCenter
                           Layout.preferredWidth: 40
                           Layout.preferredHeight: index < root.infoRows.length - 1 ? 1 : 0
-                          color: Theme.border
+                          color: Theme.outlineVariant
                         }
                       }
                     }
@@ -1358,11 +1392,12 @@ PanelWindow {
       Rectangle {
         anchors.fill: parent
         visible: !modelData.header
-        color: root.selIdx === index ? Theme.fg
-             : (root.hoverIdx === index ? Theme.bgAlt : "transparent")
+        radius: Theme.radiusM
+        color: root.selIdx === index ? Theme.primaryContainer
+             : (root.hoverIdx === index ? Theme.surfaceHigh : "transparent")
         border.color: root.selIdx === index ? Theme.outline
              : (modelData.def ? Theme.fg : (root.hoverIdx === index ? Theme.borderStrong : Theme.border))
-        border.width: 1
+        border.width: 0
         opacity: modelData.header ? 0 : 1
       }
       MouseArea {
@@ -1387,7 +1422,7 @@ PanelWindow {
             anchors.centerIn: parent
             name: modelData.type === "source" ? "mic" : "audio-volume-high"
             size: 18
-            color: root.selIdx === index ? Theme.bg : Theme.fg
+            color: root.selIdx === index ? Theme.onPrimaryContainer : Theme.onSurface
           }
         }
         ColumnLayout {
@@ -1399,7 +1434,7 @@ PanelWindow {
           Text {
             Layout.fillWidth: true
             text: modelData.desc || ""
-            color: root.selIdx === index ? Theme.bg : Theme.fg
+            color: root.selIdx === index ? Theme.onPrimaryContainer : Theme.onSurface
             font.family: root.fontFamily
             font.pixelSize: 12
             elide: Text.ElideRight
@@ -1412,7 +1447,7 @@ PanelWindow {
         anchors.leftMargin: 2
         anchors.verticalCenter: parent.verticalCenter
         text: modelData.label || ""
-        color: Theme.muted2
+        color: Theme.onSurfaceVariant
         font.family: root.fontFamily
         font.pixelSize: 9
         font.letterSpacing: 2

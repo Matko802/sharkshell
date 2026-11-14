@@ -34,10 +34,11 @@ Rectangle {
     return Quickshell.iconPath("dialog-information", "dialog-information")
   }
 
-  color: Theme.bg
-  radius: Theme.rounding
-  border.color: root.urgency === 2 ? Theme.error : Theme.outline
-  border.width: root.urgency === 2 ? 2 : 1
+  color: Theme.surfaceContainerBg
+  radius: Theme.radiusL
+  clip: true
+  border.color: root.urgency === 2 ? Theme.error : "transparent"
+  border.width: root.urgency === 2 ? 2 : 0
   implicitWidth: 340
   implicitHeight: col.implicitHeight + Theme.paddingS * 2 + 4
 
@@ -175,11 +176,12 @@ Rectangle {
           Rectangle {
             implicitWidth: 20
             implicitHeight: 20
-            color: closeMa.containsMouse || closeMa.pressed ? Theme.fg : "transparent"
+            radius: Theme.radiusFull
+            color: closeMa.containsMouse || closeMa.pressed ? Theme.primaryContainer : "transparent"
             Text {
               anchors.centerIn: parent
               text: "✕"
-              color: closeMa.pressed || closeMa.containsMouse ? Theme.bg : Theme.muted
+              color: closeMa.pressed || closeMa.containsMouse ? Theme.onPrimaryContainer : Theme.onSurfaceVariant
               font.pixelSize: 10
             }
             MouseArea {
@@ -195,7 +197,7 @@ Rectangle {
         Text {
           Layout.fillWidth: true
           text: root.summary
-          color: Theme.fg
+          color: Theme.onSurface
           font.pixelSize: 12
           font.bold: true
           wrapMode: Text.WordWrap
@@ -205,7 +207,7 @@ Rectangle {
         Text {
           Layout.fillWidth: true
           text: root.body
-          color: Theme.muted
+          color: Theme.onSurfaceVariant
           font.pixelSize: 10
           wrapMode: Text.WordWrap
           maximumLineCount: 5
@@ -227,7 +229,8 @@ Rectangle {
           required property var modelData
           implicitWidth: Math.min(150, actMetrics.implicitWidth + 20)
           implicitHeight: 22
-          color: actMa.containsMouse ? Theme.fg : Theme.bgAlt
+          radius: Theme.radiusFull
+          color: actMa.containsMouse ? Theme.primaryContainer : Theme.secondaryContainer
 
           TextMetrics {
             id: actMetrics
@@ -240,7 +243,7 @@ Rectangle {
             anchors.centerIn: parent
             width: Math.min(130, actMetrics.implicitWidth)
             text: modelData.text
-            color: actMa.containsMouse ? Theme.bg : Theme.fg
+            color: actMa.containsMouse ? Theme.onPrimaryContainer : Theme.onSecondaryContainer
             font.pixelSize: 9
             elide: Text.ElideRight
           }

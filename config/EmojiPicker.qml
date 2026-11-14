@@ -235,9 +235,10 @@ Scope {
       anchors.centerIn: parent
       width: root.cols * root.cellSize + 20
       height: col.implicitHeight + 16
-      color: Theme.bg
-      border.color: Theme.outline
-      border.width: 1
+      color: Theme.surfaceLowBg
+      radius: Theme.radiusXXL
+      clip: true
+      border.width: 0
       property real cardProg: root.open ? 1 : 0
       scale: cardProg
       opacity: root.open ? Math.min(1, cardProg * 1.6) : 1
@@ -257,9 +258,9 @@ Scope {
         Rectangle {
           Layout.fillWidth: true
           Layout.preferredHeight: 28
-          color: "transparent"
-          border.color: Theme.outline
-          border.width: 1
+          color: Theme.surfaceContainer
+          radius: Theme.radiusFull
+          border.width: 0
           RowLayout {
             anchors.fill: parent
             anchors.leftMargin: 6
@@ -330,7 +331,7 @@ Scope {
           cellHeight: root.cellSize
           model: root.results
           currentIndex: root.selIdx
-          highlight: Rectangle { color: Theme.fg }
+          highlight: Rectangle { radius: Theme.radiusM; color: Theme.primaryContainer }
           highlightMoveDuration: 120
 
           delegate: Rectangle {
@@ -340,7 +341,7 @@ Scope {
             height: grid.cellHeight
             readonly property bool isKeyboardSelected: root.selIdx === index
             readonly property bool isHovered: root.hoverIdx === index
-            color: isHovered ? Theme.hover : "transparent"
+            color: isHovered ? Theme.surfaceHigh : "transparent"
 
             Text {
               anchors.centerIn: parent

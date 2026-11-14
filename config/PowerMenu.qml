@@ -38,7 +38,7 @@ Scope {
       anchors.topMargin: PowerState.open ? 30 : -(panel.height + 250)
       width: tiles.width + 32
       height: tiles.height + 32
-      color: Theme.bg
+      color: "transparent"
       opacity: PowerState.open ? 1 : 0
       Behavior on anchors.topMargin { NumberAnimation { duration: 170; easing.type: Easing.OutExpo } }
       Behavior on opacity { NumberAnimation { duration: 170; easing.type: Easing.OutCubic } }
