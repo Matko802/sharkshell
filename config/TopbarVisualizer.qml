@@ -7,8 +7,9 @@ import "Util.js" as Util
 
 Item {
   id: root
-  Layout.preferredWidth: VisualizerState.bars * (VisualizerState.thickness + 1) - 1
-  Layout.preferredHeight: 14
+  readonly property int squareSize: 14
+  Layout.preferredWidth: VisualizerState.mode === "bars" ? VisualizerState.bars * (VisualizerState.thickness + 1) - 1 : squareSize
+  Layout.preferredHeight: squareSize
   Layout.alignment: Qt.AlignVCenter
 
   property var levels: []

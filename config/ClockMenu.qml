@@ -853,12 +853,15 @@ PanelWindow {
                           }
                           Canvas {
                             id: waveCanvas
-                            anchors.fill: parent
-                            anchors.margins: 8
+                            anchors.centerIn: parent
+                            width: Math.max(0, Math.min(parent.width, parent.height) - 16)
+                            height: width
                             visible: VisualizerState.mode !== "bars"
                             property var pts: VisualizerState.mode === "oscilloscope" ? mediaSingle.levels : mediaSingle.waveLevels
                             onPtsChanged: if (visible) requestPaint()
                             onVisibleChanged: if (visible) requestPaint()
+                            onWidthChanged: if (visible) requestPaint()
+                            onHeightChanged: if (visible) requestPaint()
                             function strokePath(ctx, w, a) {
                               ctx.strokeStyle = Theme.fg
                               ctx.lineWidth = w
