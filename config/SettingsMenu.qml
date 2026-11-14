@@ -1251,8 +1251,9 @@ PanelWindow {
                     }
 
                     Rectangle {
-                      Layout.alignment: Qt.AlignHCenter
-                      Layout.preferredWidth: 40
+                      Layout.fillWidth: true
+                      Layout.leftMargin: 12
+                      Layout.rightMargin: 12
                       Layout.preferredHeight: 1
                       color: Theme.border
                     }
@@ -1296,8 +1297,9 @@ PanelWindow {
 
                         Rectangle {
                           visible: index < root.infoRows.length - 1
-                          Layout.alignment: Qt.AlignHCenter
-                          Layout.preferredWidth: 40
+                          Layout.fillWidth: true
+                          Layout.leftMargin: 12
+                          Layout.rightMargin: 12
                           Layout.preferredHeight: index < root.infoRows.length - 1 ? 1 : 0
                           color: Theme.border
                         }

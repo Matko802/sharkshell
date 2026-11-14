@@ -8,12 +8,15 @@ import "Util.js" as Util
 Item {
   id: root
   readonly property int squareSize: 14
-  Layout.preferredWidth: VisualizerState.mode === "bars" ? VisualizerState.bars * (VisualizerState.thickness + 1) - 1 : squareSize
+  readonly property int barWidth: VisualizerState.bars * (VisualizerState.thickness + 1) - 1
+  Layout.preferredWidth: VisualizerState.mode === "oscilloscope" ? squareSize : barWidth
   Layout.preferredHeight: squareSize
   Layout.alignment: Qt.AlignVCenter
 
   property var levels: []
   property var waveLevels: []
+  property var waveHistory: []
+  readonly property int historyCap: 1024
   readonly property int topBars: VisualizerState.bars
   readonly property int idleMs: 20000
 
@@ -70,6 +73,7 @@ Item {
         if (arr.length > 0) {
           root.levels = arr
           root.waveLevels = VisualizerState.stabilize(root.waveLevels, arr)
+          root.waveHistory = root.waveHistory.concat(root.waveLevels).slice(-root.historyCap)
           if (peak > 4) root.noteSignal()
         }
       }
@@ -80,6 +84,7 @@ Item {
     target: VisualizerState
     function onModeChanged() {
       root.waveLevels = []
+      root.waveHistory = []
       if (visProc.running) {
         visProc.running = false
         visProc.running = true
@@ -87,6 +92,7 @@ Item {
     }
     function onBackendChanged() {
       root.waveLevels = []
+      root.waveHistory = []
       if (visProc.running) {
         visProc.running = false
         visProc.running = true
@@ -94,6 +100,7 @@ Item {
     }
     function onBarsChanged() {
       root.waveLevels = []
+      root.waveHistory = []
       if (visProc.running) {
         visProc.running = false
         visProc.running = true
@@ -101,6 +108,7 @@ Item {
     }
     function onFpsChanged() {
       root.waveLevels = []
+      root.waveHistory = []
       if (visProc.running) {
         visProc.running = false
         visProc.running = true
@@ -140,7 +148,7 @@ Item {
     id: waveCanvas
     anchors.fill: parent
     visible: VisualizerState.mode !== "bars"
-    property var pts: VisualizerState.mode === "oscilloscope" ? root.levels : root.waveLevels
+    property var pts: VisualizerState.mode === "oscilloscope" ? root.levels : root.waveHistory
     onPtsChanged: if (visible) requestPaint()
     onVisibleChanged: if (visible) requestPaint()
     onWidthChanged: if (visible) requestPaint()
@@ -172,9 +180,11 @@ Item {
         }
       } else {
         if (n < 2) return
-        for (let i = 0; i < n; i++) {
-          const x = Math.round((i / (n - 1)) * (width - 1))
-          const y = Math.round(height - (Util.clampPct(pts[i] || 0) / 100) * (height - 1))
+        const count = Math.max(2, Math.min(n, Math.floor(width)))
+        const start = n - count
+        for (let i = 0; i < count; i++) {
+          const x = Math.round((i / (count - 1)) * (width - 1))
+          const y = Math.round(height - (Util.clampPct(pts[start + i] || 0) / 100) * (height - 1))
           if (i === 0) ctx.moveTo(x, y)
           else ctx.lineTo(x, y)
         }
