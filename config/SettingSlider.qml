@@ -14,15 +14,25 @@ Rectangle {
   signal reset()
 
   Layout.fillWidth: true
-  Layout.preferredHeight: 32
-  color: "transparent"
-  border.color: Theme.border
-  border.width: 1
+  Layout.preferredHeight: 36
+  radius: Theme.radiusM
+  color: hover.hovered ? Theme.surfaceHigh : "transparent"
+
+  Behavior on color {
+    ColorAnimation {
+      duration: Theme.animFast
+      easing.type: Theme.easingOut
+    }
+  }
+
+  HoverHandler {
+    id: hover
+  }
 
   RowLayout {
     anchors.fill: parent
     anchors.leftMargin: 12
-    anchors.rightMargin: 12
+    anchors.rightMargin: 8
     spacing: 10
 
     Item {
@@ -32,16 +42,16 @@ Rectangle {
         anchors.centerIn: parent
         name: root.icon
         size: 18
-        color: Theme.fg
+        color: Theme.onSurfaceVariant
       }
     }
 
     Text {
       text: root.label
-      color: Theme.fg
+      color: Theme.onSurface
       font.family: Theme.fontFamily
       font.pixelSize: 12
-      font.weight: Font.DemiBold
+      font.weight: Font.Medium
     }
 
     CSlider {
@@ -52,31 +62,38 @@ Rectangle {
 
     Text {
       text: root.text
-      color: Theme.muted
+      color: Theme.onSurfaceVariant
       font.family: Theme.fontFamily
       font.pixelSize: 11
       Layout.preferredWidth: 40
       horizontalAlignment: Text.AlignRight
     }
 
-    Item {
+    Rectangle {
       Layout.preferredWidth: 52
       Layout.preferredHeight: 24
-      Rectangle {
-        anchors.fill: parent
-        color: resetMa.containsPress ? Theme.muted : "transparent"
+      radius: Theme.radiusFull
+      color: resetMa.pressed ? Theme.primaryContainer : resetMa.containsMouse ? Theme.surfaceHighest : "transparent"
+
+      Behavior on color {
+        ColorAnimation {
+          duration: Theme.animFast
+          easing.type: Theme.easingOut
+        }
       }
+
       Text {
         anchors.centerIn: parent
         text: "reset"
-        color: resetMa.containsPress ? Theme.bg : (resetMa.containsMouse ? Theme.fg : Theme.muted)
+        color: resetMa.containsMouse ? Theme.primary : Theme.onSurfaceVariant
         font.family: Theme.fontFamily
         font.pixelSize: 10
+        font.weight: Font.Medium
       }
+
       MouseArea {
         id: resetMa
         anchors.fill: parent
-        anchors.margins: -6
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         preventStealing: true

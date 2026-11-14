@@ -9,9 +9,9 @@ Rectangle {
 
   width: 380
   height: 56
-  color: Theme.bg
-  border.color: Theme.outline
-  border.width: 1
+  color: Theme.surfaceLowBg
+  radius: height / 2
+  border.width: 0
   opacity: root.shown ? 1 : 0
   anchors.bottomMargin: root.shown ? 64 : -(root.height + 20)
   Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }

@@ -7,7 +7,7 @@ Rectangle {
   signal userSet(real v)
 
   implicitWidth: 120
-  implicitHeight: 16
+  implicitHeight: 20
   color: "transparent"
 
   readonly property real clamped: Math.max(0, Math.min(1, value))
@@ -18,33 +18,57 @@ Rectangle {
 
   Rectangle {
     id: track
+
     anchors.verticalCenter: parent.verticalCenter
     width: parent.width
-    height: 6
-    color: Theme.bgAlt
+    height: 4
+    radius: Theme.radiusFull
+    color: Theme.surfaceHighest
 
-    readonly property real center: Math.round(9 + (width - 18) * root.shown)
+    readonly property real center: 8 + (width - 16) * root.shown
 
     Rectangle {
-      width: Math.min(parent.width, parent.center + 7)
+      width: Math.min(parent.width, parent.center)
       height: parent.height
-      color: Theme.fg
+      radius: parent.radius
+      color: Theme.primary
     }
+  }
 
-    Rectangle {
-      x: parent.center - 7
-      anchors.verticalCenter: parent.verticalCenter
-      width: 14
-      height: 14
-      color: Theme.fg
+  Rectangle {
+    x: track.center - width / 2
+    anchors.verticalCenter: parent.verticalCenter
+    width: 16
+    height: 16
+    radius: Theme.radiusFull
+    color: Theme.primary
+  }
+
+  Rectangle {
+    x: track.center - width / 2
+    anchors.verticalCenter: parent.verticalCenter
+    width: 32
+    height: 32
+    radius: Theme.radiusFull
+    color: Theme.primary
+    opacity: root.dragging ? 0.12 : ma.containsMouse ? 0.08 : 0
+
+    Behavior on opacity {
+      NumberAnimation {
+        duration: Theme.animFast
+        easing.type: Theme.easingOut
+      }
     }
   }
 
   MouseArea {
+    id: ma
+
     anchors.fill: parent
     anchors.margins: -root.pad
     cursorShape: Qt.PointingHandCursor
     preventStealing: true
+    hoverEnabled: true
 
     function apply(mouse) {
       const v = Math.max(0, Math.min(1, (mouse.x - root.pad) / root.width))

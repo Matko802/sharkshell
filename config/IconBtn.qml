@@ -9,22 +9,21 @@ Rectangle {
 
   signal clicked()
 
-  color: ma.containsMouse || ma.pressed ? Theme.fg : "transparent"
-  border.color: Theme.outline
-  border.width: bordered ? 1 : 0
+  radius: root.bordered ? Theme.radiusS : Theme.radiusFull
+  color: "transparent"
+  border.color: root.bordered ? Theme.outlineVariant : "transparent"
+  border.width: root.bordered ? 1 : 0
 
   QIcon {
     anchors.centerIn: parent
     name: root.icon
     size: root.iconSize
-    color: ma.containsMouse || ma.pressed ? Theme.bg : Theme.fg
+    color: Theme.onSurfaceVariant
   }
 
-  MouseArea {
-    id: ma
-    anchors.fill: parent
-    hoverEnabled: true
-    cursorShape: Qt.PointingHandCursor
+  StateLayer {
+    radius: root.radius
+    color: Theme.onSurface
     onClicked: root.clicked()
   }
 }

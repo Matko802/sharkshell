@@ -16,9 +16,10 @@ Rectangle {
 
   signal activity()
 
-  color: Theme.bg
-  border.color: Theme.outline
-  border.width: 1
+  color: Theme.surfaceLowBg
+  radius: Theme.radiusXXL
+  border.width: 0
+  clip: true
 
   y: -(1 - root.slideProg) * (root.height + 8)
 
