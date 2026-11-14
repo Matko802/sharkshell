@@ -76,7 +76,7 @@ PanelWindow {
     return arr
   }
 
-  readonly property var visualItems: [{ kind: "mode" }, { kind: "bars" }, { kind: "backend" }, { kind: "topbar" }]
+  readonly property var visualItems: [{ kind: "mode" }, { kind: "bars" }, { kind: "backend" }, { kind: "topbar" }, { kind: "thickness" }, { kind: "fps" }, { kind: "smoothing" }]
   readonly property var currentItems: root.activeTab === 0 ? root.themeItems : (root.activeTab === 5 ? root.appsItems : (root.activeTab === 3 ? root.visualItems : (root.activeTab === 4 || root.activeTab === 6 ? [] : root.audioModel)))
 
   property int expandedApp: -1
@@ -140,7 +140,9 @@ PanelWindow {
       else if (i === 1) VisualizerState.cycleBars()
       else if (i === 2) VisualizerState.cycleBackend()
       else if (i === 3) VisualizerState.toggleTopbar()
-      else VisualizerState.cycleThickness()
+      else if (i === 4) VisualizerState.cycleThickness()
+      else if (i === 5) VisualizerState.cycleFps()
+      else VisualizerState.cycleWaveSmoothing()
     } else {
       root.selIdx = i
       if (item.type === "source")
@@ -857,6 +859,102 @@ PanelWindow {
                     Text {
                       text: VisualizerState.thickness + "px"
                       color: root.selIdx === 4 ? Theme.bg : Theme.muted
+                      font.family: root.fontFamily
+                      font.pixelSize: 11
+                    }
+                  }
+                }
+
+                Rectangle {
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: 32
+                  color: root.selIdx === 5 ? Theme.fg
+                       : (root.hoverIdx === -15 ? Theme.bgAlt : "transparent")
+                  border.color: root.selIdx === 5 ? Theme.outline
+                       : (root.hoverIdx === -15 ? Theme.borderStrong : Theme.border)
+                  border.width: 1
+                  MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onEntered: root.hoverIdx = -15
+                    onExited: { if (root.hoverIdx === -15) root.hoverIdx = -1 }
+                    onClicked: { root.selIdx = 5; VisualizerState.cycleFps() }
+                  }
+                  RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    spacing: 10
+                    Item {
+                      Layout.preferredWidth: 20
+                      Layout.preferredHeight: 20
+                      QIcon {
+                        anchors.centerIn: parent
+                        name: "tune"
+                        size: 18
+                        color: root.selIdx === 5 ? Theme.bg : Theme.fg
+                      }
+                    }
+                    Text {
+                      Layout.fillWidth: true
+                      text: "Frame rate"
+                      color: root.selIdx === 5 ? Theme.bg : Theme.fg
+                      font.family: root.fontFamily
+                      font.pixelSize: 12
+                      font.weight: Font.DemiBold
+                    }
+                    Text {
+                      text: VisualizerState.fpsLabel()
+                      color: root.selIdx === 5 ? Theme.bg : Theme.muted
+                      font.family: root.fontFamily
+                      font.pixelSize: 11
+                    }
+                  }
+                }
+
+                Rectangle {
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: 32
+                  color: root.selIdx === 6 ? Theme.fg
+                       : (root.hoverIdx === -16 ? Theme.bgAlt : "transparent")
+                  border.color: root.selIdx === 6 ? Theme.outline
+                       : (root.hoverIdx === -16 ? Theme.borderStrong : Theme.border)
+                  border.width: 1
+                  MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onEntered: root.hoverIdx = -16
+                    onExited: { if (root.hoverIdx === -16) root.hoverIdx = -1 }
+                    onClicked: { root.selIdx = 6; VisualizerState.cycleWaveSmoothing() }
+                  }
+                  RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    spacing: 10
+                    Item {
+                      Layout.preferredWidth: 20
+                      Layout.preferredHeight: 20
+                      QIcon {
+                        anchors.centerIn: parent
+                        name: "waves"
+                        size: 18
+                        color: root.selIdx === 6 ? Theme.bg : Theme.fg
+                      }
+                    }
+                    Text {
+                      Layout.fillWidth: true
+                      text: "Wave stabilizer"
+                      color: root.selIdx === 6 ? Theme.bg : Theme.fg
+                      font.family: root.fontFamily
+                      font.pixelSize: 12
+                      font.weight: Font.DemiBold
+                    }
+                    Text {
+                      text: VisualizerState.waveSmoothLabel()
+                      color: root.selIdx === 6 ? Theme.bg : Theme.muted
                       font.family: root.fontFamily
                       font.pixelSize: 11
                     }

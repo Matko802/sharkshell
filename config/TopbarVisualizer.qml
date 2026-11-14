@@ -12,6 +12,7 @@ Item {
   Layout.alignment: Qt.AlignVCenter
 
   property var levels: []
+  property var waveLevels: []
   readonly property int topBars: VisualizerState.bars
   readonly property int idleMs: 20000
 
@@ -67,6 +68,7 @@ Item {
         }
         if (arr.length > 0) {
           root.levels = arr
+          root.waveLevels = VisualizerState.stabilize(root.waveLevels, arr)
           if (peak > 4) root.noteSignal()
         }
       }
@@ -76,12 +78,28 @@ Item {
   Connections {
     target: VisualizerState
     function onModeChanged() {
+      root.waveLevels = []
       if (visProc.running) {
         visProc.running = false
         visProc.running = true
       }
     }
     function onBackendChanged() {
+      root.waveLevels = []
+      if (visProc.running) {
+        visProc.running = false
+        visProc.running = true
+      }
+    }
+    function onBarsChanged() {
+      root.waveLevels = []
+      if (visProc.running) {
+        visProc.running = false
+        visProc.running = true
+      }
+    }
+    function onFpsChanged() {
+      root.waveLevels = []
       if (visProc.running) {
         visProc.running = false
         visProc.running = true
@@ -121,7 +139,7 @@ Item {
     id: waveCanvas
     anchors.fill: parent
     visible: VisualizerState.mode !== "bars"
-    property var pts: root.levels
+    property var pts: VisualizerState.mode === "oscilloscope" ? root.levels : root.waveLevels
     onPtsChanged: if (visible) requestPaint()
     onVisibleChanged: if (visible) requestPaint()
     onWidthChanged: if (visible) requestPaint()

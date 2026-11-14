@@ -731,6 +731,7 @@ PanelWindow {
                   Layout.fillHeight: true
                   visible: true
                   property var levels: []
+                  property var waveLevels: []
                   readonly property int visBars: VisualizerState.bars
                  property var cur: (Mpris.players.values && Mpris.players.values.length > root.mediaIdx) ? Mpris.players.values[root.mediaIdx] : null
                  property string rawArt: cur && cur.trackArtUrl ? String(cur.trackArtUrl) : ""
@@ -820,7 +821,10 @@ PanelWindow {
                                   const v = parseInt(parts[i], 10)
                                   if (!isNaN(v)) arr.push(Util.clampPct(v))
                                 }
-                                if (arr.length > 0) mediaSingle.levels = arr
+                                if (arr.length > 0) {
+                                  mediaSingle.levels = arr
+                                  mediaSingle.waveLevels = VisualizerState.stabilize(mediaSingle.waveLevels, arr)
+                                }
                               }
                             }
                           }
@@ -852,7 +856,7 @@ PanelWindow {
                             anchors.fill: parent
                             anchors.margins: 8
                             visible: VisualizerState.mode !== "bars"
-                            property var pts: mediaSingle.levels
+                            property var pts: VisualizerState.mode === "oscilloscope" ? mediaSingle.levels : mediaSingle.waveLevels
                             onPtsChanged: if (visible) requestPaint()
                             onVisibleChanged: if (visible) requestPaint()
                             function strokePath(ctx, w, a) {
@@ -904,9 +908,10 @@ PanelWindow {
                           }
                           Connections {
                             target: VisualizerState
-                            function onModeChanged() { visProc.running = false; visProc.running = true }
-                            function onBarsChanged() { visProc.running = false; visProc.running = true }
-                            function onBackendChanged() { visProc.running = false; visProc.running = true }
+                            function onModeChanged() { mediaSingle.waveLevels = []; if (visProc.running) { visProc.running = false; visProc.running = true } }
+                            function onBarsChanged() { mediaSingle.waveLevels = []; if (visProc.running) { visProc.running = false; visProc.running = true } }
+                            function onBackendChanged() { mediaSingle.waveLevels = []; if (visProc.running) { visProc.running = false; visProc.running = true } }
+                            function onFpsChanged() { mediaSingle.waveLevels = []; if (visProc.running) { visProc.running = false; visProc.running = true } }
                           }
                         }
 
