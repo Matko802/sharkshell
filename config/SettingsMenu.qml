@@ -1043,6 +1043,15 @@ PanelWindow {
                 }
 
                 SettingSlider {
+                  label: "Locked"
+                  icon: "device-desktop"
+                  value: IdleManager.lockedScreenOffDelay / 1800
+                  text: root.fmtDur(IdleManager.lockedScreenOffDelay)
+                  onUserSet: v => IdleManager.setLockedScreenOffDelay(v * 1800)
+                  onReset: IdleManager.setLockedScreenOffDelay(IdleManager.lockedScreenOffDef)
+                }
+
+                SettingSlider {
                   label: "Monitor"
                   icon: "device-desktop"
                   value: IdleManager.screenOffDelay / 1800

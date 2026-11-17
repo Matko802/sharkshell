@@ -12,12 +12,18 @@ Item {
 
     property int lockTimeout: 300
     property int screenOffDelay: 300
+    property int lockedScreenOffDelay: 60
     property int suspendTimeout: 900
     readonly property int lockDef: 300
     readonly property int screenOffDef: 300
+    readonly property int lockedScreenOffDef: 60
     readonly property int suspendDef: 900
+    readonly property int _screenOffSec: screenOffDelay > 0 ? Math.max(screenOffDelay, 30) : 0
+    readonly property int _lockedScreenOffSec: lockedScreenOffDelay < 0 ? _screenOffSec
+        : (lockedScreenOffDelay > 0 ? Math.max(lockedScreenOffDelay, 10) : 0)
 
     property int _idleSeconds: 0
+    property int _offSeconds: 0
     property bool screenIsOff: false
 
     property bool lockStageArmed: true
@@ -44,19 +50,14 @@ Item {
     property bool audioActive: false
     property bool gameMode: false
     property bool fullscreenActive: false
-    property bool gameLatched: false
     readonly property bool gaming: gameMode || fullscreenActive
-    readonly property bool gameSession: gameLatched || gameMode || (fullscreenActive && !mediaPlaying)
     property bool stayAwake: false
     property bool taskRunning: false
-    readonly property bool _inhibited: stayAwake || (!root.gameSession && (mediaPlaying || (audioActive && !mediaPaused)))
+    readonly property bool inhibited: stayAwake || gaming || mediaPlaying || (audioActive && !mediaPaused)
+    readonly property bool sessionInhibited: inhibited || taskRunning
 
-    onGamingChanged: if (root.gaming) root.markActive()
-
-    onTaskRunningChanged: {
-        if (!root.taskRunning && root.suspendStageArmed && root.suspendTimeout > 0 && root._idleSeconds >= root.suspendTimeout)
-            root._idleSeconds = 0
-    }
+    onInhibitedChanged: root._restartTimers()
+    onTaskRunningChanged: root._restartTimers()
 
     function _setScreen(off) {
         if (off === root.screenIsOff)
@@ -81,11 +82,16 @@ Item {
         source: "OutputPowerBridge.qml"
     }
 
-    function markActive() {
+    function _restartTimers() {
         root._idleSeconds = 0
+        root._offSeconds = 0
         root.lockStageArmed = true
         root.screenOffStageArmed = true
         root.suspendStageArmed = true
+    }
+
+    function markActive() {
+        root._restartTimers()
         root._setScreen(false)
     }
 
@@ -101,6 +107,12 @@ Item {
         root.screenOffDelay = Math.min(1800, Math.max(0, v))
     }
 
+    function setLockedScreenOffDelay(v) {
+        v = Math.round(v)
+        if (isNaN(v)) return
+        root.lockedScreenOffDelay = Math.min(3600, Math.max(-1, v))
+    }
+
     function setSuspendTimeout(v) {
         v = Math.round(v)
         if (isNaN(v)) return
@@ -109,12 +121,14 @@ Item {
 
     onLockTimeoutChanged: lockTimeoutFile.setText(String(root.lockTimeout))
     onScreenOffDelayChanged: screenOffDelayFile.setText(String(root.screenOffDelay))
+    onLockedScreenOffDelayChanged: lockedScreenOffDelayFile.setText(String(root.lockedScreenOffDelay))
     onSuspendTimeoutChanged: suspendTimeoutFile.setText(String(root.suspendTimeout))
 
     IpcHandler {
         target: "idle"
         function setLock(v: real): void { root.setLockTimeout(v) }
         function setScreenOff(v: real): void { root.setScreenOffDelay(v) }
+        function setLockedScreenOff(v: real): void { root.setLockedScreenOffDelay(v) }
         function setSuspend(v: real): void { root.setSuspendTimeout(v) }
     }
 
@@ -138,6 +152,18 @@ Item {
         onLoaded: {
             const v = parseInt(text().trim())
             if (!isNaN(v)) root.screenOffDelay = Math.min(1800, Math.max(0, v))
+        }
+        onFileChanged: reload()
+    }
+
+    FileView {
+        id: lockedScreenOffDelayFile
+        path: Quickshell.env("HOME") + "/.cache/sharkshell/locked-screenoff-delay"
+        watchChanges: true
+        printErrors: false
+        onLoaded: {
+            const v = parseInt(text().trim())
+            if (!isNaN(v)) root.lockedScreenOffDelay = Math.min(3600, Math.max(-1, v))
         }
         onFileChanged: reload()
     }
@@ -264,15 +290,12 @@ Item {
     Connections {
         target: LockState
         function onLockedChanged() {
-            if (LockState.locked) {
-                root.gameLatched = root.gameSession
+            root._offSeconds = 0
+            root.screenOffStageArmed = true
+            if (!LockState.locked) {
                 root._idleSeconds = 0
                 root.lockStageArmed = true
-                root.screenOffStageArmed = true
-            } else {
-                root.gameLatched = false
                 root._setScreen(false)
-                root.screenOffStageArmed = true
             }
         }
     }
@@ -287,8 +310,6 @@ Item {
             if (!root.mediaPlaying)
                 audioCheck.running = true
             taskCheck.running = true
-            if (root.mediaPlaying && !root.gameSession)
-                root.markActive()
         }
     }
 
@@ -302,10 +323,7 @@ Item {
         id: gameCheck
         command: ["sh", "-c", "command -v gamemoded >/dev/null 2>&1 && gamemoded -s 2>/dev/null | grep -qi 'is active'"]
         onExited: (exitCode) => {
-            const active = exitCode === 0
-            if (active && !root.gameMode)
-                root.markActive()
-            root.gameMode = active
+            root.gameMode = exitCode === 0
         }
     }
 
@@ -314,8 +332,6 @@ Item {
         command: ["sh", "-c", "pw-dump 2>/dev/null | awk '/^  \\{$/ { b=\"\"; f=1; next } /^  \\},?$/ { if (f && b ~ /\"media.class\"[[:space:]]*:[[:space:]]*\"Stream\\/Output\\/Audio\"/ && b ~ /\"state\"[[:space:]]*:[[:space:]]*\"running\"/ && b !~ /\"pulse.corked\"[[:space:]]*:[[:space:]]*true/ && b !~ /\"node.name\"[[:space:]]*:[[:space:]]*\"alsa_(playback|capture)\\./) { print \"P\"; exit } f=0; next } f { b = b \"\\n\" $0 }' | grep -q P"]
         onExited: (exitCode) => {
             root.audioActive = (exitCode === 0)
-            if (exitCode === 0 && !root.gameSession)
-                root.markActive()
         }
     }
 
@@ -333,21 +349,41 @@ Item {
         running: root.enabled
         repeat: true
         onTriggered: {
-            if (root._inhibited) {
-                root.markActive()
+            if (LockState.locked) {
+                if (root.sessionInhibited)
+                    root._idleSeconds = 0
+                else
+                    root._idleSeconds += 1
+                root._offSeconds += 1
+                if (root.screenOffStageArmed && root._lockedScreenOffSec > 0 && root._offSeconds >= root._lockedScreenOffSec) {
+                    root._setScreen(true)
+                    root.screenOffStageArmed = false
+                }
+                if (!root.sessionInhibited && root.suspendStageArmed && root.suspendTimeout > 0 && root._idleSeconds >= root.suspendTimeout) {
+                    suspendProc.running = true
+                    root.suspendStageArmed = false
+                }
+                return
+            }
+            if (root.inhibited) {
+                root._idleSeconds = 0
+                root._offSeconds = 0
+                root.lockStageArmed = true
+                root.screenOffStageArmed = true
+                root.suspendStageArmed = true
                 return
             }
             root._idleSeconds += 1
-            const locked = LockState.locked
-            if (!locked && root.lockStageArmed && root.lockTimeout > 0 && root._idleSeconds >= root.lockTimeout) {
+            root._offSeconds += 1
+            if (root.lockStageArmed && root.lockTimeout > 0 && root._idleSeconds >= root.lockTimeout) {
                 LockState.locked = true
                 root.lockStageArmed = false
             }
-            if (locked && root.screenOffStageArmed && root.screenOffDelay > 0 && root._idleSeconds >= root.screenOffDelay) {
+            if (root.screenOffStageArmed && root._screenOffSec > 0 && root._offSeconds >= root._screenOffSec) {
                 root._setScreen(true)
                 root.screenOffStageArmed = false
             }
-            if (!root.gameSession && root.suspendStageArmed && !root.taskRunning && root.suspendTimeout > 0 && root._idleSeconds >= root.suspendTimeout) {
+            if (root.suspendStageArmed && root.suspendTimeout > 0 && root._idleSeconds >= root.suspendTimeout) {
                 suspendProc.running = true
                 root.suspendStageArmed = false
             }
