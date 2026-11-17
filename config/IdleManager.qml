@@ -10,10 +10,12 @@ Item {
 
     property bool enabled: true
 
+    property int dimTimeout: 300
     property int lockTimeout: 300
     property int screenOffDelay: 300
     property int lockedScreenOffDelay: 60
     property int suspendTimeout: 900
+    readonly property int dimDef: 300
     readonly property int lockDef: 300
     readonly property int screenOffDef: 300
     readonly property int lockedScreenOffDef: 60
@@ -26,9 +28,15 @@ Item {
     property int _offSeconds: 0
     property bool screenIsOff: false
 
+    property bool dimStageArmed: true
     property bool lockStageArmed: true
     property bool screenOffStageArmed: true
     property bool suspendStageArmed: true
+
+    readonly property real dimRatio: 0.3
+    property bool dimmed: false
+    property real _dimBase: -1
+    property real _dimTarget: -1
 
     property bool mediaPlaying: {
         const ps = Mpris.players ? Mpris.players.values : []
@@ -53,10 +61,14 @@ Item {
     readonly property bool gaming: gameMode || fullscreenActive
     property bool stayAwake: false
     property bool taskRunning: false
-    readonly property bool inhibited: stayAwake || gaming || mediaPlaying || (audioActive && !mediaPaused)
+    property bool opencodeRunning: false
+    readonly property bool inhibited: stayAwake || gaming || opencodeRunning || mediaPlaying || (audioActive && !mediaPaused)
     readonly property bool sessionInhibited: inhibited || taskRunning
 
-    onInhibitedChanged: root._restartTimers()
+    onInhibitedChanged: {
+        root._restartTimers()
+        root.undimScreen()
+    }
     onTaskRunningChanged: root._restartTimers()
 
     function _setScreen(off) {
@@ -85,6 +97,7 @@ Item {
     function _restartTimers() {
         root._idleSeconds = 0
         root._offSeconds = 0
+        root.dimStageArmed = true
         root.lockStageArmed = true
         root.screenOffStageArmed = true
         root.suspendStageArmed = true
@@ -92,7 +105,39 @@ Item {
 
     function markActive() {
         root._restartTimers()
+        root.undimScreen()
         root._setScreen(false)
+    }
+
+    function dimScreen() {
+        if (root.dimmed || root.screenIsOff || !BrightnessState.available || BrightnessState.bright < 0)
+            return
+        root._dimBase = BrightnessState.bright
+        root._dimTarget = root._dimBase * root.dimRatio
+        root.dimmed = true
+        BrightnessState.set(root._dimTarget)
+    }
+
+    function undimScreen() {
+        if (!root.dimmed)
+            return
+        root.dimmed = false
+        const base = root._dimBase
+        const target = root._dimTarget
+        root._dimBase = -1
+        root._dimTarget = -1
+        if (base < 0)
+            return
+        const cur = BrightnessState.bright
+        if (cur >= 0 && Math.abs(cur - target) > 0.08 && Math.abs(cur - base) > 0.08)
+            return
+        BrightnessState.set(base)
+    }
+
+    function setDimTimeout(v) {
+        v = Math.round(v)
+        if (isNaN(v)) return
+        root.dimTimeout = Math.min(1800, Math.max(0, v))
     }
 
     function setLockTimeout(v) {
@@ -119,6 +164,7 @@ Item {
         root.suspendTimeout = Math.min(3600, Math.max(0, v))
     }
 
+    onDimTimeoutChanged: dimTimeoutFile.setText(String(root.dimTimeout))
     onLockTimeoutChanged: lockTimeoutFile.setText(String(root.lockTimeout))
     onScreenOffDelayChanged: screenOffDelayFile.setText(String(root.screenOffDelay))
     onLockedScreenOffDelayChanged: lockedScreenOffDelayFile.setText(String(root.lockedScreenOffDelay))
@@ -126,10 +172,23 @@ Item {
 
     IpcHandler {
         target: "idle"
+        function setDim(v: real): void { root.setDimTimeout(v) }
         function setLock(v: real): void { root.setLockTimeout(v) }
         function setScreenOff(v: real): void { root.setScreenOffDelay(v) }
         function setLockedScreenOff(v: real): void { root.setLockedScreenOffDelay(v) }
         function setSuspend(v: real): void { root.setSuspendTimeout(v) }
+    }
+
+    FileView {
+        id: dimTimeoutFile
+        path: Quickshell.env("HOME") + "/.cache/sharkshell/dim-timeout"
+        watchChanges: true
+        printErrors: false
+        onLoaded: {
+            const v = parseInt(text().trim())
+            if (!isNaN(v)) root.dimTimeout = Math.min(1800, Math.max(0, v))
+        }
+        onFileChanged: reload()
     }
 
     FileView {
@@ -292,8 +351,12 @@ Item {
         function onLockedChanged() {
             root._offSeconds = 0
             root.screenOffStageArmed = true
-            if (!LockState.locked) {
+            if (LockState.locked) {
+                root.dimStageArmed = false
+                root.undimScreen()
+            } else {
                 root._idleSeconds = 0
+                root.dimStageArmed = true
                 root.lockStageArmed = true
                 root._setScreen(false)
             }
@@ -310,6 +373,7 @@ Item {
             if (!root.mediaPlaying)
                 audioCheck.running = true
             taskCheck.running = true
+            opencodeCheck.running = true
         }
     }
 
@@ -337,9 +401,17 @@ Item {
 
     Process {
         id: taskCheck
-        command: ["sh", "-c", "command -v pgrep >/dev/null 2>&1 && pgrep -f '(^|/)(nh|nixos-rebuild)([ /]|$)|nix +(build|develop|shell|run|flake)([ /]|$)|opencode([-.]|[ /]|$)' >/dev/null"]
+        command: ["sh", "-c", "command -v pgrep >/dev/null 2>&1 && pgrep -f '(^|/)(nh|nixos-rebuild)([ /]|$)|nix +(build|develop|shell|run|flake)([ /]|$)' >/dev/null"]
         onExited: (exitCode) => {
             root.taskRunning = (exitCode === 0)
+        }
+    }
+
+    Process {
+        id: opencodeCheck
+        command: ["sh", "-c", "command -v pgrep >/dev/null 2>&1 && pgrep -f 'opencode([-.]|[ /]|$)' >/dev/null"]
+        onExited: (exitCode) => {
+            root.opencodeRunning = (exitCode === 0)
         }
     }
 
@@ -375,6 +447,10 @@ Item {
             }
             root._idleSeconds += 1
             root._offSeconds += 1
+            if (root.dimStageArmed && root.dimTimeout > 0 && root._idleSeconds >= root.dimTimeout) {
+                root.dimScreen()
+                root.dimStageArmed = false
+            }
             if (root.lockStageArmed && root.lockTimeout > 0 && root._idleSeconds >= root.lockTimeout) {
                 LockState.locked = true
                 root.lockStageArmed = false

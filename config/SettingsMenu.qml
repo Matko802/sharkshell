@@ -1034,6 +1034,15 @@ PanelWindow {
                 }
 
                 SettingSlider {
+                  label: "Dim"
+                  icon: "brightness"
+                  value: IdleManager.dimTimeout / 1800
+                  text: root.fmtDur(IdleManager.dimTimeout)
+                  onUserSet: v => IdleManager.setDimTimeout(v * 1800)
+                  onReset: IdleManager.setDimTimeout(IdleManager.dimDef)
+                }
+
+                SettingSlider {
                   label: "Lock"
                   icon: "lock"
                   value: IdleManager.lockTimeout / 1800
