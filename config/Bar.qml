@@ -87,7 +87,7 @@ Item {
 
     TopbarVisualizer {
       id: rightVisualizer
-      visible: !root.rightOnly && VisualizerState.topbar && rightVisualizer.hasAudio
+      visible: !root.rightOnly && VisualizerState.topbar && rightVisualizer.hasAudio && !IdleManager.gaming
     }
     Tray {
       visible: !root.rightOnly

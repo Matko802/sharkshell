@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
-import Quickshell.Services.Mpris
 import "Util.js" as Util
 
 Item {
@@ -19,9 +18,14 @@ Item {
   readonly property int historyCap: 1024
   readonly property int topBars: VisualizerState.bars
   readonly property int idleMs: 20000
+  readonly property int silenceMs: 700
+  readonly property bool visWanted: VisualizerState.topbar && !IdleManager.gaming
 
   property bool hasAudio: false
   property double lastActive: 0
+  property double lastSound: 0
+  property double lastFrame: 0
+  property double lastRestart: 0
 
   function noteSignal() {
     root.lastActive = Date.now()
@@ -29,34 +33,73 @@ Item {
       root.hasAudio = true
   }
 
-  Timer {
-    id: idleCheck
-    interval: 5000
-    repeat: true
-    running: root.hasAudio
-    onTriggered: {
-      if (Date.now() - root.lastActive > root.idleMs)
-        root.hasAudio = false
+  function clearVisual() {
+    root.levels = []
+    root.waveLevels = []
+    root.waveHistory = []
+  }
+
+  function restartVis() {
+    root.clearVisual()
+    root.lastFrame = 0
+    root.lastRestart = Date.now()
+    visProc.running = false
+    restartTimer.restart()
+  }
+
+  onVisWantedChanged: {
+    if (!root.visWanted) {
+      root.clearVisual()
+      root.hasAudio = false
+      visProc.running = false
     }
   }
 
-  Connections {
-    target: Mpris.players
-    function onValuesChanged() {
-      const pls = Mpris.players.values || []
-      for (let i = 0; i < pls.length; i++) {
-        if (pls[i] && pls[i].isPlaying) {
-          root.noteSignal()
-          return
-        }
+  Timer {
+    id: idleCheck
+    interval: 1000
+    repeat: true
+    running: root.visWanted
+    onTriggered: {
+      if (root.hasAudio && Date.now() - root.lastActive > root.idleMs) {
+        root.hasAudio = false
+        root.clearVisual()
       }
     }
   }
 
+  Timer {
+    id: procWatch
+    interval: 1000
+    repeat: true
+    running: root.visWanted
+    triggeredOnStart: true
+    onTriggered: {
+      if (!root.visWanted) return
+      const now = Date.now()
+      if (!visProc.running) {
+        if (now - root.lastRestart < 1000) return
+        root.lastRestart = now
+        visProc.running = true
+        return
+      }
+      if (root.lastFrame > 0 && now - root.lastFrame > 5000 && now - root.lastRestart > 5000)
+        root.restartVis()
+    }
+  }
+
+  Timer {
+    id: restartTimer
+    interval: 200
+    repeat: false
+    onTriggered: if (root.visWanted) visProc.running = true
+  }
+
   Process {
     id: visProc
-    running: VisualizerState.topbar && !IdleManager.gaming
     command: ["sh", "-c", VisualizerState.command(VisualizerState.mode, root.topBars)]
+    onStarted: root.lastFrame = Date.now()
+    onExited: root.clearVisual()
     stdout: SplitParser {
       onRead: data => {
         const parts = String(data).split(";")
@@ -70,12 +113,20 @@ Item {
             if (c > peak) peak = c
           }
         }
-        if (arr.length > 0) {
-          root.levels = arr
-          root.waveLevels = VisualizerState.stabilize(root.waveLevels, arr)
-          root.waveHistory = root.waveHistory.concat(root.waveLevels).slice(-root.historyCap)
-          if (peak > 4) root.noteSignal()
+        if (arr.length === 0) return
+        root.lastFrame = Date.now()
+        if (peak <= 0) {
+          if (root.lastSound > 0 && Date.now() - root.lastSound > root.silenceMs) {
+            root.lastSound = 0
+            root.clearVisual()
+          }
+          return
         }
+        root.lastSound = Date.now()
+        root.levels = arr
+        root.waveLevels = VisualizerState.stabilize(root.waveLevels, arr)
+        root.waveHistory = root.waveHistory.concat(root.waveLevels).slice(-root.historyCap)
+        root.noteSignal()
       }
     }
   }
@@ -83,36 +134,16 @@ Item {
   Connections {
     target: VisualizerState
     function onModeChanged() {
-      root.waveLevels = []
-      root.waveHistory = []
-      if (visProc.running) {
-        visProc.running = false
-        visProc.running = true
-      }
+      root.restartVis()
     }
     function onBackendChanged() {
-      root.waveLevels = []
-      root.waveHistory = []
-      if (visProc.running) {
-        visProc.running = false
-        visProc.running = true
-      }
+      root.restartVis()
     }
     function onBarsChanged() {
-      root.waveLevels = []
-      root.waveHistory = []
-      if (visProc.running) {
-        visProc.running = false
-        visProc.running = true
-      }
+      root.restartVis()
     }
     function onFpsChanged() {
-      root.waveLevels = []
-      root.waveHistory = []
-      if (visProc.running) {
-        visProc.running = false
-        visProc.running = true
-      }
+      root.restartVis()
     }
   }
 
