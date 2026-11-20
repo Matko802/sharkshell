@@ -173,10 +173,8 @@ ShellRoot {
         visible: (launcher.open || launcher.closePending)
           || (emojiPicker.open || emojiPicker.closePending)
           || (clipboard.open || clipboard.closePending)
-          || (PowerState.open || PowerState.closePending)
           || ((wallpaperPicker.opened || wallpaperPicker.closePending) && wallpaperPicker.imagesLoaded)
           || (avatarPicker.opened || avatarPicker.closePending)
-          || (ControlState.open && (!ControlState.screen || ControlState.screen === modelData))
           || (ClockState.open && (!ClockState.screen || ClockState.screen === modelData))
           || (SettingsState.open && (!SettingsState.screen || SettingsState.screen === modelData))
 
@@ -218,6 +216,7 @@ ShellRoot {
   PowerMenu {
     id: powerMenu
   }
+  Polkit {}
   Lock {}
 
   Timer {

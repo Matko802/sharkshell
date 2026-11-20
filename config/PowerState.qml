@@ -11,13 +11,13 @@ Scope {
   function requestClose() {
     if (!root.open || root.closePending)
       return
+    root.open = false
     root.closePending = true
     closeTimer.restart()
   }
 
   function forceClose() {
     closeTimer.stop()
-    closeCleanTimer.stop()
     root.closePending = false
     root.open = false
   }
@@ -34,12 +34,6 @@ Scope {
 
   Timer {
     id: closeTimer
-    interval: 250
-    onTriggered: root.open = false
-  }
-
-  Timer {
-    id: closeCleanTimer
     interval: 250
     onTriggered: root.closePending = false
   }

@@ -28,21 +28,28 @@ Scope {
     BackgroundEffect.blurRegion: Region { item: TransparencyState.transparent ? panel : null }
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-    mask: Region { item: panel }
     visible: (PowerState.open || PowerState.closePending) && !LockState.locked
 
-    Rectangle {
+    onVisibleChanged: {
+      if (visible && PowerState.open)
+        panel.forceActiveFocus()
+    }
+
+    MouseArea {
+      anchors.fill: parent
+      onClicked: PowerState.requestClose()
+    }
+
+    Item {
       id: panel
-      anchors.horizontalCenter: parent.horizontalCenter
-      anchors.top: parent.top
-      anchors.topMargin: PowerState.open ? 30 : -(panel.height + 250)
-      width: tiles.width + 32
-      height: tiles.height + 32
-      color: Theme.bg
+      anchors.centerIn: parent
+      width: tiles.width
+      height: tiles.height
       opacity: PowerState.open ? 1 : 0
-      Behavior on anchors.topMargin { NumberAnimation { duration: 170; easing.type: Easing.OutExpo } }
-      Behavior on opacity { NumberAnimation { duration: 170; easing.type: Easing.OutCubic } }
+      scale: PowerState.open ? 1 : 0.94
       focus: true
+      Behavior on opacity { NumberAnimation { duration: 170; easing.type: Easing.OutCubic } }
+      Behavior on scale { NumberAnimation { duration: 170; easing.type: Easing.OutCubic } }
 
       Keys.priority: Keys.BeforeItem
       Keys.onPressed: function(event) {

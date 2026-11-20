@@ -1,6 +1,7 @@
 pragma Singleton
 import QtQuick
 import Quickshell
+import Quickshell.Io
 
 Scope {
   id: root
@@ -8,6 +9,12 @@ Scope {
   property bool open: false
   property var screen: null
   property int sliderDrags: 0
+
+  IpcHandler {
+    target: "control"
+    function toggle(): void { root.toggle(null) }
+    function close(): void { root.close() }
+  }
 
   function toggle(win) {
     const s = win ? win.screen : null
