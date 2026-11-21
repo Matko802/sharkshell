@@ -441,7 +441,6 @@ Scope {
     anchors.bottom: true
     anchors.left: true
     anchors.right: true
-    margins.top: 30
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     WlrLayershell.namespace: "quickshell-modal"
@@ -449,12 +448,19 @@ Scope {
       item: TransparencyState.transparent ? panel : null
       Region { item: tabsPill }
     }
-    mask: Region {
-      Region { item: panLayer }
-      Region { item: tabsPill }
-    }
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+
+    MouseArea {
+      anchors.fill: parent
+      onClicked: mouse => {
+        const inPanel = mouse.x >= panel.x && mouse.x < panel.x + panel.width && mouse.y >= panel.y && mouse.y < panel.y + panel.height
+        const inTabs = mouse.x >= tabsPill.x && mouse.x < tabsPill.x + tabsPill.width && mouse.y >= tabsPill.y && mouse.y < tabsPill.y + tabsPill.height
+        if (inPanel || inTabs)
+          return
+        root.requestClose()
+      }
+    }
 
     Rectangle {
       id: tabsPill
@@ -503,7 +509,7 @@ Scope {
       id: panel
       anchors.left: parent.left
       anchors.top: parent.top
-      anchors.topMargin: 50
+      anchors.topMargin: 80
       anchors.leftMargin: root.panning ? -width : (root.opened ? 20 : -width)
       anchors.bottom: parent.bottom
       anchors.bottomMargin: 10

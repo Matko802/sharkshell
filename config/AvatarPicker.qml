@@ -259,20 +259,27 @@ Scope {
     anchors.bottom: true
     anchors.left: true
     anchors.right: true
-    margins.top: 30
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     WlrLayershell.namespace: "quickshell-modal"
     BackgroundEffect.blurRegion: Region { item: TransparencyState.transparent ? panel : null }
-    mask: Region { item: panel }
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+
+    MouseArea {
+      anchors.fill: parent
+      onClicked: mouse => {
+        if (mouse.x >= panel.x && mouse.x < panel.x + panel.width && mouse.y >= panel.y && mouse.y < panel.y + panel.height)
+          return
+        root.requestClose()
+      }
+    }
 
     Rectangle {
       id: panel
       anchors.left: parent.left
       anchors.top: parent.top
-      anchors.topMargin: 50
+      anchors.topMargin: 80
       anchors.leftMargin: root.opened ? 20 : -width
       width: 400
       height: listViewCol.implicitHeight + 16

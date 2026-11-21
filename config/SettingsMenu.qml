@@ -12,14 +12,13 @@ PanelWindow {
   property var targetScreen: null
 
   anchors.top: true
-  margins.top: 30
+  anchors.bottom: true
   anchors.left: true
   anchors.right: true
   exclusionMode: ExclusionMode.Ignore
   color: "transparent"
-    WlrLayershell.namespace: "quickshell-modal"
-    BackgroundEffect.blurRegion: Region { item: TransparencyState.transparent ? card : null }
-    mask: Region { item: card }
+  WlrLayershell.namespace: "quickshell-modal"
+  BackgroundEffect.blurRegion: Region { item: TransparencyState.transparent ? card : null }
   WlrLayershell.layer: WlrLayer.Overlay
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
@@ -196,19 +195,19 @@ PanelWindow {
     if (shown) {
       if (SettingsState.enterFromRight) {
         SettingsState.enterFromRight = false
-        card.y = 0
+        card.y = 30
         card.x = card.width + 8
         handoverIn.restart()
       } else {
         card.x = 0
-        card.y = -card.height - 8
+        card.y = 30 - card.height - 8
         slideIn.restart()
       }
       focusTimer.restart()
     }
   }
-  NumberAnimation { id: slideIn; target: card; property: "y"; to: 0; duration: 250; easing.type: Easing.OutCubic }
-  NumberAnimation { id: slideOut; target: card; property: "y"; to: -card.height - 12; duration: 250; easing.type: Easing.InCubic; onFinished: root.shown = false }
+  NumberAnimation { id: slideIn; target: card; property: "y"; to: 30; duration: 250; easing.type: Easing.OutCubic }
+  NumberAnimation { id: slideOut; target: card; property: "y"; to: 30 - card.height - 12; duration: 250; easing.type: Easing.InCubic; onFinished: root.shown = false }
   NumberAnimation { id: handoverIn; target: card; property: "x"; to: 0; duration: 130; easing.type: Easing.OutCubic }
   Timer {
     id: focusTimer
@@ -217,6 +216,15 @@ PanelWindow {
     onTriggered: {
       if (root.shown && !kbFocus.activeFocus)
         kbFocus.forceActiveFocus()
+    }
+  }
+
+  MouseArea {
+    anchors.fill: parent
+    onClicked: mouse => {
+      if (mouse.x >= card.x && mouse.x < card.x + card.width && mouse.y >= card.y && mouse.y < card.y + card.height)
+        return
+      SettingsState.close()
     }
   }
 

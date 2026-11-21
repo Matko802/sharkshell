@@ -15,14 +15,13 @@ PanelWindow {
   property var targetScreen: null
 
   anchors.top: true
-  margins.top: 30
+  anchors.bottom: true
   anchors.left: true
   anchors.right: true
   exclusionMode: ExclusionMode.Ignore
   color: "transparent"
-    WlrLayershell.namespace: "quickshell-modal"
-    BackgroundEffect.blurRegion: Region { item: TransparencyState.transparent ? card : null }
-    mask: Region { item: card }
+  WlrLayershell.namespace: "quickshell-modal"
+  BackgroundEffect.blurRegion: Region { item: TransparencyState.transparent ? card : null }
   WlrLayershell.layer: WlrLayer.Overlay
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
@@ -215,13 +214,13 @@ PanelWindow {
   }
   onShownChanged: {
     if (shown) {
-      card.y = -card.height - 8
+      card.y = 30 - card.height - 8
       slideIn.restart()
       focusTimer.restart()
     }
   }
-  NumberAnimation { id: slideIn; target: card; property: "y"; to: 0; duration: 250; easing.type: Easing.OutCubic }
-  NumberAnimation { id: slideOut; target: card; property: "y"; to: -card.height - 12; duration: 250; easing.type: Easing.InCubic; onFinished: root.shown = false }
+  NumberAnimation { id: slideIn; target: card; property: "y"; to: 30; duration: 250; easing.type: Easing.OutCubic }
+  NumberAnimation { id: slideOut; target: card; property: "y"; to: 30 - card.height - 12; duration: 250; easing.type: Easing.InCubic; onFinished: root.shown = false }
   NumberAnimation {
     id: handoverOut
     target: card
@@ -250,6 +249,15 @@ PanelWindow {
     onTriggered: {
       if (root.shown && !card.activeFocus)
         card.forceActiveFocus()
+    }
+  }
+
+  MouseArea {
+    anchors.fill: parent
+    onClicked: mouse => {
+      if (mouse.x >= card.x && mouse.x < card.x + card.width && mouse.y >= card.y && mouse.y < card.y + card.height)
+        return
+      ClockState.close()
     }
   }
 
