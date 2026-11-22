@@ -6,10 +6,12 @@ import "Util.js" as Util
 
 Item {
   id: root
-  readonly property int squareSize: 14
+  readonly property int visHeight: 20
+  readonly property int squareSize: visHeight
+  readonly property int waveWidth: 140
   readonly property int barWidth: VisualizerState.bars * (VisualizerState.thickness + 1) - 1
-  Layout.preferredWidth: VisualizerState.mode === "oscilloscope" ? squareSize : barWidth
-  Layout.preferredHeight: squareSize
+  Layout.preferredWidth: VisualizerState.mode === "bars" ? barWidth : (VisualizerState.mode === "oscilloscope" ? squareSize : waveWidth)
+  Layout.preferredHeight: visHeight
   Layout.alignment: Qt.AlignVCenter
 
   property var levels: []
@@ -287,11 +289,11 @@ Item {
       if (VisualizerState.mode === "oscilloscope") {
         if (n < 4) return
         ctx.clearRect(0, 0, width, height)
-        scopePath(ctx, 2, 1)
+        scopePath(ctx, VisualizerState.thickness, 1)
       } else {
         if (n < 2) return
         ctx.clearRect(0, 0, width, height)
-        strokePath(ctx, 2, 1)
+        strokePath(ctx, VisualizerState.thickness, 1)
       }
     }
   }
