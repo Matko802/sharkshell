@@ -19,6 +19,8 @@ Item {
   readonly property int topBars: VisualizerState.bars
   readonly property int idleMs: 20000
   readonly property int silenceMs: 700
+  readonly property int flattenMs: 260
+  readonly property int hideMs: 700
   readonly property bool visWanted: VisualizerState.topbar && !IdleManager.gaming
 
   property bool hasAudio: false
@@ -26,6 +28,7 @@ Item {
   property double lastSound: 0
   property double lastFrame: 0
   property double lastRestart: 0
+  property double flatten: 0
 
   function noteSignal() {
     root.lastActive = Date.now()
@@ -37,6 +40,12 @@ Item {
     root.levels = []
     root.waveLevels = []
     root.waveHistory = []
+  }
+
+  function resetSilence() {
+    flattenAnim.stop()
+    hideTimer.stop()
+    root.flatten = 0
   }
 
   function frameSilent(arr) {
@@ -52,6 +61,7 @@ Item {
   }
 
   function restartVis() {
+    root.resetSilence()
     root.clearVisual()
     root.lastSound = 0
     root.lastFrame = 0
@@ -62,6 +72,7 @@ Item {
 
   onVisWantedChanged: {
     if (!root.visWanted) {
+      root.resetSilence()
       root.clearVisual()
       root.hasAudio = false
       root.lastSound = 0
@@ -76,6 +87,7 @@ Item {
     running: root.visWanted
     onTriggered: {
       if (root.hasAudio && Date.now() - root.lastActive > root.idleMs) {
+        root.resetSilence()
         root.hasAudio = false
         root.clearVisual()
       }
@@ -109,11 +121,35 @@ Item {
     onTriggered: if (root.visWanted) visProc.running = true
   }
 
+  NumberAnimation {
+    id: flattenAnim
+    target: root
+    property: "flatten"
+    to: 1
+    duration: root.flattenMs
+    easing.type: Easing.OutCubic
+    onFinished: hideTimer.restart()
+  }
+
+  Timer {
+    id: hideTimer
+    interval: root.hideMs
+    repeat: false
+    onTriggered: {
+      root.hasAudio = false
+      root.flatten = 0
+      root.clearVisual()
+    }
+  }
+
   Process {
     id: visProc
     command: ["sh", "-c", VisualizerState.command(VisualizerState.mode, root.topBars)]
     onStarted: root.lastFrame = Date.now()
-    onExited: root.clearVisual()
+    onExited: {
+      root.resetSilence()
+      root.clearVisual()
+    }
     stdout: SplitParser {
       onRead: data => {
         const parts = String(data).split(";")
@@ -127,11 +163,11 @@ Item {
         if (root.frameSilent(arr)) {
           if (root.lastSound > 0 && Date.now() - root.lastSound > root.silenceMs) {
             root.lastSound = 0
-            root.hasAudio = false
-            root.clearVisual()
+            flattenAnim.restart()
           }
           return
         }
+        root.resetSilence()
         root.lastSound = Date.now()
         root.levels = arr
         root.waveLevels = VisualizerState.stabilize(root.waveLevels, arr)
@@ -172,7 +208,7 @@ Item {
           anchors.bottom: parent.bottom
           anchors.left: parent.left
           anchors.right: parent.right
-          height: Math.min(parent.height, Math.max(2, Math.round(parent.height * ((root.levels[index] || 0) / 100))))
+          height: Math.min(parent.height, Math.max(2, Math.round(parent.height * ((root.levels[index] || 0) / 100) * (1 - root.flatten))))
           color: Theme.fg
           Behavior on height {
             NumberAnimation {
@@ -195,6 +231,12 @@ Item {
     onWidthChanged: if (visible) requestPaint()
     onHeightChanged: if (visible) requestPaint()
     Connections {
+      target: root
+      function onFlattenChanged() {
+        if (waveCanvas.visible) waveCanvas.requestPaint()
+      }
+    }
+    Connections {
       target: VisualizerState
       function onModeChanged() {
         if (waveCanvas.visible) waveCanvas.requestPaint()
@@ -213,9 +255,11 @@ Item {
       if (VisualizerState.mode === "oscilloscope") {
         if (n < 4) return
         const m = Math.floor(n / 2)
+        const flatY = height / 2
         for (let i = 0; i < m; i++) {
           const x = Math.round((Util.clampPct(pts[2 * i] || 0) / 100) * (width - 1))
-          const y = Math.round(height - (Util.clampPct(pts[2 * i + 1] || 0) / 100) * (height - 1))
+          const rawY = height - (Util.clampPct(pts[2 * i + 1] || 0) / 100) * (height - 1)
+          const y = Math.round(rawY + (flatY - rawY) * root.flatten)
           if (i === 0) ctx.moveTo(x, y)
           else ctx.lineTo(x, y)
         }
@@ -225,7 +269,9 @@ Item {
         const start = n - count
         for (let i = 0; i < count; i++) {
           const x = Math.round((i / (count - 1)) * (width - 1))
-          const y = Math.round(height - (Util.clampPct(pts[start + i] || 0) / 100) * (height - 1))
+          const raw = Util.clampPct(pts[start + i] || 0)
+          const v = raw + (50 - raw) * root.flatten
+          const y = Math.round(height - (v / 100) * (height - 1))
           if (i === 0) ctx.moveTo(x, y)
           else ctx.lineTo(x, y)
         }
