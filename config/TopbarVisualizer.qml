@@ -15,12 +15,11 @@ Item {
   property var levels: []
   property var waveLevels: []
   property var waveHistory: []
-  readonly property int historyCap: 1024
+  readonly property int historyCap: 2048
   readonly property int topBars: VisualizerState.bars
   readonly property int idleMs: 20000
   readonly property int silenceMs: 700
-  readonly property int flattenMs: 260
-  readonly property int hideMs: 700
+  readonly property int hideMs: 400
   readonly property bool visWanted: VisualizerState.topbar && !IdleManager.gaming
 
   property bool hasAudio: false
@@ -28,7 +27,6 @@ Item {
   property double lastSound: 0
   property double lastFrame: 0
   property double lastRestart: 0
-  property double flatten: 0
 
   function noteSignal() {
     root.lastActive = Date.now()
@@ -42,17 +40,35 @@ Item {
     root.waveHistory = []
   }
 
-  function resetSilence() {
-    flattenAnim.stop()
-    hideTimer.stop()
-    root.flatten = 0
-  }
-
   function frameSilent(arr) {
     for (let i = 0; i < arr.length; i++) {
       const v = arr[i]
       if (VisualizerState.mode === "bars") {
         if (v > 0) return false
+      } else if (VisualizerState.mode === "oscilloscope") {
+        if (i % 2 === 1 && Math.abs(v - 50) > 0.5) return false
+      } else if (v > 0.5 && Math.abs(v - 50) > 0.5) {
+        return false
+      }
+    }
+    return true
+  }
+
+  function visibleFlat() {
+    const pts = VisualizerState.mode === "oscilloscope" ? root.levels : root.waveHistory
+    const n = pts ? pts.length : 0
+    if (n < 2) return true
+    if (VisualizerState.mode === "oscilloscope") {
+      for (let i = 1; i < n; i += 2)
+        if (Math.abs(Util.clampPct(pts[i] || 0) - 50) > 0.5) return false
+      return true
+    }
+    const count = Math.max(2, Math.min(n, Math.floor(root.width)))
+    const start = n - count
+    for (let i = start; i < n; i++) {
+      const v = Util.clampPct(pts[i] || 0)
+      if (VisualizerState.mode === "bars") {
+        if (v > 0.5) return false
       } else if (v > 0.5 && Math.abs(v - 50) > 0.5) {
         return false
       }
@@ -61,7 +77,7 @@ Item {
   }
 
   function restartVis() {
-    root.resetSilence()
+    hideTimer.stop()
     root.clearVisual()
     root.lastSound = 0
     root.lastFrame = 0
@@ -72,7 +88,7 @@ Item {
 
   onVisWantedChanged: {
     if (!root.visWanted) {
-      root.resetSilence()
+      hideTimer.stop()
       root.clearVisual()
       root.hasAudio = false
       root.lastSound = 0
@@ -87,7 +103,7 @@ Item {
     running: root.visWanted
     onTriggered: {
       if (root.hasAudio && Date.now() - root.lastActive > root.idleMs) {
-        root.resetSilence()
+        hideTimer.stop()
         root.hasAudio = false
         root.clearVisual()
       }
@@ -121,23 +137,13 @@ Item {
     onTriggered: if (root.visWanted) visProc.running = true
   }
 
-  NumberAnimation {
-    id: flattenAnim
-    target: root
-    property: "flatten"
-    to: 1
-    duration: root.flattenMs
-    easing.type: Easing.OutCubic
-    onFinished: hideTimer.restart()
-  }
-
   Timer {
     id: hideTimer
     interval: root.hideMs
     repeat: false
     onTriggered: {
+      root.lastSound = 0
       root.hasAudio = false
-      root.flatten = 0
       root.clearVisual()
     }
   }
@@ -147,7 +153,7 @@ Item {
     command: ["sh", "-c", VisualizerState.command(VisualizerState.mode, root.topBars)]
     onStarted: root.lastFrame = Date.now()
     onExited: {
-      root.resetSilence()
+      hideTimer.stop()
       root.clearVisual()
     }
     stdout: SplitParser {
@@ -160,18 +166,22 @@ Item {
         }
         if (arr.length === 0) return
         root.lastFrame = Date.now()
-        if (root.frameSilent(arr)) {
-          if (root.lastSound > 0 && Date.now() - root.lastSound > root.silenceMs) {
-            root.lastSound = 0
-            flattenAnim.restart()
-          }
-          return
-        }
-        root.resetSilence()
-        root.lastSound = Date.now()
+        const silent = root.frameSilent(arr)
         root.levels = arr
         root.waveLevels = VisualizerState.stabilize(root.waveLevels, arr)
         root.waveHistory = root.waveHistory.concat(root.waveLevels).slice(-root.historyCap)
+        if (silent) {
+          if (root.lastSound > 0 && Date.now() - root.lastSound > root.silenceMs) {
+            if (root.visibleFlat()) {
+              if (!hideTimer.running) hideTimer.restart()
+            } else {
+              hideTimer.stop()
+            }
+          }
+          return
+        }
+        hideTimer.stop()
+        root.lastSound = Date.now()
         root.noteSignal()
       }
     }
@@ -208,7 +218,7 @@ Item {
           anchors.bottom: parent.bottom
           anchors.left: parent.left
           anchors.right: parent.right
-          height: Math.min(parent.height, Math.max(2, Math.round(parent.height * ((root.levels[index] || 0) / 100) * (1 - root.flatten))))
+          height: Math.min(parent.height, Math.max(2, Math.round(parent.height * ((root.levels[index] || 0) / 100))))
           color: Theme.fg
           Behavior on height {
             NumberAnimation {
@@ -231,52 +241,58 @@ Item {
     onWidthChanged: if (visible) requestPaint()
     onHeightChanged: if (visible) requestPaint()
     Connections {
-      target: root
-      function onFlattenChanged() {
-        if (waveCanvas.visible) waveCanvas.requestPaint()
-      }
-    }
-    Connections {
       target: VisualizerState
       function onModeChanged() {
         if (waveCanvas.visible) waveCanvas.requestPaint()
       }
     }
-    onPaint: {
-      const ctx = getContext("2d")
-      const n = pts ? pts.length : 0
-      if (width <= 0 || height <= 0) return
-      ctx.clearRect(0, 0, width, height)
-      ctx.lineJoin = "round"
-      ctx.lineCap = "round"
+    function strokePath(ctx, w, a) {
       ctx.strokeStyle = Theme.fg
-      ctx.lineWidth = Math.max(1, VisualizerState.thickness)
+      ctx.lineWidth = w
+      ctx.globalAlpha = a
       ctx.beginPath()
-      if (VisualizerState.mode === "oscilloscope") {
-        if (n < 4) return
-        const m = Math.floor(n / 2)
-        const flatY = height / 2
-        for (let i = 0; i < m; i++) {
-          const x = Math.round((Util.clampPct(pts[2 * i] || 0) / 100) * (width - 1))
-          const rawY = height - (Util.clampPct(pts[2 * i + 1] || 0) / 100) * (height - 1)
-          const y = Math.round(rawY + (flatY - rawY) * root.flatten)
-          if (i === 0) ctx.moveTo(x, y)
-          else ctx.lineTo(x, y)
-        }
-      } else {
-        if (n < 2) return
-        const count = Math.max(2, Math.min(n, Math.floor(width)))
-        const start = n - count
-        for (let i = 0; i < count; i++) {
-          const x = Math.round((i / (count - 1)) * (width - 1))
-          const raw = Util.clampPct(pts[start + i] || 0)
-          const v = raw + (50 - raw) * root.flatten
-          const y = Math.round(height - (v / 100) * (height - 1))
-          if (i === 0) ctx.moveTo(x, y)
-          else ctx.lineTo(x, y)
-        }
+      const n = pts ? pts.length : 0
+      const count = Math.max(2, Math.min(n, Math.floor(width)))
+      const start = n - count
+      for (var i = 0; i < count; i++) {
+        var v = Util.clampPct(pts[start + i] || 0)
+        var x = (i / (count - 1)) * width
+        var y = height - (v / 100) * height
+        if (i === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
       }
       ctx.stroke()
+      ctx.globalAlpha = 1
+    }
+    function scopePath(ctx, w, a) {
+      ctx.strokeStyle = Theme.fg
+      ctx.lineWidth = w
+      ctx.globalAlpha = a
+      ctx.beginPath()
+      const n = Math.floor((pts ? pts.length : 0) / 2)
+      for (var i = 0; i < n; i++) {
+        var x = Util.clampPct(pts[2 * i] || 0) / 100 * width
+        var y = height - Util.clampPct(pts[2 * i + 1] || 0) / 100 * height
+        if (i === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
+      }
+      ctx.stroke()
+      ctx.globalAlpha = 1
+    }
+    onPaint: {
+      var ctx = getContext("2d")
+      var n = pts ? pts.length : 0
+      if (width <= 0 || height <= 0) return
+      ctx.lineJoin = "round"
+      if (VisualizerState.mode === "oscilloscope") {
+        if (n < 4) return
+        ctx.clearRect(0, 0, width, height)
+        scopePath(ctx, 2, 1)
+      } else {
+        if (n < 2) return
+        ctx.clearRect(0, 0, width, height)
+        strokePath(ctx, 2, 1)
+      }
     }
   }
 
