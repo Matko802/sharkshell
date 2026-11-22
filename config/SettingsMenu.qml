@@ -182,10 +182,11 @@ PanelWindow {
     function onOpenChanged() {
       if (SettingsState.open && (!SettingsState.screen || SettingsState.screen === root.targetScreen)) {
         root.shown = true
-        root.activeTab = 0
+        root.activeTab = SettingsState.startTab
         root.selIdx = 0
         root.hoverIdx = -1
         root.hoverTab = -1
+        SettingsState.startTab = 0
       }
       else if (!SettingsState.open && root.shown && !slideOut.running)
         slideOut.restart()

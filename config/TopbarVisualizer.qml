@@ -39,8 +39,21 @@ Item {
     root.waveHistory = []
   }
 
+  function frameSilent(arr) {
+    for (let i = 0; i < arr.length; i++) {
+      const v = arr[i]
+      if (VisualizerState.mode === "bars") {
+        if (v > 0) return false
+      } else if (v > 0.5 && Math.abs(v - 50) > 0.5) {
+        return false
+      }
+    }
+    return true
+  }
+
   function restartVis() {
     root.clearVisual()
+    root.lastSound = 0
     root.lastFrame = 0
     root.lastRestart = Date.now()
     visProc.running = false
@@ -51,6 +64,7 @@ Item {
     if (!root.visWanted) {
       root.clearVisual()
       root.hasAudio = false
+      root.lastSound = 0
       visProc.running = false
     }
   }
@@ -104,20 +118,16 @@ Item {
       onRead: data => {
         const parts = String(data).split(";")
         const arr = []
-        let peak = 0
         for (let i = 0; i < parts.length; i++) {
           const v = parseInt(parts[i], 10)
-          if (!isNaN(v)) {
-            const c = Util.clampPct(v)
-            arr.push(c)
-            if (c > peak) peak = c
-          }
+          if (!isNaN(v)) arr.push(Util.clampPct(v))
         }
         if (arr.length === 0) return
         root.lastFrame = Date.now()
-        if (peak <= 0) {
+        if (root.frameSilent(arr)) {
           if (root.lastSound > 0 && Date.now() - root.lastSound > root.silenceMs) {
             root.lastSound = 0
+            root.hasAudio = false
             root.clearVisual()
           }
           return
@@ -228,7 +238,7 @@ Item {
     anchors.fill: parent
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
-    onClicked: ClockState.toggle(root.QsWindow.window)
+    onClicked: SettingsState.openTab(3, root.QsWindow.window)
     onWheel: VisualizerState.cycleMode()
   }
 }

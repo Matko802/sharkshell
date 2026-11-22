@@ -8,6 +8,7 @@ Scope {
 
   property bool open: false
   property var screen: null
+  property int startTab: 0
 
   IpcHandler {
     target: "settings"
@@ -22,6 +23,7 @@ Scope {
       root.open = false
     else {
       root.screen = s
+      root.startTab = 0
       root.open = true
       ControlState.close()
       ClockState.close()
@@ -30,9 +32,20 @@ Scope {
 
   property bool enterFromRight: false
 
+  function openTab(tab, win) {
+    const s = win ? win.screen : null
+    root.screen = s
+    root.startTab = tab
+    root.enterFromRight = false
+    root.open = true
+    ControlState.close()
+    ClockState.close()
+  }
+
   function openFromClock(win) {
     const s = win ? win.screen : null
     root.screen = s
+    root.startTab = 0
     root.enterFromRight = true
     root.open = true
     ControlState.close()
