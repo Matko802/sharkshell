@@ -90,7 +90,7 @@ ShellRoot {
           anchors.top: parent.top
           anchors.left: parent.left
           anchors.right: parent.right
-          height: 30
+          height: Theme.barHeight
           color: Theme.bg
           opacity: root.barShown ? 1 : 0
           visible: opacity > 0.01

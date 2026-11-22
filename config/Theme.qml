@@ -7,6 +7,7 @@ Singleton {
 
   property string fontFamily: Quickshell.env("QUICKSHELL_FONT") || "DepartureMono Nerd Font"
 
+  readonly property int barHeight: 30
   readonly property int spacingXS: 4
   readonly property int spacing6: 6
   readonly property int spacingS: 8

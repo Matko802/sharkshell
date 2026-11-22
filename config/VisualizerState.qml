@@ -10,11 +10,13 @@ Scope {
   property int bars: 48
   property int thickness: 1
   property int fps: 15
+  property int visWidth: 140
   property double waveSmoothing: 0.5
   property bool topbar: false
   property string backend: "sharkvis"
   readonly property var modes: ["bars", "wave", "oscilloscope"]
   readonly property var barOptions: [24, 32, 48, 64]
+  readonly property var widthOptions: [80, 100, 120, 140, 160, 180, 200, 240]
   readonly property var thicknessOptions: [1, 2, 3, 4]
   readonly property var fpsOptions: [10, 15, 20, 30, 45, 60, 90, 120, 144, 165, 240]
   readonly property var waveSmoothOptions: [0, 0.25, 0.5, 0.75, 0.9, 0.95]
@@ -30,6 +32,17 @@ Scope {
   function cycleBars() {
     var i = root.barOptions.indexOf(root.bars)
     root.bars = root.barOptions[(i + 1) % root.barOptions.length]
+  }
+  function cycleWidth() {
+    var i = root.widthOptions.indexOf(root.visWidth)
+    if (i < 0) {
+      root.visWidth = root.widthOptions[3]
+      return
+    }
+    root.visWidth = root.widthOptions[(i + 1) % root.widthOptions.length]
+  }
+  function widthLabel() {
+    return root.visWidth + "px"
   }
   function cycleThickness() {
     var i = root.thicknessOptions.indexOf(root.thickness)
@@ -126,6 +139,17 @@ Scope {
     onFileChanged: reload()
   }
   FileView {
+    id: widthFile
+    path: root.cacheDir + "/visualizer-width"
+    watchChanges: true
+    printErrors: false
+    onLoaded: {
+      var t = parseInt(text().trim(), 10)
+      if (!isNaN(t) && root.widthOptions.indexOf(t) >= 0) root.visWidth = t
+    }
+    onFileChanged: reload()
+  }
+  FileView {
     id: thicknessFile
     path: root.cacheDir + "/visualizer-thickness"
     watchChanges: true
@@ -197,6 +221,7 @@ Scope {
     cavaConfFile.setText(root.cavaConf)
   }
   onThicknessChanged: thicknessFile.setText(String(root.thickness))
+  onVisWidthChanged: widthFile.setText(String(root.visWidth))
   onFpsChanged: {
     fpsFile.setText(String(root.fps))
     cavaConfFile.setText(root.cavaConf)

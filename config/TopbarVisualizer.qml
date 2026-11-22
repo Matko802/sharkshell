@@ -6,9 +6,9 @@ import "Util.js" as Util
 
 Item {
   id: root
-  readonly property int visHeight: 20
+  readonly property int visHeight: Theme.barHeight
   readonly property int squareSize: visHeight
-  readonly property int waveWidth: 140
+  readonly property int waveWidth: VisualizerState.visWidth
   readonly property int barWidth: VisualizerState.bars * (VisualizerState.thickness + 1) - 1
   Layout.preferredWidth: VisualizerState.mode === "bars" ? barWidth : (VisualizerState.mode === "oscilloscope" ? squareSize : waveWidth)
   Layout.preferredHeight: visHeight
