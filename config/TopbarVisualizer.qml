@@ -8,9 +8,9 @@ Item {
   id: root
   readonly property int visHeight: Theme.barHeight
   readonly property int squareSize: visHeight
-  readonly property int waveWidth: VisualizerState.visWidth
-  readonly property int barWidth: VisualizerState.bars * (VisualizerState.thickness + 1) - 1
-  Layout.preferredWidth: VisualizerState.mode === "bars" ? barWidth : (VisualizerState.mode === "oscilloscope" ? squareSize : waveWidth)
+  readonly property int waveWidth: VisualizerState.topbarProfile.visWidth
+  readonly property int barWidth: VisualizerState.topbarProfile.bars * (VisualizerState.topbarProfile.thickness + 1) - 1
+  Layout.preferredWidth: VisualizerState.topbarProfile.mode === "bars" ? barWidth : (VisualizerState.topbarProfile.mode === "oscilloscope" ? squareSize : waveWidth)
   Layout.preferredHeight: visHeight
   Layout.alignment: Qt.AlignVCenter
 
@@ -18,7 +18,7 @@ Item {
   property var waveLevels: []
   property var waveHistory: []
   readonly property int historyCap: 2048
-  readonly property int topBars: VisualizerState.bars
+  readonly property int topBars: VisualizerState.topbarProfile.bars
   readonly property int idleMs: 20000
   readonly property int silenceMs: 700
   readonly property int hideMs: 400
@@ -45,9 +45,9 @@ Item {
   function frameSilent(arr) {
     for (let i = 0; i < arr.length; i++) {
       const v = arr[i]
-      if (VisualizerState.mode === "bars") {
+      if (VisualizerState.topbarProfile.mode === "bars") {
         if (v > 0) return false
-      } else if (VisualizerState.mode === "oscilloscope") {
+      } else if (VisualizerState.topbarProfile.mode === "oscilloscope") {
         if (i % 2 === 1 && Math.abs(v - 50) > 0.5) return false
       } else if (v > 0.5 && Math.abs(v - 50) > 0.5) {
         return false
@@ -57,10 +57,10 @@ Item {
   }
 
   function visibleFlat() {
-    const pts = VisualizerState.mode === "oscilloscope" ? root.levels : root.waveHistory
+    const pts = VisualizerState.topbarProfile.mode === "oscilloscope" ? root.levels : root.waveHistory
     const n = pts ? pts.length : 0
     if (n < 2) return true
-    if (VisualizerState.mode === "oscilloscope") {
+    if (VisualizerState.topbarProfile.mode === "oscilloscope") {
       for (let i = 1; i < n; i += 2)
         if (Math.abs(Util.clampPct(pts[i] || 0) - 50) > 0.5) return false
       return true
@@ -69,7 +69,7 @@ Item {
     const start = n - count
     for (let i = start; i < n; i++) {
       const v = Util.clampPct(pts[i] || 0)
-      if (VisualizerState.mode === "bars") {
+      if (VisualizerState.topbarProfile.mode === "bars") {
         if (v > 0.5) return false
       } else if (v > 0.5 && Math.abs(v - 50) > 0.5) {
         return false
@@ -152,7 +152,7 @@ Item {
 
   Process {
     id: visProc
-    command: ["sh", "-c", VisualizerState.command(VisualizerState.mode, root.topBars)]
+    command: ["sh", "-c", VisualizerState.topbarProfile.command(VisualizerState.topbarProfile.mode, root.topBars)]
     onStarted: root.lastFrame = Date.now()
     onExited: {
       hideTimer.stop()
@@ -170,7 +170,7 @@ Item {
         root.lastFrame = Date.now()
         const silent = root.frameSilent(arr)
         root.levels = arr
-        root.waveLevels = VisualizerState.stabilize(root.waveLevels, arr)
+        root.waveLevels = VisualizerState.topbarProfile.stabilize(root.waveLevels, arr)
         root.waveHistory = root.waveHistory.concat(root.waveLevels).slice(-root.historyCap)
         if (silent) {
           if (root.lastSound > 0 && Date.now() - root.lastSound > root.silenceMs) {
@@ -190,7 +190,7 @@ Item {
   }
 
   Connections {
-    target: VisualizerState
+    target: VisualizerState.topbarProfile
     function onModeChanged() {
       root.restartVis()
     }
@@ -209,12 +209,12 @@ Item {
     id: barRow
     anchors.fill: parent
     spacing: 1
-    visible: VisualizerState.mode === "bars"
+    visible: VisualizerState.topbarProfile.mode === "bars"
     Repeater {
       model: root.topBars
       delegate: Item {
         required property int index
-        width: Math.max(1, Math.min(VisualizerState.thickness, Math.round((barRow.width - (root.topBars - 1) * barRow.spacing) / root.topBars)))
+        width: Math.max(1, Math.min(VisualizerState.topbarProfile.thickness, Math.round((barRow.width - (root.topBars - 1) * barRow.spacing) / root.topBars)))
         height: barRow.height
         Rectangle {
           anchors.bottom: parent.bottom
@@ -236,14 +236,14 @@ Item {
   Canvas {
     id: waveCanvas
     anchors.fill: parent
-    visible: VisualizerState.mode !== "bars"
-    property var pts: VisualizerState.mode === "oscilloscope" ? root.levels : root.waveHistory
+    visible: VisualizerState.topbarProfile.mode !== "bars"
+    property var pts: VisualizerState.topbarProfile.mode === "oscilloscope" ? root.levels : root.waveHistory
     onPtsChanged: if (visible) requestPaint()
     onVisibleChanged: if (visible) requestPaint()
     onWidthChanged: if (visible) requestPaint()
     onHeightChanged: if (visible) requestPaint()
     Connections {
-      target: VisualizerState
+      target: VisualizerState.topbarProfile
       function onModeChanged() {
         if (waveCanvas.visible) waveCanvas.requestPaint()
       }
@@ -286,14 +286,14 @@ Item {
       var n = pts ? pts.length : 0
       if (width <= 0 || height <= 0) return
       ctx.lineJoin = "round"
-      if (VisualizerState.mode === "oscilloscope") {
+      if (VisualizerState.topbarProfile.mode === "oscilloscope") {
         if (n < 4) return
         ctx.clearRect(0, 0, width, height)
-        scopePath(ctx, VisualizerState.thickness, 1)
+        scopePath(ctx, VisualizerState.topbarProfile.thickness, 1)
       } else {
         if (n < 2) return
         ctx.clearRect(0, 0, width, height)
-        strokePath(ctx, VisualizerState.thickness, 1)
+        strokePath(ctx, VisualizerState.topbarProfile.thickness, 1)
       }
     }
   }
@@ -302,7 +302,10 @@ Item {
     anchors.fill: parent
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
-    onClicked: SettingsState.openTab(3, root.QsWindow.window)
-    onWheel: VisualizerState.cycleMode()
+    onClicked: {
+      VisualizerState.setSettingsTarget("topbar")
+      SettingsState.openTab(3, root.QsWindow.window)
+    }
+    onWheel: VisualizerState.topbarProfile.cycleMode()
   }
 }
