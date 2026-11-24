@@ -83,6 +83,7 @@ const CODEPOINTS = {
   "bat-100-chg": 0xE1A3,
   "bat-charged": 0xE1A3,
   "bat-caution": 0xE19C,
+  "error": 0xE000,
   "logout": 0xE9BA,
   "opacity": 0xE91C,  "reboot": 0xF053,
   "equalizer": 0xE01D,

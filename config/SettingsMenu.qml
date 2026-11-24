@@ -75,7 +75,7 @@ PanelWindow {
     return arr
   }
 
-  readonly property var visualItems: [{ kind: "mode" }, { kind: "bars" }, { kind: "backend" }, { kind: "topbar" }, { kind: "thickness" }, { kind: "fps" }, { kind: "smoothing" }, { kind: "width" }]
+  readonly property var visualItems: !VisualizerState.visualizerAvailable ? [] : [{ kind: "mode" }, { kind: "bars" }, { kind: "topbar" }, { kind: "thickness" }, { kind: "fps" }, { kind: "smoothing" }, { kind: "width" }]
   readonly property var currentItems: root.activeTab === 0 ? root.themeItems : (root.activeTab === 5 ? root.appsItems : (root.activeTab === 3 ? root.visualItems : (root.activeTab === 4 || root.activeTab === 6 ? [] : root.audioModel)))
 
   property int expandedApp: -1
@@ -137,11 +137,10 @@ PanelWindow {
       root.selIdx = i
       if (i === 0) VisualizerState.cycleMode()
       else if (i === 1) VisualizerState.cycleBars()
-      else if (i === 2) VisualizerState.cycleBackend()
-      else if (i === 3) VisualizerState.toggleTopbar()
-      else if (i === 4) VisualizerState.cycleThickness()
-      else if (i === 5) VisualizerState.cycleFps()
-      else if (i === 6) VisualizerState.cycleWaveSmoothing()
+      else if (i === 2) VisualizerState.toggleTopbar()
+      else if (i === 3) VisualizerState.cycleThickness()
+      else if (i === 4) VisualizerState.cycleFps()
+      else if (i === 5) VisualizerState.cycleWaveSmoothing()
       else VisualizerState.cycleWidth()
     } else {
       root.selIdx = i
@@ -166,6 +165,10 @@ PanelWindow {
 
   function skipHeader(dir) {
     const items = root.currentItems
+    if (items.length === 0) {
+      root.selIdx = 0
+      return
+    }
     let guard = 0
     while (root.selIdx >= 0 && root.selIdx < items.length && items[root.selIdx] && items[root.selIdx].header && guard++ < 50)
       root.selIdx += dir
@@ -188,6 +191,7 @@ PanelWindow {
         root.hoverIdx = -1
         root.hoverTab = -1
         SettingsState.startTab = 0
+        VisualizerState.checkBackends()
       }
       else if (!SettingsState.open && root.shown && !slideOut.running)
         slideOut.restart()
@@ -591,9 +595,33 @@ PanelWindow {
                 width: pageFlick.width
                 spacing: 8
 
+                Item {
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: pageFlick.height
+                  visible: !VisualizerState.visualizerAvailable
+                  ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: 10
+                    QIcon {
+                      Layout.alignment: Qt.AlignHCenter
+                      name: "error"
+                      size: 28
+                      color: Theme.muted2
+                    }
+                    Text {
+                      Layout.alignment: Qt.AlignHCenter
+                      text: "Install sharkvis or cava to use this feature"
+                      color: Theme.muted2
+                      font.family: root.fontFamily
+                      font.pixelSize: 12
+                    }
+                  }
+                }
+
                 Rectangle {
                   Layout.fillWidth: true
                   Layout.preferredHeight: 32
+                  visible: VisualizerState.visualizerAvailable
                   color: root.selIdx === 0 ? Theme.fg
                        : (root.hoverIdx === -10 ? Theme.bgAlt : "transparent")
                   border.color: root.selIdx === 0 ? Theme.outline
@@ -642,6 +670,7 @@ PanelWindow {
                 Rectangle {
                   Layout.fillWidth: true
                   Layout.preferredHeight: 32
+                  visible: VisualizerState.visualizerAvailable
                   color: root.selIdx === 1 ? Theme.fg
                        : (root.hoverIdx === -11 ? Theme.bgAlt : "transparent")
                   border.color: root.selIdx === 1 ? Theme.outline
@@ -690,100 +719,10 @@ PanelWindow {
                 Rectangle {
                   Layout.fillWidth: true
                   Layout.preferredHeight: 32
+                  visible: VisualizerState.visualizerAvailable
                   color: root.selIdx === 2 ? Theme.fg
-                       : (root.hoverIdx === -12 ? Theme.bgAlt : "transparent")
-                  border.color: root.selIdx === 2 ? Theme.outline
-                       : (root.hoverIdx === -12 ? Theme.borderStrong : Theme.border)
-                  border.width: 1
-                  MouseArea {
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onEntered: root.hoverIdx = -12
-                    onExited: { if (root.hoverIdx === -12) root.hoverIdx = -1 }
-                    onClicked: { root.selIdx = 2; VisualizerState.cycleBackend() }
-                  }
-                  RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
-                    spacing: 10
-                    Item {
-                      Layout.preferredWidth: 20
-                      Layout.preferredHeight: 20
-                      QIcon {
-                        anchors.centerIn: parent
-                        name: "tune"
-                        size: 18
-                        color: root.selIdx === 2 ? Theme.bg : Theme.fg
-                      }
-                    }
-                    Text {
-                      Layout.fillWidth: true
-                      text: "Backend"
-                      color: root.selIdx === 2 ? Theme.bg : Theme.fg
-                      font.family: root.fontFamily
-                      font.pixelSize: 12
-                      font.weight: Font.DemiBold
-                    }
-                    Rectangle {
-                      id: backendSlider
-                      implicitWidth: 128
-                      implicitHeight: 20
-                      color: "transparent"
-                      border.color: root.selIdx === 2 ? Theme.bg : Theme.outline
-                      border.width: 1
-                      Rectangle {
-                        width: (parent.width - 4) / 2
-                        height: parent.height - 4
-                        y: 2
-                        x: VisualizerState.backend === "sharkvis" ? 2 : 2 + (parent.width - 4) / 2
-                        color: root.selIdx === 2 ? Theme.bg : Theme.fg
-                        Behavior on x {
-                          NumberAnimation { duration: Theme.animFast; easing.type: Theme.easingOut }
-                        }
-                      }
-                      Row {
-                        anchors.fill: parent
-                        Text {
-                          width: parent.width / 2
-                          height: parent.height
-                          text: "Sharkvis"
-                          horizontalAlignment: Text.AlignHCenter
-                          verticalAlignment: Text.AlignVCenter
-                          color: VisualizerState.backend === "sharkvis" ? (root.selIdx === 2 ? Theme.fg : Theme.bg) : (root.selIdx === 2 ? Theme.bg : Theme.muted2)
-                          font.family: root.fontFamily
-                          font.pixelSize: 9
-                        }
-                        Text {
-                          width: parent.width / 2
-                          height: parent.height
-                          text: "Cava"
-                          horizontalAlignment: Text.AlignHCenter
-                          verticalAlignment: Text.AlignVCenter
-                          color: VisualizerState.backend === "cava" ? (root.selIdx === 2 ? Theme.fg : Theme.bg) : (root.selIdx === 2 ? Theme.bg : Theme.muted2)
-                          font.family: root.fontFamily
-                          font.pixelSize: 9
-                        }
-                      }
-                      MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: function(mouse) {
-                          root.selIdx = 2
-                          VisualizerState.setBackend(mouse.x < parent.width / 2 ? "sharkvis" : "cava")
-                        }
-                      }
-                    }
-                  }
-                }
-
-                Rectangle {
-                  Layout.fillWidth: true
-                  Layout.preferredHeight: 32
-                  color: root.selIdx === 3 ? Theme.fg
                        : (root.hoverIdx === -13 ? Theme.bgAlt : "transparent")
-                  border.color: root.selIdx === 3 ? Theme.outline
+                  border.color: root.selIdx === 2 ? Theme.outline
                        : (root.hoverIdx === -13 ? Theme.borderStrong : Theme.border)
                   border.width: 1
                   MouseArea {
@@ -792,7 +731,7 @@ PanelWindow {
                     cursorShape: Qt.PointingHandCursor
                     onEntered: root.hoverIdx = -13
                     onExited: { if (root.hoverIdx === -13) root.hoverIdx = -1 }
-                    onClicked: { root.selIdx = 3; VisualizerState.toggleTopbar() }
+                    onClicked: { root.selIdx = 2; VisualizerState.toggleTopbar() }
                   }
                   RowLayout {
                     anchors.fill: parent
@@ -806,13 +745,13 @@ PanelWindow {
                         anchors.centerIn: parent
                         name: "music"
                         size: 18
-                        color: root.selIdx === 3 ? Theme.bg : Theme.fg
+                        color: root.selIdx === 2 ? Theme.bg : Theme.fg
                       }
                     }
                     Text {
                       Layout.fillWidth: true
                       text: "Show in top bar"
-                      color: root.selIdx === 3 ? Theme.bg : Theme.fg
+                      color: root.selIdx === 2 ? Theme.bg : Theme.fg
                       font.family: root.fontFamily
                       font.pixelSize: 12
                       font.weight: Font.DemiBold
@@ -830,9 +769,10 @@ PanelWindow {
                 Rectangle {
                   Layout.fillWidth: true
                   Layout.preferredHeight: 32
-                  color: root.selIdx === 4 ? Theme.fg
+                  visible: VisualizerState.visualizerAvailable
+                  color: root.selIdx === 3 ? Theme.fg
                        : (root.hoverIdx === -14 ? Theme.bgAlt : "transparent")
-                  border.color: root.selIdx === 4 ? Theme.outline
+                  border.color: root.selIdx === 3 ? Theme.outline
                        : (root.hoverIdx === -14 ? Theme.borderStrong : Theme.border)
                   border.width: 1
                   MouseArea {
@@ -841,7 +781,7 @@ PanelWindow {
                     cursorShape: Qt.PointingHandCursor
                     onEntered: root.hoverIdx = -14
                     onExited: { if (root.hoverIdx === -14) root.hoverIdx = -1 }
-                    onClicked: { root.selIdx = 4; VisualizerState.cycleThickness() }
+                    onClicked: { root.selIdx = 3; VisualizerState.cycleThickness() }
                   }
                   RowLayout {
                     anchors.fill: parent
@@ -855,20 +795,20 @@ PanelWindow {
                         anchors.centerIn: parent
                         name: "chart-bar"
                         size: 18
-                        color: root.selIdx === 4 ? Theme.bg : Theme.fg
+                        color: root.selIdx === 3 ? Theme.bg : Theme.fg
                       }
                     }
                     Text {
                       Layout.fillWidth: true
                       text: "Bar thickness"
-                      color: root.selIdx === 4 ? Theme.bg : Theme.fg
+                      color: root.selIdx === 3 ? Theme.bg : Theme.fg
                       font.family: root.fontFamily
                       font.pixelSize: 12
                       font.weight: Font.DemiBold
                     }
                     Text {
                       text: VisualizerState.thickness + "px"
-                      color: root.selIdx === 4 ? Theme.bg : Theme.muted
+                      color: root.selIdx === 3 ? Theme.bg : Theme.muted
                       font.family: root.fontFamily
                       font.pixelSize: 11
                     }
@@ -878,9 +818,10 @@ PanelWindow {
                 Rectangle {
                   Layout.fillWidth: true
                   Layout.preferredHeight: 32
-                  color: root.selIdx === 5 ? Theme.fg
+                  visible: VisualizerState.visualizerAvailable
+                  color: root.selIdx === 4 ? Theme.fg
                        : (root.hoverIdx === -15 ? Theme.bgAlt : "transparent")
-                  border.color: root.selIdx === 5 ? Theme.outline
+                  border.color: root.selIdx === 4 ? Theme.outline
                        : (root.hoverIdx === -15 ? Theme.borderStrong : Theme.border)
                   border.width: 1
                   MouseArea {
@@ -889,7 +830,7 @@ PanelWindow {
                     cursorShape: Qt.PointingHandCursor
                     onEntered: root.hoverIdx = -15
                     onExited: { if (root.hoverIdx === -15) root.hoverIdx = -1 }
-                    onClicked: { root.selIdx = 5; VisualizerState.cycleFps() }
+                    onClicked: { root.selIdx = 4; VisualizerState.cycleFps() }
                   }
                   RowLayout {
                     anchors.fill: parent
@@ -903,20 +844,20 @@ PanelWindow {
                         anchors.centerIn: parent
                         name: "tune"
                         size: 18
-                        color: root.selIdx === 5 ? Theme.bg : Theme.fg
+                        color: root.selIdx === 4 ? Theme.bg : Theme.fg
                       }
                     }
                     Text {
                       Layout.fillWidth: true
                       text: "Frame rate"
-                      color: root.selIdx === 5 ? Theme.bg : Theme.fg
+                      color: root.selIdx === 4 ? Theme.bg : Theme.fg
                       font.family: root.fontFamily
                       font.pixelSize: 12
                       font.weight: Font.DemiBold
                     }
                     Text {
                       text: VisualizerState.fpsLabel()
-                      color: root.selIdx === 5 ? Theme.bg : Theme.muted
+                      color: root.selIdx === 4 ? Theme.bg : Theme.muted
                       font.family: root.fontFamily
                       font.pixelSize: 11
                     }
@@ -926,9 +867,10 @@ PanelWindow {
                 Rectangle {
                   Layout.fillWidth: true
                   Layout.preferredHeight: 32
-                  color: root.selIdx === 6 ? Theme.fg
+                  visible: VisualizerState.visualizerAvailable
+                  color: root.selIdx === 5 ? Theme.fg
                        : (root.hoverIdx === -16 ? Theme.bgAlt : "transparent")
-                  border.color: root.selIdx === 6 ? Theme.outline
+                  border.color: root.selIdx === 5 ? Theme.outline
                        : (root.hoverIdx === -16 ? Theme.borderStrong : Theme.border)
                   border.width: 1
                   MouseArea {
@@ -937,7 +879,7 @@ PanelWindow {
                     cursorShape: Qt.PointingHandCursor
                     onEntered: root.hoverIdx = -16
                     onExited: { if (root.hoverIdx === -16) root.hoverIdx = -1 }
-                    onClicked: { root.selIdx = 6; VisualizerState.cycleWaveSmoothing() }
+                    onClicked: { root.selIdx = 5; VisualizerState.cycleWaveSmoothing() }
                   }
                   RowLayout {
                     anchors.fill: parent
@@ -951,20 +893,20 @@ PanelWindow {
                         anchors.centerIn: parent
                         name: "waves"
                         size: 18
-                        color: root.selIdx === 6 ? Theme.bg : Theme.fg
+                        color: root.selIdx === 5 ? Theme.bg : Theme.fg
                       }
                     }
                     Text {
                       Layout.fillWidth: true
                       text: "Wave stabilizer"
-                      color: root.selIdx === 6 ? Theme.bg : Theme.fg
+                      color: root.selIdx === 5 ? Theme.bg : Theme.fg
                       font.family: root.fontFamily
                       font.pixelSize: 12
                       font.weight: Font.DemiBold
                     }
                     Text {
                       text: VisualizerState.waveSmoothLabel()
-                      color: root.selIdx === 6 ? Theme.bg : Theme.muted
+                      color: root.selIdx === 5 ? Theme.bg : Theme.muted
                       font.family: root.fontFamily
                       font.pixelSize: 11
                     }
@@ -973,9 +915,10 @@ PanelWindow {
                 Rectangle {
                   Layout.fillWidth: true
                   Layout.preferredHeight: 32
-                  color: root.selIdx === 7 ? Theme.fg
+                  visible: VisualizerState.visualizerAvailable
+                  color: root.selIdx === 6 ? Theme.fg
                        : (root.hoverIdx === -17 ? Theme.bgAlt : "transparent")
-                  border.color: root.selIdx === 7 ? Theme.outline
+                  border.color: root.selIdx === 6 ? Theme.outline
                        : (root.hoverIdx === -17 ? Theme.borderStrong : Theme.border)
                   border.width: 1
                   MouseArea {
@@ -984,7 +927,7 @@ PanelWindow {
                     cursorShape: Qt.PointingHandCursor
                     onEntered: root.hoverIdx = -17
                     onExited: { if (root.hoverIdx === -17) root.hoverIdx = -1 }
-                    onClicked: { root.selIdx = 7; VisualizerState.cycleWidth() }
+                    onClicked: { root.selIdx = 6; VisualizerState.cycleWidth() }
                   }
                   RowLayout {
                     anchors.fill: parent
@@ -998,20 +941,20 @@ PanelWindow {
                         anchors.centerIn: parent
                         name: "tune"
                         size: 18
-                        color: root.selIdx === 7 ? Theme.bg : Theme.fg
+                        color: root.selIdx === 6 ? Theme.bg : Theme.fg
                       }
                     }
                     Text {
                       Layout.fillWidth: true
                       text: "Width"
-                      color: root.selIdx === 7 ? Theme.bg : Theme.fg
+                      color: root.selIdx === 6 ? Theme.bg : Theme.fg
                       font.family: root.fontFamily
                       font.pixelSize: 12
                       font.weight: Font.DemiBold
                     }
                     Text {
                       text: VisualizerState.widthLabel()
-                      color: root.selIdx === 7 ? Theme.bg : Theme.muted
+                      color: root.selIdx === 6 ? Theme.bg : Theme.muted
                       font.family: root.fontFamily
                       font.pixelSize: 11
                     }

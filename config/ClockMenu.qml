@@ -821,7 +821,7 @@ PanelWindow {
                           clip: true
                           Process {
                             id: visProc
-                            running: root.shown && root.activeTab === 2
+                            running: root.shown && root.activeTab === 2 && VisualizerState.visualizerAvailable
                             command: ["sh", "-c", VisualizerState.command(VisualizerState.mode, VisualizerState.bars)]
                             stdout: SplitParser {
                               onRead: data => {
@@ -927,7 +927,6 @@ PanelWindow {
                             target: VisualizerState
                             function onModeChanged() { mediaSingle.waveLevels = []; mediaSingle.waveHistory = []; if (visProc.running) { visProc.running = false; visProc.running = true } }
                             function onBarsChanged() { mediaSingle.waveLevels = []; mediaSingle.waveHistory = []; if (visProc.running) { visProc.running = false; visProc.running = true } }
-                            function onBackendChanged() { mediaSingle.waveLevels = []; mediaSingle.waveHistory = []; if (visProc.running) { visProc.running = false; visProc.running = true } }
                             function onFpsChanged() { mediaSingle.waveLevels = []; mediaSingle.waveHistory = []; if (visProc.running) { visProc.running = false; visProc.running = true } }
                           }
                         }

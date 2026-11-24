@@ -13,17 +13,21 @@ Scope {
   property int visWidth: 140
   property double waveSmoothing: 0.5
   property bool topbar: false
-  property string backend: "sharkvis"
+  property bool sharkvisAvailable: false
+  property bool cavaAvailable: false
+  readonly property bool visualizerAvailable: root.sharkvisAvailable || root.cavaAvailable
   readonly property var modes: ["bars", "wave", "oscilloscope"]
   readonly property var barOptions: [24, 32, 48, 64]
   readonly property var widthOptions: [80, 100, 120, 140, 160, 180, 200, 240]
   readonly property var thicknessOptions: [1, 2, 3, 4]
   readonly property var fpsOptions: [10, 15, 20, 30, 45, 60, 90, 120, 144, 165, 240]
   readonly property var waveSmoothOptions: [0, 0.25, 0.5, 0.75, 0.9, 0.95]
-  readonly property var backends: ["sharkvis", "cava"]
   readonly property string cacheDir: Quickshell.env("HOME") + "/.cache/sharkshell"
+  readonly property string localSharkvis: "/mnt/ssd/My-Files/Projects/sharkvis/target/release/sharkvis"
 
-  readonly property string cavaConf: "[general]\nbars = " + root.bars + "\nframerate = " + root.fps + "\n[input]\nmethod = pulse\nsource = auto\n[output]\nmethod = raw\nraw_target = /dev/stdout\ndata_format = ascii\nascii_max_range = 100\nbar_delimiter = 59\nframe_delimiter = 10\n"
+  function cavaConfText() {
+    return "[general]\nbars = " + root.bars + "\nframerate = " + root.fps + "\n[input]\nmethod = pulse\nsource = auto\n[output]\nmethod = raw\nraw_target = /dev/stdout\ndata_format = ascii\nascii_max_range = 100\nbar_delimiter = 59\nframe_delimiter = 10\n"
+  }
 
   function cycleMode() {
     var i = root.modes.indexOf(root.mode)
@@ -90,24 +94,15 @@ Scope {
     if (root.mode === "oscilloscope") return "Oscilloscope"
     return "Bars"
   }
-  function setBackend(v) {
-    if (root.backends.indexOf(v) >= 0)
-      root.backend = v
-  }
-  function cycleBackend() {
-    root.backend = root.backend === "sharkvis" ? "cava" : "sharkvis"
-  }
-  function backendLabel() {
-    return root.backend === "cava" ? "Cava" : "Sharkvis"
-  }
   function command(mode, bars) {
     const cfg = "$HOME/.cache/sharkshell/cava.conf"
-    const local = "/mnt/ssd/My-Files/Projects/sharkvis/target/release/sharkvis"
-    const sharkvis = "if [ -x \"" + local + "\" ]; then exec \"" + local + "\" --raw --raw-mode \"" + mode + "\" --bars " + bars + " --fps " + root.fps + "; elif command -v sharkvis >/dev/null 2>&1; then exec sharkvis --raw --raw-mode \"" + mode + "\" --bars " + bars + " --fps " + root.fps + "; fi"
+    const sharkvis = "if [ -x \"" + root.localSharkvis + "\" ]; then exec \"" + root.localSharkvis + "\" --raw --raw-mode \"" + mode + "\" --bars " + bars + " --fps " + root.fps + "; elif command -v sharkvis >/dev/null 2>&1; then exec sharkvis --raw --raw-mode \"" + mode + "\" --bars " + bars + " --fps " + root.fps + "; fi"
     const cava = "if command -v cava >/dev/null 2>&1; then exec cava -p \"" + cfg + "\"; fi"
-    if (root.backend === "cava")
-      return cava + "; " + sharkvis + "; exit 0"
     return sharkvis + "; " + cava + "; exit 0"
+  }
+  function checkBackends() {
+    if (!backendCheck.running)
+      backendCheck.running = true
   }
   function setTopbar(v) {
     root.topbar = !!v
@@ -194,17 +189,6 @@ Scope {
     onFileChanged: reload()
   }
   FileView {
-    id: backendFile
-    path: root.cacheDir + "/visualizer-backend"
-    watchChanges: true
-    printErrors: false
-    onLoaded: {
-      var t = text().trim()
-      if (t !== "" && root.backends.indexOf(t) >= 0) root.backend = t
-    }
-    onFileChanged: reload()
-  }
-  FileView {
     id: cavaConfFile
     path: root.cacheDir + "/cava.conf"
     printErrors: false
@@ -213,20 +197,41 @@ Scope {
     id: cavaConfInit
     running: true
     command: ["mkdir", "-p", root.cacheDir]
-    onExited: cavaConfFile.setText(root.cavaConf)
+    onExited: cavaConfFile.setText(root.cavaConfText())
+  }
+  property bool foundSharkvis: false
+  property bool foundCava: false
+  Process {
+    id: backendCheck
+    running: true
+    command: ["sh", "-c", "if [ -x \"" + root.localSharkvis + "\" ] || command -v sharkvis >/dev/null 2>&1; then echo sharkvis; fi; if command -v cava >/dev/null 2>&1; then echo cava; fi"]
+    onStarted: {
+      root.foundSharkvis = false
+      root.foundCava = false
+    }
+    stdout: SplitParser {
+      onRead: data => {
+        const t = String(data).trim()
+        if (t === "sharkvis") root.foundSharkvis = true
+        else if (t === "cava") root.foundCava = true
+      }
+    }
+    onExited: {
+      root.sharkvisAvailable = root.foundSharkvis
+      root.cavaAvailable = root.foundCava
+    }
   }
   onModeChanged: modeFile.setText(root.mode)
   onBarsChanged: {
     barsFile.setText(String(root.bars))
-    cavaConfFile.setText(root.cavaConf)
+    cavaConfFile.setText(root.cavaConfText())
   }
   onThicknessChanged: thicknessFile.setText(String(root.thickness))
   onVisWidthChanged: widthFile.setText(String(root.visWidth))
   onFpsChanged: {
     fpsFile.setText(String(root.fps))
-    cavaConfFile.setText(root.cavaConf)
+    cavaConfFile.setText(root.cavaConfText())
   }
   onWaveSmoothingChanged: waveSmoothFile.setText(String(root.waveSmoothing))
   onTopbarChanged: topbarFile.setText(root.topbar ? "1" : "0")
-  onBackendChanged: backendFile.setText(root.backend)
 }

@@ -22,7 +22,7 @@ Item {
   readonly property int idleMs: 20000
   readonly property int silenceMs: 700
   readonly property int hideMs: 400
-  readonly property bool visWanted: VisualizerState.topbar && !IdleManager.gaming
+  readonly property bool visWanted: VisualizerState.topbar && VisualizerState.visualizerAvailable && !IdleManager.gaming
 
   property bool hasAudio: false
   property double lastActive: 0
@@ -192,9 +192,6 @@ Item {
   Connections {
     target: VisualizerState
     function onModeChanged() {
-      root.restartVis()
-    }
-    function onBackendChanged() {
       root.restartVis()
     }
     function onBarsChanged() {
