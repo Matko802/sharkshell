@@ -742,7 +742,7 @@ PanelWindow {
                   property var waveLevels: []
                   property var waveHistory: []
                   readonly property int historyCap: 2048
-                  readonly property int visBars: VisualizerState.mediaProfile.bars
+                  readonly property int visBars: VisualizerState.bars
                  property var cur: (Mpris.players.values && Mpris.players.values.length > root.mediaIdx) ? Mpris.players.values[root.mediaIdx] : null
                  property string rawArt: cur && cur.trackArtUrl ? String(cur.trackArtUrl) : ""
                  property bool artFallback: false
@@ -822,7 +822,7 @@ PanelWindow {
                           Process {
                             id: visProc
                             running: root.shown && root.activeTab === 2
-                            command: ["sh", "-c", VisualizerState.mediaProfile.command(VisualizerState.mediaProfile.mode, VisualizerState.mediaProfile.bars)]
+                            command: ["sh", "-c", VisualizerState.command(VisualizerState.mode, VisualizerState.bars)]
                             stdout: SplitParser {
                               onRead: data => {
                                 const parts = String(data).split(";")
@@ -833,7 +833,7 @@ PanelWindow {
                                 }
                                 if (arr.length > 0) {
                                   mediaSingle.levels = arr
-                                  mediaSingle.waveLevels = VisualizerState.mediaProfile.stabilize(mediaSingle.waveLevels, arr)
+                                  mediaSingle.waveLevels = VisualizerState.stabilize(mediaSingle.waveLevels, arr)
                                   mediaSingle.waveHistory = mediaSingle.waveHistory.concat(mediaSingle.waveLevels).slice(-mediaSingle.historyCap)
                                 }
                               }
@@ -844,7 +844,7 @@ PanelWindow {
                             anchors.fill: parent
                             anchors.margins: 8
                             spacing: 2
-                            visible: VisualizerState.mediaProfile.mode === "bars"
+                            visible: VisualizerState.mode === "bars"
                             Repeater {
                               model: mediaSingle.visBars
                               delegate: Item {
@@ -865,11 +865,11 @@ PanelWindow {
                           Canvas {
                             id: waveCanvas
                             anchors.centerIn: parent
-                            readonly property bool square: VisualizerState.mediaProfile.mode === "oscilloscope"
+                            readonly property bool square: VisualizerState.mode === "oscilloscope"
                             width: Math.max(0, (square ? Math.min(parent.width, parent.height) : parent.width) - 16)
                             height: square ? width : Math.max(0, parent.height - 16)
-                            visible: VisualizerState.mediaProfile.mode !== "bars"
-                            property var pts: VisualizerState.mediaProfile.mode === "oscilloscope" ? mediaSingle.levels : mediaSingle.waveHistory
+                            visible: VisualizerState.mode !== "bars"
+                            property var pts: VisualizerState.mode === "oscilloscope" ? mediaSingle.levels : mediaSingle.waveHistory
                             onPtsChanged: if (visible) requestPaint()
                             onVisibleChanged: if (visible) requestPaint()
                             onWidthChanged: if (visible) requestPaint()
@@ -912,19 +912,19 @@ PanelWindow {
                               var n = pts ? pts.length : 0
                               if (width <= 0 || height <= 0) return
                               ctx.lineJoin = "round"
-                              if (VisualizerState.mediaProfile.mode === "oscilloscope") {
+                              if (VisualizerState.mode === "oscilloscope") {
                                 if (n < 4) return
                                 ctx.clearRect(0, 0, width, height)
-                                scopePath(ctx, VisualizerState.mediaProfile.thickness, 1)
+                                scopePath(ctx, 2, 1)
                               } else {
                                 if (n < 2) return
                                 ctx.clearRect(0, 0, width, height)
-                                strokePath(ctx, VisualizerState.mediaProfile.thickness, 1)
+                                strokePath(ctx, 2, 1)
                               }
                             }
                           }
                           Connections {
-                            target: VisualizerState.mediaProfile
+                            target: VisualizerState
                             function onModeChanged() { mediaSingle.waveLevels = []; mediaSingle.waveHistory = []; if (visProc.running) { visProc.running = false; visProc.running = true } }
                             function onBarsChanged() { mediaSingle.waveLevels = []; mediaSingle.waveHistory = []; if (visProc.running) { visProc.running = false; visProc.running = true } }
                             function onBackendChanged() { mediaSingle.waveLevels = []; mediaSingle.waveHistory = []; if (visProc.running) { visProc.running = false; visProc.running = true } }
